@@ -1,0 +1,80 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { MessagesSquare, Share2, Activity, Gauge, LayoutGrid, BrainCircuit, History, FileText } from "lucide-react";
+import clsx from "clsx";
+import { Mark } from "./Mark";
+
+type Item = { href: string; label: string; icon: typeof Share2; ready: boolean };
+
+// Order reflects the intended flow: converse, explore the graph, watch the agents, read the
+// architecture, judge the repo, replay history, document.
+const ITEMS: Item[] = [
+  { href: "/chat", label: "Chat", icon: MessagesSquare, ready: true },
+  { href: "/graph", label: "Knowledge graph", icon: Share2, ready: true },
+  { href: "/agents", label: "Agent network", icon: Activity, ready: true },
+  { href: "/architecture", label: "Architecture", icon: LayoutGrid, ready: true },
+  { href: "/repository", label: "Repository score", icon: Gauge, ready: true },
+  { href: "/memory", label: "Memory", icon: BrainCircuit, ready: true },
+  { href: "/time-machine", label: "Time machine", icon: History, ready: true },
+  { href: "/docs", label: "Documentation", icon: FileText, ready: true },
+];
+
+export function Rail() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="flex h-full w-[68px] shrink-0 flex-col items-center border-r border-line bg-panel py-5">
+      <Link
+        href="/graph"
+        aria-label="Codexa OS"
+        className="mb-6 grid h-10 w-10 place-items-center rounded-xl text-ink transition-transform duration-200 ease-out hover:scale-105"
+      >
+        <Mark size={26} />
+      </Link>
+
+      <ul className="flex flex-1 flex-col items-center gap-1.5">
+        {ITEMS.map(({ href, label, icon: Icon, ready }) => {
+          const active = pathname === href || pathname.startsWith(`${href}/`);
+          const inner = (
+            <span
+              className={clsx(
+                "group relative grid h-11 w-11 place-items-center rounded-xl transition-colors duration-200 ease-out",
+                active
+                  ? "bg-signal-wash text-signal"
+                  : ready
+                    ? "text-muted hover:bg-paper-sunk hover:text-ink"
+                    : "text-faint/55",
+              )}
+            >
+              <Icon size={19} strokeWidth={1.75} />
+              {active && (
+                <span className="absolute -left-[13px] h-6 w-[3px] rounded-full bg-signal" aria-hidden />
+              )}
+              <span className="pointer-events-none absolute left-[52px] z-30 flex translate-x-[-4px] items-center gap-2 whitespace-nowrap rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs font-medium text-ink opacity-0 shadow-md transition-all duration-200 ease-out group-hover:translate-x-0 group-hover:opacity-100">
+                {label}
+                {!ready && <span className="status-line !tracking-[0.1em]">soon</span>}
+              </span>
+            </span>
+          );
+          return (
+            <li key={href}>
+              {ready ? (
+                <Link href={href} aria-current={active ? "page" : undefined}>
+                  {inner}
+                </Link>
+              ) : (
+                <span aria-disabled>{inner}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="mt-4 grid h-9 w-9 place-items-center rounded-full border border-line-strong bg-paper-sunk text-[13px] font-medium text-ink-soft">
+        R
+      </div>
+    </nav>
+  );
+}

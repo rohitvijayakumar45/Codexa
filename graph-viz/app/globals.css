@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+/*
+  Codexa OS — design system.
+
+  One instrument, one light theme. Warm-neutral paper, graphite ink, restraint. Color is signal,
+  never decoration: a single teal accent for live state, a muted gold for the reasoning family.
+  Hierarchy comes from type scale and space, not borders and badges. Motion eases; nothing pops.
+*/
+
+@theme {
+  /* Surfaces — warm neutral, barely off-white, never cream. */
+  --color-paper: #f7f6f4;
+  --color-paper-sunk: #efeeea;
+  --color-panel: #ffffff;
+  --color-panel-2: #fbfbf9;
+
+  /* Ink — warm near-black graphite, never pure #000. */
+  --color-ink: #1a1a18;
+  --color-ink-soft: #3c3c38;
+  --color-muted: #6c6a63;
+  --color-faint: #97948b;
+  --color-line: #e9e7e1;
+  --color-line-strong: #dad6ce;
+
+  /* Signal — the one saturated accent. State only. */
+  --color-signal: #0f7d71;
+  --color-signal-live: #12b39f;
+  --color-signal-wash: #e6f3f0;
+
+  /* Muted gold — secondary, reasoning family. */
+  --color-gold: #9c7d33;
+  --color-gold-wash: #f3efe1;
+
+  --color-warn: #b0571f;
+  --color-danger: #a92a30;
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  /* Motion — cinematic ease, nothing linear, nothing bouncy. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Tinted, soft elevation — shadows carry the ink hue, never flat black. */
+  --shadow-sm: 0 1px 2px rgba(26, 26, 24, 0.05), 0 1px 1px rgba(26, 26, 24, 0.03);
+  --shadow-md: 0 10px 30px -12px rgba(26, 26, 24, 0.16);
+  --shadow-lg: 0 28px 60px -20px rgba(26, 26, 24, 0.22);
+}
+
+:root {
+  color-scheme: light;
+  --dur-1: 0.16s;
+  --dur-2: 0.28s;
+  --dur-3: 0.5s;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01" 1, "cv01" 1;
+}
+
+/* Numerals, ids, metrics: monospaced, tabular, always. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* The instrument status line — small, mono, uppercase, quiet. A recurring signature. */
+.status-line {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+/* Focus — one consistent teal ring across the whole instrument. */
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+::selection {
+  background: var(--color-signal-wash);
+  color: var(--color-signal);
+}
+
+/* LLM thinking indicator — pulsing dots, teal-adapted. */
+@keyframes dot-pulse {
+  0% {
+    transform: scale(0.8);
+    background-color: var(--color-signal-live);
+    box-shadow: 0 0 0 0 rgba(18, 179, 159, 0.6);
+  }
+  50% {
+    transform: scale(1.2);
+    background-color: var(--color-signal);
+    box-shadow: 0 0 0 7px rgba(18, 179, 159, 0);
+  }
+  100% {
+    transform: scale(0.8);
+    background-color: var(--color-signal-live);
+    box-shadow: 0 0 0 0 rgba(18, 179, 159, 0.6);
+  }
+}
+
+.dot-pulse {
+  animation: dot-pulse 1.4s infinite ease-in-out;
+}
+
+/* Markdown inside a chat bubble: no leading gap, tighter than doc pages. */
+.chat-md > div {
+  max-width: none;
+}
+.chat-md > div > :first-child {
+  margin-top: 0 !important;
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

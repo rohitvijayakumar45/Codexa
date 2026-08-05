@@ -1,0 +1,356 @@
+"""Load a repository: clone it, read it for real, and write grounded memory + docs.
+
+The earlier version stored almost nothing about a repo (just its language and file count), which let
+models hallucinate. This builds a real digest — package name, dependencies, structure, README — and
+writes that into permanent memory and into LLM-generated documentation, so every answer is grounded
+in what the repository actually is.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+from datetime import UTC, datetime
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel
+
+from backend.agents.llm import LLMClient
+from backend.graph.schemas import (
+    GraphEdgeCreate,
+    GraphEdgeSourceType,
+    GraphEdgeType,
+    GraphNodeCreate,
+    GraphNodeType,
+)
+from backend.graph.service import GraphService
+from backend.memory.store import DATA_DIR, MemoryStore
+from backend.repository.analyze import Analysis, analyze_repo
+
+_EXT_LANG = {
+    ".py": "Python", ".ts": "TypeScript", ".tsx": "TypeScript", ".js": "JavaScript",
+    ".jsx": "JavaScript", ".go": "Go", ".rs": "Rust", ".java": "Java", ".rb": "Ruby",
+    ".c": "C", ".cpp": "C++", ".cs": "C#", ".php": "PHP", ".swift": "Swift", ".kt": "Kotlin",
+    ".sql": "SQL", ".sh": "Shell", ".css": "CSS", ".md": "Markdown",
+}
+_URL_RE = re.compile(r"^(https?://|git@)[\w./:@~-]+?(\.git)?/?$")
+_SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next", ".agents"}
+_FRAMEWORK = {
+    "react": "React", "react-dom": "React", "next": "Next.js", "vue": "Vue", "svelte": "Svelte",
+    "react-router-dom": "React Router", "@tanstack/react-query": "React Query",
+    "react-dropzone": "file uploads (react-dropzone)", "gsap": "GSAP animation",
+    "framer-motion": "Framer Motion", "tailwindcss": "Tailwind CSS", "tailwind-merge": "Tailwind CSS",
+    "axios": "Axios (HTTP)", "express": "Express", "fastify": "Fastify", "socket.io": "realtime (socket.io)",
+    "sonner": "toasts", "three": "Three.js", "@aws-sdk/client-s3": "AWS S3", "aws-sdk": "AWS SDK",
+    "prisma": "Prisma ORM", "mongoose": "MongoDB", "pg": "PostgreSQL", "redis": "Redis",
+    "fastapi": "FastAPI", "flask": "Flask", "django": "Django",
+}
+
+_docs_cache: dict[str, "RepoDocs"] = {}
+
+
+class LoadRepoRequest(BaseModel):
+    url: str
+
+
+class RepositoryInfo(BaseModel):
+    name: str
+    url: str
+    path: str
+    file_count: int
+    languages: list[str]
+    already_loaded: bool
+    memories_created: int
+
+
+class RepoDocs(BaseModel):
+    repository: str
+    generated_at: datetime
+    markdown: str
+
+
+def _repo_name(url: str) -> str:
+    tail = url.rstrip("/").split("/")[-1]
+    return re.sub(r"[^\w.-]", "-", tail[:-4] if tail.endswith(".git") else tail) or "repository"
+
+
+def _read_manifest(path: Path) -> dict:
+    out: dict = {"name": None, "description": None, "deps": [], "scripts": []}
+    pkg = path / "package.json"
+    if pkg.exists():
+        try:
+            data = json.loads(pkg.read_text(encoding="utf-8", errors="ignore"))
+            out["name"] = data.get("name")
+            out["description"] = data.get("description")
+            out["deps"] = list({**data.get("dependencies", {}), **data.get("devDependencies", {})}.keys())
+            out["scripts"] = list(data.get("scripts", {}).keys())
+        except json.JSONDecodeError:
+            pass
+    pyproject = path / "pyproject.toml"
+    if pyproject.exists() and not out["name"]:
+        text = pyproject.read_text(encoding="utf-8", errors="ignore")
+        m = re.search(r'name\s*=\s*"([^"]+)"', text)
+        if m:
+            out["name"] = m.group(1)
+    return out
+
+
+def _read_readme(path: Path) -> str:
+    for candidate in ("README.md", "Readme.md", "readme.md", "README.rst", "README.txt", "README"):
+        rp = path / candidate
+        if rp.exists():
+            return rp.read_text(encoding="utf-8", errors="ignore")[:2500].strip()
+    return ""
+
+
+def _tree(path: Path, max_lines: int = 40) -> str:
+    lines: list[str] = []
+    expand = {"src", "app", "server", "lambda", "packages", "lib", "components", "pages", "api", "backend", "frontend"}
+    try:
+        top = sorted(p for p in path.iterdir() if p.name not in _SKIP_DIRS and not p.name.startswith("."))
+    except OSError:
+        return ""
+    for p in top:
+        lines.append(p.name + ("/" if p.is_dir() else ""))
+        if p.is_dir() and p.name in expand:
+            for c in sorted(p.iterdir())[:10]:
+                if c.name in _SKIP_DIRS:
+                    continue
+                lines.append("  " + c.name + ("/" if c.is_dir() else ""))
+        if len(lines) >= max_lines:
+            break
+    return "\n".join(lines[:max_lines])
+
+
+def _analyze(path: Path) -> dict:
+    lang_counts: dict[str, int] = {}
+    file_count = 0
+    for p in path.rglob("*"):
+        if any(part in _SKIP_DIRS for part in p.parts):
+            continue
+        if p.is_file():
+            file_count += 1
+            lang = _EXT_LANG.get(p.suffix.lower())
+            if lang:
+                lang_counts[lang] = lang_counts.get(lang, 0) + 1
+            if file_count > 8000:
+                break
+    manifest = _read_manifest(path)
+    languages = sorted(lang_counts, key=lambda k: -lang_counts[k])
+    frameworks = []
+    seen = set()
+    for dep in manifest["deps"]:
+        label = _FRAMEWORK.get(dep)
+        if label and label not in seen:
+            frameworks.append(label)
+            seen.add(label)
+    return {
+        "file_count": file_count,
+        "languages": languages,
+        "name": manifest["name"],
+        "description": manifest["description"],
+        "deps": manifest["deps"],
+        "scripts": manifest["scripts"],
+        "frameworks": frameworks,
+        "readme": _read_readme(path),
+        "tree": _tree(path),
+    }
+
+
+def _digest_text(name: str, url: str, d: dict) -> str:
+    parts = [
+        f"Repository: {name}",
+        f"Package name: {d['name'] or 'n/a'}",
+        f"Description: {d['description'] or 'none provided'}",
+        f"Languages: {', '.join(d['languages'][:6]) or 'unknown'}",
+        f"Frameworks/libraries: {', '.join(d['frameworks'][:12]) or 'n/a'}",
+        f"Key dependencies: {', '.join(d['deps'][:20]) or 'n/a'}",
+        f"Scripts: {', '.join(d['scripts'][:8]) or 'n/a'}",
+        f"File count: {d['file_count']}",
+        "Structure:\n" + (d["tree"] or "n/a"),
+        "README excerpt:\n" + (d["readme"] or "No README found."),
+    ]
+    return "\n".join(parts)
+
+
+def create_repository_router(*, store: MemoryStore, graph: GraphService, llm: LLMClient) -> APIRouter:
+    router = APIRouter(prefix="/repository", tags=["repository"])
+
+    @router.post("/load", response_model=RepositoryInfo)
+    def load(request: LoadRepoRequest) -> RepositoryInfo:
+        url = request.url.strip()
+        if not _URL_RE.match(url):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Provide a valid git URL (https:// or git@).")
+
+        name = _repo_name(url)
+        dest = (DATA_DIR / "repos" / name).resolve()
+        already = store.has_repository(name) and dest.exists()
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if not dest.exists():
+            try:
+                subprocess.run(
+                    ["git", "clone", "--depth", "1", url, str(dest)],
+                    capture_output=True, text=True, timeout=180, check=True,
+                )
+            except FileNotFoundError as exc:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "git is not available on the server.") from exc
+            except subprocess.TimeoutExpired as exc:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Clone timed out.") from exc
+            except subprocess.CalledProcessError as exc:
+                detail = (exc.stderr or "").strip().splitlines()[-1:] or ["clone failed"]
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Clone failed: {detail[0]}") from exc
+
+        d = _analyze(dest)
+        display = d["name"] or name
+        primary = d["languages"][0] if d["languages"] else "unknown"
+
+        # Rewrite this repo's memory from the fresh digest so re-loading refreshes grounding.
+        store.remove(name, source="repo_load")
+        _docs_cache.pop(name, None)
+
+        semantic = f"{display}"
+        if d["description"]:
+            semantic += f" — {d['description']}"
+        semantic += f". A {primary} project. Key libraries: {', '.join(d['frameworks'][:8]) or ', '.join(d['deps'][:8]) or 'n/a'}."
+        if d["readme"]:
+            semantic += f" README: {d['readme'][:400]}"
+
+        created = 0
+        created += _mem(store, name, "semantic", f"What {display} is", semantic)
+        created += _mem(store, name, "semantic", "Project structure", d["tree"] or "n/a")
+        created += _mem(store, name, "organizational", "Stack & conventions",
+                        f"Languages: {', '.join(d['languages'][:5]) or 'n/a'}. "
+                        f"Frameworks: {', '.join(d['frameworks'][:10]) or 'n/a'}.")
+        created += _mem(store, name, "procedural", "How to build & run",
+                        (" · ".join(f"npm run {s}" for s in d["scripts"][:5]) if d["scripts"] else "See README."))
+        created += _mem(store, name, "episodic", "Loaded into Codexa",
+                        f"Cloned from {url} on {datetime.now(UTC):%Y-%m-%d %H:%M} UTC — {d['file_count']} files.")
+
+        # Static-analyze the source and build the knowledge graph from it: files, the functions and
+        # classes they define, file imports, and the call graph between symbols. All tagged with the
+        # repository so graph/architecture can scope to it.
+        code = analyze_repo(dest)
+        created += _mem(store, name, "semantic", "Key functions & components", _functions_summary(code))
+
+        graph.add_node(GraphNodeCreate(
+            node_type=GraphNodeType.REPOSITORY, stable_id=f"repo://{name}",
+            properties={"name": display, "url": url, "primary_language": primary,
+                        "file_count": d["file_count"], "repository": name},
+        ))
+        file_nodes = {}
+        for rel in code.files[:180]:
+            file_nodes[rel] = graph.add_node(GraphNodeCreate(
+                node_type=GraphNodeType.FILE, stable_id=f"file://{name}/{rel}",
+                properties={"path": rel, "repository": name},
+            ))
+        for a, b in code.imports:
+            if a in file_nodes and b in file_nodes:
+                graph.add_edge(GraphEdgeCreate(
+                    from_node_id=file_nodes[a].id, to_node_id=file_nodes[b].id,
+                    edge_type=GraphEdgeType.IMPORTS, confidence=1.0,
+                    source_type=GraphEdgeSourceType.STATIC_ANALYSIS,
+                ))
+        sym_nodes = {}
+        for s in code.symbols[:450]:
+            key = f"{s.file}#{s.name}"
+            sym_nodes[key] = graph.add_node(GraphNodeCreate(
+                node_type=GraphNodeType.CODE_SYMBOL, stable_id=f"symbol://{name}/{key}",
+                properties={"name": s.name, "kind": s.kind, "file": s.file, "line": s.line, "repository": name},
+            ))
+        for a, b in code.calls:
+            if a in sym_nodes and b in sym_nodes:
+                graph.add_edge(GraphEdgeCreate(
+                    from_node_id=sym_nodes[a].id, to_node_id=sym_nodes[b].id,
+                    edge_type=GraphEdgeType.CALLS, confidence=1.0,
+                    source_type=GraphEdgeSourceType.STATIC_ANALYSIS,
+                ))
+
+        return RepositoryInfo(
+            name=name, url=url, path=str(dest), file_count=d["file_count"],
+            languages=d["languages"], already_loaded=already, memories_created=created,
+        )
+
+    @router.get("/docs", response_model=RepoDocs)
+    def repo_docs(repository: str = Query(...)) -> RepoDocs:
+        if repository in _docs_cache:
+            return _docs_cache[repository]
+        return _generate_docs(repository, llm)
+
+    @router.post("/docs/regenerate", response_model=RepoDocs)
+    def regen_docs(repository: str = Query(...)) -> RepoDocs:
+        _docs_cache.pop(repository, None)
+        return _generate_docs(repository, llm)
+
+    return router
+
+
+def _generate_docs(repository: str, llm: LLMClient) -> RepoDocs:
+    dest = (DATA_DIR / "repos" / repository).resolve()
+    if not dest.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Repository '{repository}' is not loaded.")
+    d = _analyze(dest)
+    digest = _digest_text(repository, "", d)
+    prompt = (
+        "You are writing developer documentation for a code repository. Use ONLY the facts below. "
+        "Do NOT invent features, modules, or use-cases that are not supported by the facts — if "
+        "something is unknown, say so. Write clean Markdown with these sections: '## Overview' (what "
+        "this project actually is, inferred strictly from its package name, description, dependencies "
+        "and structure), '## Tech stack', '## Project structure', '## Getting started' (from the "
+        "scripts), and '## Key areas' (from the directories). Keep it concise and accurate.\n\n"
+        f"FACTS:\n{digest}"
+    )
+    try:
+        markdown = llm.generate("docs", prompt).strip()
+    except Exception:  # noqa: BLE001
+        markdown = _fallback_docs(repository, d)
+    if not markdown:
+        markdown = _fallback_docs(repository, d)
+    docs = RepoDocs(repository=repository, generated_at=datetime.now(UTC), markdown=markdown)
+    _docs_cache[repository] = docs
+    return docs
+
+
+def _fallback_docs(repository: str, d: dict) -> str:
+    return "\n".join([
+        f"# {d['name'] or repository}",
+        "",
+        "## Overview",
+        (d["description"] or f"A {d['languages'][0] if d['languages'] else 'software'} project.")
+        + f" Built with {', '.join(d['frameworks'][:6]) or 'n/a'}.",
+        "",
+        "## Tech stack",
+        "- Languages: " + (", ".join(d["languages"][:6]) or "n/a"),
+        "- Libraries: " + (", ".join(d["frameworks"][:10]) or ", ".join(d["deps"][:10]) or "n/a"),
+        "",
+        "## Project structure",
+        "```",
+        d["tree"] or "n/a",
+        "```",
+        "",
+        "## Getting started",
+        "\n".join(f"- `npm run {s}`" for s in d["scripts"][:6]) or "See the repository README.",
+    ])
+
+
+def _mem(store: MemoryStore, repo: str, mtype: str, title: str, content: str) -> int:
+    store.add(repository=repo, memory_type=mtype, title=title, content=content, metadata={"source": "repo_load"})
+    return 1
+
+
+def _functions_summary(code: Analysis) -> str:
+    areas: dict[str, list[str]] = {}
+    for s in code.symbols:
+        parts = s.file.split("/")
+        area = parts[-2] if len(parts) > 1 else (parts[0] or "root")
+        bucket = areas.setdefault(area, [])
+        if s.name not in bucket:
+            bucket.append(s.name)
+    head = (
+        f"{len(code.symbols)} functions/classes across {len(code.files)} source files, "
+        f"{len(code.imports)} file imports, {len(code.calls)} call edges. By area:"
+    )
+    lines = [f"{area}/: {', '.join(names[:10])}" for area, names in sorted(areas.items())]
+    return head + "\n" + "\n".join(lines[:16])
