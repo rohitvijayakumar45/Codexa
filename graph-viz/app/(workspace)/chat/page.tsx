@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2 } from "lucide-react";
-import { api, streamChat, type ChatMessage, type ChatModel, type ImpactResult } from "@/lib/api";
+import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, Wrench } from "lucide-react";
+import { api, streamAgentChat, type ChatMessage, type ChatModel, type ImpactResult } from "@/lib/api";
 import { Mark } from "@/components/shell/Mark";
 import { EASE_OUT } from "@/components/ui/primitives";
 import { ImpactCard } from "@/components/chat/ImpactCard";
@@ -169,8 +169,26 @@ export default function ChatPage() {
       ? [{ role: "system", content: systemParts.join("\n\n") }, ...history]
       : history;
 
-    await streamChat(messages, model?.id ?? null, {
+    await streamAgentChat(messages, model?.id ?? null, activeRepo, {
       signal: controller.signal,
+      // Tool trace rows are inserted before the streaming text turn (kept last).
+      onToolCall: ({ name, args }) =>
+        setTurns((prev) => {
+          const next = [...prev];
+          next.splice(next.length - 1, 0, { role: "assistant", tool: { name, args } });
+          return next;
+        }),
+      onToolResult: ({ name, result }) =>
+        setTurns((prev) => {
+          const next = [...prev];
+          for (let i = next.length - 2; i >= 0; i--) {
+            if (next[i].tool?.name === name && next[i].tool && !next[i].tool!.result) {
+              next[i] = { ...next[i], tool: { ...next[i].tool!, result } };
+              break;
+            }
+          }
+          return next;
+        }),
       onDelta: (delta) =>
         setTurns((prev) => {
           const next = [...prev];
@@ -224,7 +242,7 @@ export default function ChatPage() {
       } catch {
         res = null;
       }
-      if (res && res.resolved) {
+      if (res) {
         const resolved = res;
         setTurns((prev) => {
           const next = [...prev];
@@ -233,7 +251,7 @@ export default function ChatPage() {
         });
         return; // hold for the user's go / no-go
       }
-      setTurns((prev) => prev.slice(0, -1)); // couldn't scope — answer normally
+      setTurns((prev) => prev.slice(0, -1)); // completely failed (e.g. 500 error) — answer normally
     }
 
     await runCompletion(history);
@@ -346,6 +364,8 @@ export default function ChatPage() {
                   />
                 ) : turn.analyzing ? (
                   <AnalyzingRow key={i} />
+                ) : turn.tool ? (
+                  <ToolTrace key={i} tool={turn.tool} />
                 ) : (
                   <Bubble key={i} turn={turn} streaming={streaming && i === turns.length - 1} />
                 ),
@@ -513,6 +533,30 @@ function Bubble({ turn, streaming }: { turn: Turn; streaming: boolean }) {
         )}
       </div>
     </motion.div>
+  );
+}
+
+function ToolTrace({ tool }: { tool: { name: string; args: Record<string, unknown>; result?: string } }) {
+  const [open, setOpen] = useState(false);
+  const arg = tool.args.path ?? tool.args.query ?? tool.args.code ?? "";
+  return (
+    <div className="mb-3 ml-9">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 rounded-lg border border-line bg-panel-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-paper-sunk"
+      >
+        <Wrench size={12} className="text-signal" />
+        <span className="font-medium text-ink-soft">{tool.name}</span>
+        {arg ? <span className="num max-w-[220px] truncate text-faint">{String(arg)}</span> : null}
+        {!tool.result && <DotsLoader size={5} />}
+        <ChevronDown size={12} className={`text-faint transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && tool.result && (
+        <pre className="num mt-1 max-h-56 max-w-2xl overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-panel-2 p-2.5 text-[11px] text-ink-soft">
+          {tool.result}
+        </pre>
+      )}
+    </div>
   );
 }
 

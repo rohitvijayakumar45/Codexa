@@ -20,6 +20,7 @@ export default function TimeMachinePage() {
     queryFn: () => api.allEdges(activeRepo),
   });
   const eventsQ = useQuery({ queryKey: ["events"], queryFn: () => api.events(120) });
+  const snapsQ = useQuery({ queryKey: ["snapshots"], queryFn: api.snapshots });
 
   const startMs = timelineQ.data?.starts_at ? Date.parse(timelineQ.data.starts_at) : null;
   const endMs = timelineQ.data?.ends_at ? Date.parse(timelineQ.data.ends_at) : null;
@@ -115,6 +116,24 @@ export default function TimeMachinePage() {
               )}
               <span className="status-line">{endMs ? new Date(endMs).toLocaleDateString() : ""}</span>
             </div>
+
+            {(snapsQ.data ?? []).length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3">
+                <span className="status-line self-center">Snapshots</span>
+                {(snapsQ.data ?? []).map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setT(Date.parse(s.at))}
+                    className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-soft transition-colors hover:border-signal hover:bg-signal-wash"
+                    title={new Date(s.at).toLocaleString()}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+                    <span className="num">{s.repository}</span>
+                    <span className="text-faint">{s.files}f · {Math.round(s.score * 100)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

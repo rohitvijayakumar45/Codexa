@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessagesSquare, Share2, Activity, Gauge, LayoutGrid, BrainCircuit, History, FileText } from "lucide-react";
+import { MessagesSquare, Code2, Share2, Activity, Gauge, LayoutGrid, BrainCircuit, History, FileText } from "lucide-react";
 import clsx from "clsx";
 import { Mark } from "./Mark";
 
@@ -12,6 +12,7 @@ type Item = { href: string; label: string; icon: typeof Share2; ready: boolean }
 // architecture, judge the repo, replay history, document.
 const ITEMS: Item[] = [
   { href: "/chat", label: "Chat", icon: MessagesSquare, ready: true },
+  { href: "/ide", label: "Codebase", icon: Code2, ready: true },
   { href: "/graph", label: "Knowledge graph", icon: Share2, ready: true },
   { href: "/agents", label: "Agent network", icon: Activity, ready: true },
   { href: "/architecture", label: "Architecture", icon: LayoutGrid, ready: true },

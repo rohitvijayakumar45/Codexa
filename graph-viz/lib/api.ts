@@ -147,6 +147,13 @@ export interface EventRecord {
   summary: string;
   aggregate_id: string;
 }
+export interface SnapshotMarker {
+  at: string;
+  repository: string;
+  files: number;
+  symbols: number;
+  score: number;
+}
 export interface AgentNode {
   id: string;
   name: string;
@@ -220,6 +227,23 @@ export interface RepoDocs {
   generated_at: string;
   markdown: string;
 }
+export interface FileTreeNode {
+  name: string;
+  path: string;
+  type: "dir" | "file";
+  children?: FileTreeNode[];
+}
+export interface FileContent {
+  path: string;
+  language: string;
+  content: string;
+  truncated: boolean;
+}
+export interface FileSearchHit {
+  path: string;
+  line: number;
+  text: string;
+}
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   let res: Response;
@@ -240,7 +264,58 @@ export interface StreamHandlers {
   onDelta: (text: string) => void;
   onDone: (usage: ChatUsage | null) => void;
   onError: (message: string) => void;
+  onToolCall?: (call: { name: string; args: Record<string, unknown> }) => void;
+  onToolResult?: (result: { name: string; result: string }) => void;
   signal?: AbortSignal;
+}
+
+/** Tool-calling agent chat: the model may read/search/write files, search the web, run code. */
+export async function streamAgentChat(
+  messages: ChatMessage[],
+  model: string | null,
+  repository: string,
+  handlers: StreamHandlers,
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/chat/agent`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ messages, model, repository }),
+      signal: handlers.signal,
+    });
+  } catch {
+    handlers.onError(`Can't reach the Codexa backend at ${API_BASE}.`);
+    return;
+  }
+  if (!res.ok || !res.body) {
+    handlers.onError(`Backend responded ${res.status}.`);
+    return;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+    for (const part of parts) {
+      const line = part.trim();
+      if (!line.startsWith("data:")) continue;
+      try {
+        const evt = JSON.parse(line.slice(5).trim());
+        if (evt.error) handlers.onError(evt.error);
+        else if (evt.done) handlers.onDone(evt.usage ?? null);
+        else if (evt.delta) handlers.onDelta(evt.delta);
+        else if (evt.tool_call) handlers.onToolCall?.(evt.tool_call);
+        else if (evt.tool_result) handlers.onToolResult?.(evt.tool_result);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 }
 
 /** Streams a completion over SSE from the real backend chat endpoint. */
@@ -317,11 +392,18 @@ export const api = {
   },
   memoryRepositories: () => get<RepositorySummary[]>("/memory/repositories"),
   loadRepository: (url: string) => post<RepositoryInfo>("/repository/load", { url }),
+  fileTree: (repository: string) =>
+    get<FileTreeNode[]>(`/files/tree?repository=${encodeURIComponent(repository)}`),
+  fileRead: (repository: string, path: string) =>
+    get<FileContent>(`/files/read?repository=${encodeURIComponent(repository)}&path=${encodeURIComponent(path)}`),
+  fileSearch: (repository: string, q: string) =>
+    get<FileSearchHit[]>(`/files/search?repository=${encodeURIComponent(repository)}&q=${encodeURIComponent(q)}`),
   repoDocs: (repository: string) =>
     get<RepoDocs>(`/repository/docs?repository=${encodeURIComponent(repository)}`),
   regenerateRepoDocs: (repository: string) =>
     post<RepoDocs>(`/repository/docs/regenerate?repository=${encodeURIComponent(repository)}`, {}),
   events: (limit = 120) => get<EventRecord[]>(`/observability/events?limit=${limit}`),
+  snapshots: () => get<SnapshotMarker[]>("/observability/snapshots"),
   agents: () => get<{ agents: AgentNode[] }>("/observability/agents"),
   archTrends: () =>
     get<

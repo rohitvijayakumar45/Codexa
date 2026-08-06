@@ -16,6 +16,7 @@ from backend.docs_gen.api import create_docs_router
 from backend.memory.records_api import create_memory_store_router
 from backend.memory.store import MemoryStore
 from backend.repository.api import create_repository_router
+from backend.files.api import create_files_router
 from backend.graph.api import create_graph_router
 from backend.graph.causal import CausalGraphService
 from backend.graph.consistency import MultiStoreConsistencyService
@@ -169,6 +170,7 @@ def create_app() -> FastAPI:
     app.include_router(create_impact_router(graph=graph_service, planner=planner_service))
     app.include_router(create_memory_store_router(store=memory_store))
     app.include_router(create_repository_router(store=memory_store, graph=graph_service, llm=llm_client))
+    app.include_router(create_files_router())
     app.include_router(create_chat_router(llm=llm_client))
     app.include_router(create_observability_router(event_writer=event_writer))
     app.include_router(create_docs_router(llm=llm_client))

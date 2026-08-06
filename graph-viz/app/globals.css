@@ -131,6 +131,32 @@ body {
   animation: dot-pulse 1.4s infinite ease-in-out;
 }
 
+/* Shiki code viewer — strip the theme background, add CSS line numbers. */
+.shiki-wrap pre {
+  background: transparent !important;
+  margin: 0;
+  padding: 1rem 1rem 1rem 0;
+  overflow-x: auto;
+}
+.shiki-wrap code {
+  counter-reset: shiki-line;
+  display: block;
+}
+.shiki-wrap .line {
+  counter-increment: shiki-line;
+  display: inline-block;
+  width: 100%;
+}
+.shiki-wrap .line::before {
+  content: counter(shiki-line);
+  display: inline-block;
+  width: 3ch;
+  margin-right: 1.25rem;
+  text-align: right;
+  color: var(--color-faint);
+  user-select: none;
+}
+
 /* Markdown inside a chat bubble: no leading gap, tighter than doc pages. */
 .chat-md > div {
   max-width: none;

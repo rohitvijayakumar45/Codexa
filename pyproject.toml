@@ -9,6 +9,7 @@ dependencies = [
     "psycopg[binary]>=3.3,<4.0",
     "uvicorn[standard]>=0.35,<1.0",
     "openai>=1.0",
+    "litellm>=1.0",
 ]
 
 [project.optional-dependencies]

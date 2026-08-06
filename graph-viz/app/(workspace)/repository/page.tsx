@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
+import { useRepoStore } from "@/lib/repo-store";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { CenteredError, CenteredLoading, CenteredEmpty } from "@/components/shell/States";
 import { EASE_OUT } from "@/components/ui/primitives";
@@ -11,8 +12,13 @@ import { EASE_OUT } from "@/components/ui/primitives";
 const METRIC_LABEL: Record<string, string> = {
   maintainability: "Maintainability",
   testability: "Testability",
+  test_coverage: "Test coverage",
   coupling: "Decoupling",
+  modularity: "Modularity",
   doc_coverage: "Documentation",
+  documentation: "Documentation",
+  type_safety: "Type safety",
+  structure: "Structure",
   architecture_stability: "Architecture stability",
   deployment_safety: "Deployment safety",
   ownership_clarity: "Ownership clarity",
@@ -21,7 +27,8 @@ const METRIC_LABEL: Record<string, string> = {
 };
 
 export default function RepositoryPage() {
-  const q = useQuery({ queryKey: ["nodes"], queryFn: () => api.nodes() });
+  const activeRepo = useRepoStore((s) => s.activeRepo);
+  const q = useQuery({ queryKey: ["nodes", activeRepo], queryFn: () => api.nodes(activeRepo) });
 
   const health = useMemo(() => {
     const node = (q.data ?? []).find((n) => n.node_type === "HealthMetric");
@@ -30,13 +37,17 @@ export default function RepositoryPage() {
       repository?: string;
       score?: number;
       components?: Record<string, number>;
+      reasoning?: Record<string, string>;
+      suggestions?: string[];
     };
     return {
-      repository: props.repository ?? "repository",
+      repository: props.repository ?? activeRepo,
       score: props.score ?? 0,
       components: props.components ?? {},
+      reasoning: props.reasoning ?? {},
+      suggestions: props.suggestions ?? [],
     };
-  }, [q.data]);
+  }, [q.data, activeRepo]);
 
   if (q.isLoading)
     return (
@@ -64,7 +75,7 @@ export default function RepositoryPage() {
 
   const score100 = Math.round(health.score * 100);
   const metrics = Object.entries(health.components)
-    .map(([key, value]) => ({ key, label: METRIC_LABEL[key] ?? key, value }))
+    .map(([key, value]) => ({ key, label: METRIC_LABEL[key] ?? key, value, reason: health.reasoning[key] }))
     .sort((a, b) => b.value - a.value);
 
   return (
@@ -80,14 +91,14 @@ export default function RepositoryPage() {
             <span className="status-line">Breakdown</span>
             <div className="mt-4 space-y-4">
               {metrics.map((m, i) => (
-                <MetricBar key={m.key} label={m.label} value={m.value} index={i} />
+                <MetricBar key={m.key} label={m.label} value={m.value} reason={m.reason} index={i} />
               ))}
             </div>
           </div>
         </div>
 
         <div className="mx-auto max-w-4xl px-8 pb-16 pt-12">
-          <Analysis score={score100} metrics={metrics} />
+          <Analysis score={score100} metrics={metrics} backendSuggestions={health.suggestions} />
         </div>
       </div>
     </div>
@@ -145,12 +156,22 @@ const SUGGESTIONS: Record<string, string> = {
   confidence: "Signal confidence is low. Ingest more commit and incident history so the graph can calibrate.",
 };
 
-type Metric = { key: string; label: string; value: number };
+type Metric = { key: string; label: string; value: number; reason?: string };
 
-function Analysis({ score, metrics }: { score: number; metrics: Metric[] }) {
+function Analysis({
+  score,
+  metrics,
+  backendSuggestions,
+}: {
+  score: number;
+  metrics: Metric[];
+  backendSuggestions: string[];
+}) {
   const strong = metrics.filter((m) => m.value >= 0.75);
   const weak = [...metrics].filter((m) => m.value < 0.7).sort((a, b) => a.value - b.value);
   const verdict = score >= 75 ? "in good health" : score >= 50 ? "holding, with clear pressure points" : "at risk";
+  // Prefer the real, per-repo suggestions computed on ingestion; fall back to the derived ones.
+  const suggestions = backendSuggestions.length > 0 ? backendSuggestions.map((s) => ({ text: s })) : null;
 
   return (
     <motion.section
@@ -179,7 +200,18 @@ function Analysis({ score, metrics }: { score: number; metrics: Metric[] }) {
       </p>
 
       <h3 className="status-line mt-10">Suggestions</h3>
-      {weak.length === 0 ? (
+      {suggestions ? (
+        <ol className="mt-4 space-y-3.5">
+          {suggestions.map((s, i) => (
+            <li key={i} className="flex gap-4">
+              <span className="num mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-paper-sunk text-[11px] text-ink-soft">
+                {i + 1}
+              </span>
+              <p className="max-w-2xl text-sm leading-relaxed text-ink-soft">{s.text}</p>
+            </li>
+          ))}
+        </ol>
+      ) : weak.length === 0 ? (
         <p className="mt-3 text-sm text-muted">No metric falls below target. Hold the line and keep ingesting history.</p>
       ) : (
         <ol className="mt-4 space-y-4">
@@ -204,7 +236,17 @@ function Analysis({ score, metrics }: { score: number; metrics: Metric[] }) {
   );
 }
 
-function MetricBar({ label, value, index }: { label: string; value: number; index: number }) {
+function MetricBar({
+  label,
+  value,
+  reason,
+  index,
+}: {
+  label: string;
+  value: number;
+  reason?: string;
+  index: number;
+}) {
   const pct = Math.round(value * 100);
   return (
     <div>
@@ -220,6 +262,7 @@ function MetricBar({ label, value, index }: { label: string; value: number; inde
           transition={{ duration: 0.8, delay: 0.15 + index * 0.05, ease: EASE_OUT }}
         />
       </div>
+      {reason && <p className="mt-1 text-[11.5px] leading-snug text-faint">{reason}</p>}
     </div>
   );
 }

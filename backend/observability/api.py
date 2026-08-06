@@ -25,6 +25,14 @@ class EventRecord(BaseModel):
     aggregate_id: str
 
 
+class SnapshotMarker(BaseModel):
+    at: datetime
+    repository: str
+    files: int
+    symbols: int
+    score: float
+
+
 class AgentNode(BaseModel):
     id: str
     name: str
@@ -76,6 +84,8 @@ def _summary(event_type: str, payload: dict[str, Any]) -> str:
         return f"Ingested {payload.get('kind', 'artifact')} ({payload.get('trust_level', 'unknown')})"
     if event_type == "planner.blast_radius.computed":
         return "Blast radius computed"
+    if event_type == "repository.ingested":
+        return f"Ingested {payload.get('repository', 'repository')} ({payload.get('files', 0)} files)"
     return event_type
 
 
@@ -118,6 +128,23 @@ def create_observability_router(*, event_writer: GraphEventWriter) -> APIRouter:
         ]
         records.sort(key=lambda r: r.occurred_at, reverse=True)
         return records[:limit]
+
+    @router.get("/snapshots", response_model=list[SnapshotMarker])
+    def snapshots() -> list[SnapshotMarker]:
+        events = list(getattr(event_writer, "events", []))
+        markers = [
+            SnapshotMarker(
+                at=e.occurred_at,
+                repository=e.payload.get("repository", "repository"),
+                files=e.payload.get("files", 0),
+                symbols=e.payload.get("symbols", 0),
+                score=e.payload.get("score", 0.0),
+            )
+            for e in events
+            if e.event_type == "repository.ingested"
+        ]
+        markers.sort(key=lambda m: m.at)
+        return markers
 
     @router.get("/agents", response_model=AgentNetwork)
     def agent_network() -> AgentNetwork:

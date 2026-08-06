@@ -28,6 +28,7 @@ from backend.graph.schemas import (
 from backend.graph.service import GraphService
 from backend.memory.store import DATA_DIR, MemoryStore
 from backend.repository.analyze import Analysis, analyze_repo
+from backend.repository.scoring import score_repository
 
 _EXT_LANG = {
     ".py": "Python", ".ts": "TypeScript", ".tsx": "TypeScript", ".js": "JavaScript",
@@ -235,7 +236,7 @@ def create_repository_router(*, store: MemoryStore, graph: GraphService, llm: LL
         code = analyze_repo(dest)
         created += _mem(store, name, "semantic", "Key functions & components", _functions_summary(code))
 
-        graph.add_node(GraphNodeCreate(
+        repo_node = graph.add_node(GraphNodeCreate(
             node_type=GraphNodeType.REPOSITORY, stable_id=f"repo://{name}",
             properties={"name": display, "url": url, "primary_language": primary,
                         "file_count": d["file_count"], "repository": name},
@@ -267,6 +268,29 @@ def create_repository_router(*, store: MemoryStore, graph: GraphService, llm: LL
                     edge_type=GraphEdgeType.CALLS, confidence=1.0,
                     source_type=GraphEdgeSourceType.STATIC_ANALYSIS,
                 ))
+
+        # Score the repository automatically on ingestion — real metrics, reasoning, suggestions.
+        scored = score_repository(dest, code)
+        graph.add_node(GraphNodeCreate(
+            node_type=GraphNodeType.HEALTH_METRIC, stable_id=f"health://{name}",
+            properties={
+                "repository": name, "metric_kind": "repository_health",
+                "score": scored["score"], "components": scored["components"],
+                "reasoning": scored["reasoning"], "suggestions": scored["suggestions"],
+                "measured": scored["measured"],
+            },
+        ))
+        created += _mem(store, name, "organizational", "Repository health",
+                        f"Score {int(scored['score'] * 100)}/100 — "
+                        + "; ".join(f"{k.replace('_', ' ')} {int(v * 100)}" for k, v in scored["components"].items()))
+
+        # Record an ingestion snapshot so the Time Machine has a real historical marker to scrub to.
+        graph.event_writer.append(
+            event_type="repository.ingested",
+            aggregate_id=repo_node.id,
+            payload={"repository": name, "files": d["file_count"], "symbols": len(code.symbols),
+                     "score": scored["score"]},
+        )
 
         return RepositoryInfo(
             name=name, url=url, path=str(dest), file_count=d["file_count"],

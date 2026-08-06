@@ -12,6 +12,7 @@ export interface StoredTurn {
   impact?: ImpactResult;
   pending?: boolean;
   history?: ChatMessage[];
+  tool?: { name: string; args: Record<string, unknown>; result?: string };
 }
 
 export interface Conversation {
