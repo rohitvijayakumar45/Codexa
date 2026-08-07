@@ -52,6 +52,29 @@ class WriteRequest(BaseModel):
     content: str
 
 
+class MkdirRequest(BaseModel):
+    repository: str = Field(default="codexa-os")
+    path: str
+
+
+class DeleteRequest(BaseModel):
+    repository: str = Field(default="codexa-os")
+    path: str
+
+
+class MoveRequest(BaseModel):
+    repository: str = Field(default="codexa-os")
+    from_path: str
+    to_path: str
+
+
+class EditRequest(BaseModel):
+    repository: str = Field(default="codexa-os")
+    path: str
+    old_text: str
+    new_text: str
+
+
 def repo_root(repository: str | None) -> Path:
     if not repository or repository == "codexa-os":
         return PROJECT_ROOT
@@ -130,6 +153,49 @@ def write_file(root: Path, rel: str, content: str) -> None:
     target.write_text(content, encoding="utf-8")
 
 
+def create_directory(root: Path, rel: str) -> None:
+    target = _safe(root, rel)
+    target.mkdir(parents=True, exist_ok=True)
+
+
+def delete_path(root: Path, rel: str) -> None:
+    target = _safe(root, rel)
+    if target == root:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Refusing to delete the repository root.")
+    if target.is_dir():
+        if any(target.iterdir()):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Directory is not empty.")
+        target.rmdir()
+    elif target.is_file():
+        target.unlink()
+    else:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No such path: {rel}")
+
+
+def move_path(root: Path, from_rel: str, to_rel: str) -> None:
+    src = _safe(root, from_rel)
+    dst = _safe(root, to_rel)
+    if not src.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No such path: {from_rel}")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    src.rename(dst)
+
+
+def edit_file(root: Path, rel: str, old_text: str, new_text: str) -> None:
+    """Surgical find-replace — requires old_text to appear exactly once, same discipline as the
+    editor's own Edit tool. Safer than a full-file write_file for a small, targeted change."""
+    target = _safe(root, rel)
+    if not target.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No such file: {rel}")
+    text = target.read_text(encoding="utf-8", errors="replace")
+    count = text.count(old_text)
+    if count == 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "old_text not found in file.")
+    if count > 1:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"old_text is not unique ({count} matches) — include more context.")
+    target.write_text(text.replace(old_text, new_text, 1), encoding="utf-8")
+
+
 def create_files_router() -> APIRouter:
     router = APIRouter(prefix="/files", tags=["files"])
 
@@ -148,6 +214,26 @@ def create_files_router() -> APIRouter:
     @router.post("/write")
     def write(request: WriteRequest) -> dict:
         write_file(repo_root(request.repository), request.path, request.content)
+        return {"ok": True, "path": request.path}
+
+    @router.post("/mkdir")
+    def mkdir(request: MkdirRequest) -> dict:
+        create_directory(repo_root(request.repository), request.path)
+        return {"ok": True, "path": request.path}
+
+    @router.post("/delete")
+    def delete(request: DeleteRequest) -> dict:
+        delete_path(repo_root(request.repository), request.path)
+        return {"ok": True, "path": request.path}
+
+    @router.post("/move")
+    def move(request: MoveRequest) -> dict:
+        move_path(repo_root(request.repository), request.from_path, request.to_path)
+        return {"ok": True, "from_path": request.from_path, "to_path": request.to_path}
+
+    @router.post("/edit")
+    def edit(request: EditRequest) -> dict:
+        edit_file(repo_root(request.repository), request.path, request.old_text, request.new_text)
         return {"ok": True, "path": request.path}
 
     return router

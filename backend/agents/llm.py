@@ -21,6 +21,8 @@ from typing import Any, Iterator
 
 import litellm
 
+from backend.agents.usage import UsageTracker
+
 logger = logging.getLogger(__name__)
 litellm.suppress_debug_info = True
 litellm.drop_params = True
@@ -36,7 +38,7 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     "groq/llama-3.1-8b-instant": ("Llama 3.1 8B (Groq)", 131072, "light", "groq"),
     "gemini/gemini-2.5-flash": ("Gemini 2.5 Flash", 1048576, "light", "gemini"),
     "gemini/gemini-2.5-pro": ("Gemini 2.5 Pro", 1048576, "heavy", "gemini"),
-    "zai/glm-5.2": ("GLM 5.2", 200000, "heavy", "zai"),
+    "zai/glm-5.2": ("GLM 5.2", 1000000, "heavy", "zai"),
     "zai/glm-4.5-air": ("GLM 4.5 Air", 128000, "light", "zai"),
 }
 
@@ -101,6 +103,7 @@ class LLMClient:
             self.default_model = self.model_for_task("chat")
 
         self.provider = MODEL_REGISTRY.get(self.default_model, (None, None, None, "nvidia"))[3]
+        self.usage = UsageTracker()
         logger.info("LLM ready: default=%s available=%s", self.default_model, self.available)
 
     # --- routing ------------------------------------------------------------
@@ -114,6 +117,12 @@ class LLMClient:
                 if candidate in self.available:
                     return candidate
         return self.available[0] if self.available else "nvidia_nim/meta/llama-3.1-8b-instruct"
+
+    def models_for_task(self, task: str) -> list[str]:
+        """All available models for a task's tier, in priority order — for callers that want to
+        retry against the next candidate on a runtime failure (e.g. a rate-limited provider)."""
+        tier = TASK_TIER.get(task, "balanced")
+        return [c for c in _TIER_ORDER.get(tier, []) if c in self.available]
 
     def context_window(self, model: str) -> int:
         return MODEL_REGISTRY.get(model, ("", DEFAULT_CONTEXT, "", ""))[1]
@@ -143,25 +152,40 @@ class LLMClient:
             }
         return {"model": model}
 
-    def complete(self, messages: list[dict], *, model: str | None = None, **kwargs: Any) -> str:
+    def _record_usage(self, agent: str, model: str, response: Any) -> dict[str, int]:
+        usage_obj = getattr(response, "usage", None)
+        prompt = int(getattr(usage_obj, "prompt_tokens", 0) or 0) if usage_obj else 0
+        completion = int(getattr(usage_obj, "completion_tokens", 0) or 0) if usage_obj else 0
+        provider = MODEL_REGISTRY.get(model, ("", 0, "", "unknown"))[3]
+        self.usage.record(
+            agent=agent, model=model, provider=provider,
+            prompt_tokens=prompt, completion_tokens=completion,
+        )
+        return {"prompt_tokens": prompt, "completion_tokens": completion}
+
+    def complete(self, messages: list[dict], *, model: str | None = None, agent: str = "generate", **kwargs: Any) -> str:
         model = model or self.default_model
         response = litellm.completion(messages=messages, **self._kwargs(model), **kwargs)
+        self._record_usage(agent, model, response)
         return response.choices[0].message.content or ""
 
     def stream(self, model: str, messages: list[dict], **kwargs: Any) -> Iterator[Any]:
         model = model or self.default_model
         return litellm.completion(messages=messages, stream=True, **self._kwargs(model), **kwargs)
 
-    def complete_message(self, messages: list[dict], *, model: str | None = None, tools: list | None = None) -> Any:
-        """Non-streaming completion returning the raw message (may carry tool_calls)."""
+    def complete_message(
+        self, messages: list[dict], *, model: str | None = None, tools: list | None = None, agent: str = "chat",
+    ) -> tuple[Any, dict[str, int]]:
+        """Non-streaming completion returning (raw message [may carry tool_calls], real usage dict)."""
         model = model or self.default_model
         extra: dict[str, Any] = {}
         if tools:
             extra = {"tools": tools, "tool_choice": "auto"}
         response = litellm.completion(messages=messages, **self._kwargs(model), **extra)
-        return response.choices[0].message
+        usage = self._record_usage(agent, model, response)
+        return response.choices[0].message, usage
 
     def generate(self, agent_role: str, prompt: str, *, task: str | None = None, **kwargs: Any) -> str:
         """Back-compat single-prompt call. Routes by agent_role/task unless overridden."""
         model = self.agent_overrides.get(agent_role) or self.model_for_task(task or agent_role)
-        return self.complete([{"role": "user", "content": prompt}], model=model, **kwargs)
+        return self.complete([{"role": "user", "content": prompt}], model=model, agent=agent_role, **kwargs)

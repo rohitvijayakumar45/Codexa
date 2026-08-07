@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 
 from backend.agents.llm import LLMClient
 from backend.agents.tools import TOOL_SCHEMAS, execute_tool, parse_args
+from backend.graph.service import GraphService
+from backend.memory.store import MemoryStore
 
 
 def _approx_tokens(text: str) -> int:
@@ -44,7 +46,7 @@ class ModelInfo(BaseModel):
     default: bool
 
 
-def create_chat_router(*, llm: LLMClient) -> APIRouter:
+def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, store: MemoryStore | None = None) -> APIRouter:
     router = APIRouter(prefix="/chat", tags=["chat"])
 
     @router.get("/models", response_model=list[ModelInfo])
@@ -88,12 +90,16 @@ def create_chat_router(*, llm: LLMClient) -> APIRouter:
 
         def gen():
             content = ""
+            real_prompt_tokens = 0
+            real_completion_tokens = 0
             try:
                 for _round in range(6):
                     try:
-                        msg = llm.complete_message(messages, model=model, tools=TOOL_SCHEMAS)
+                        msg, usage = llm.complete_message(messages, model=model, tools=TOOL_SCHEMAS, agent="chat")
                     except Exception:  # model may not support tools — fall back to plain answer
-                        msg = llm.complete_message(messages, model=model)
+                        msg, usage = llm.complete_message(messages, model=model, agent="chat")
+                    real_prompt_tokens += usage["prompt_tokens"]
+                    real_completion_tokens += usage["completion_tokens"]
                     tool_calls = getattr(msg, "tool_calls", None) or []
                     if tool_calls:
                         messages.append({
@@ -109,7 +115,7 @@ def create_chat_router(*, llm: LLMClient) -> APIRouter:
                             name = tc.function.name
                             args = parse_args(tc.function.arguments)
                             yield _sse({"tool_call": {"name": name, "args": args}})
-                            result = execute_tool(name, args, repo)
+                            result = execute_tool(name, args, repo, graph=graph, store=store)
                             yield _sse({"tool_result": {"name": name, "result": result[:600]}})
                             messages.append({"role": "tool", "tool_call_id": tc.id, "name": name, "content": result})
                         continue
@@ -121,8 +127,10 @@ def create_chat_router(*, llm: LLMClient) -> APIRouter:
                 yield _sse({"error": f"{type(exc).__name__}: {exc}"})
                 return
             yield _sse({"done": True, "usage": {
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": _approx_tokens(content),
+                # Real provider-reported counts (from complete_message's usage), not the length//4
+                # heuristic — falls back to the approximation only if a provider reported nothing.
+                "prompt_tokens": real_prompt_tokens or prompt_tokens,
+                "completion_tokens": real_completion_tokens or _approx_tokens(content),
                 "context_window": llm.context_window(model),
                 "model": model,
             }})

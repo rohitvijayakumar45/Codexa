@@ -132,11 +132,17 @@ export interface ImpactResult {
   affected: NodeRef[];
   affected_count: number;
   max_depth: number;
+  max_depth_reached: number;
   confidence: number;
   risk_level: "None" | "Low" | "Medium" | "High" | "Critical";
   risk_score: number;
   paths_preview: string[][];
   summary: string;
+  breakdown: Record<string, number>;
+  files_touched: number;
+  call_edges: number;
+  import_edges: number;
+  coupling_edges: number;
 }
 
 // --- Observability ----------------------------------------------------------
@@ -164,6 +170,26 @@ export interface AgentNode {
   last_active: string | null;
   current_task: string | null;
   depends_on: string[];
+}
+export interface UsageBucket {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  calls: number;
+}
+export interface UsageSummary {
+  totals: UsageBucket;
+  by_agent: Record<string, UsageBucket>;
+  by_model: Record<string, UsageBucket>;
+}
+export interface UsageRecord {
+  at: string;
+  agent: string;
+  model: string;
+  provider: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
 }
 
 // --- Docs -------------------------------------------------------------------
@@ -206,6 +232,11 @@ export interface MemoryRecord {
   content: string;
   created_at: string;
   metadata: Record<string, unknown>;
+}
+export interface ContextItem {
+  kind: string;
+  title: string;
+  content: string;
 }
 export interface RepositorySummary {
   repository: string;
@@ -295,25 +326,33 @@ export async function streamAgentChat(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split("\n\n");
-    buffer = parts.pop() ?? "";
-    for (const part of parts) {
-      const line = part.trim();
-      if (!line.startsWith("data:")) continue;
-      try {
-        const evt = JSON.parse(line.slice(5).trim());
-        if (evt.error) handlers.onError(evt.error);
-        else if (evt.done) handlers.onDone(evt.usage ?? null);
-        else if (evt.delta) handlers.onDelta(evt.delta);
-        else if (evt.tool_call) handlers.onToolCall?.(evt.tool_call);
-        else if (evt.tool_result) handlers.onToolResult?.(evt.tool_result);
-      } catch {
-        /* ignore */
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith("data:")) continue;
+        try {
+          const evt = JSON.parse(line.slice(5).trim());
+          if (evt.error) handlers.onError(evt.error);
+          else if (evt.done) handlers.onDone(evt.usage ?? null);
+          else if (evt.delta) handlers.onDelta(evt.delta);
+          else if (evt.tool_call) handlers.onToolCall?.(evt.tool_call);
+          else if (evt.tool_result) handlers.onToolResult?.(evt.tool_result);
+        } catch {
+          /* ignore */
+        }
       }
+    }
+  } catch (err) {
+    // A cancelled stream rejects reader.read() with an AbortError — expected when the user
+    // navigates away mid-response, not a real failure. Anything else is a genuine drop.
+    if (!(err instanceof DOMException && err.name === "AbortError")) {
+      handlers.onError(err instanceof Error ? err.message : String(err));
     }
   }
 }
@@ -343,23 +382,29 @@ export async function streamChat(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split("\n\n");
-    buffer = parts.pop() ?? "";
-    for (const part of parts) {
-      const line = part.trim();
-      if (!line.startsWith("data:")) continue;
-      try {
-        const evt = JSON.parse(line.slice(5).trim());
-        if (evt.error) handlers.onError(evt.error);
-        else if (evt.done) handlers.onDone(evt.usage ?? null);
-        else if (evt.delta) handlers.onDelta(evt.delta);
-      } catch {
-        /* ignore malformed chunk */
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith("data:")) continue;
+        try {
+          const evt = JSON.parse(line.slice(5).trim());
+          if (evt.error) handlers.onError(evt.error);
+          else if (evt.done) handlers.onDone(evt.usage ?? null);
+          else if (evt.delta) handlers.onDelta(evt.delta);
+        } catch {
+          /* ignore malformed chunk */
+        }
       }
+    }
+  } catch (err) {
+    if (!(err instanceof DOMException && err.name === "AbortError")) {
+      handlers.onError(err instanceof Error ? err.message : String(err));
     }
   }
 }
@@ -391,6 +436,10 @@ export const api = {
     return get<MemoryRecord[]>(`/memory/records${qs ? `?${qs}` : ""}`);
   },
   memoryRepositories: () => get<RepositorySummary[]>("/memory/repositories"),
+  contextFor: (repository: string, query: string) =>
+    get<ContextItem[]>(
+      `/memory/context?repository=${encodeURIComponent(repository)}&query=${encodeURIComponent(query)}`,
+    ),
   loadRepository: (url: string) => post<RepositoryInfo>("/repository/load", { url }),
   fileTree: (repository: string) =>
     get<FileTreeNode[]>(`/files/tree?repository=${encodeURIComponent(repository)}`),
@@ -405,6 +454,8 @@ export const api = {
   events: (limit = 120) => get<EventRecord[]>(`/observability/events?limit=${limit}`),
   snapshots: () => get<SnapshotMarker[]>("/observability/snapshots"),
   agents: () => get<{ agents: AgentNode[] }>("/observability/agents"),
+  usageSummary: () => get<UsageSummary>("/observability/usage"),
+  usageRecords: (limit = 100) => get<UsageRecord[]>(`/observability/usage/records?limit=${limit}`),
   archTrends: () =>
     get<
       {

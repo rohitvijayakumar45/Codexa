@@ -131,6 +131,66 @@ body {
   animation: dot-pulse 1.4s infinite ease-in-out;
 }
 
+/* LLM thinking indicator — bouncing circles w/ shadow, teal-adapted. */
+.bounce-loader {
+  position: relative;
+  width: 46px;
+  height: 20px;
+}
+.bounce-loader .circle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-signal-live);
+  transform-origin: 50%;
+  animation: bounce-circle 0.5s alternate infinite ease;
+}
+.bounce-loader .shadow {
+  position: absolute;
+  width: 6px;
+  height: 2px;
+  border-radius: 50%;
+  background-color: var(--color-ink);
+  opacity: 0.25;
+  top: 16px;
+  transform-origin: 50%;
+  filter: blur(0.5px);
+  z-index: -1;
+  animation: bounce-shadow 0.5s alternate infinite ease;
+}
+@keyframes bounce-circle {
+  0% {
+    top: 14px;
+    height: 2px;
+    border-radius: 50px 50px 25px 25px;
+    transform: scaleX(1.6);
+  }
+  40% {
+    top: 6px;
+    height: 6px;
+    border-radius: 50%;
+    transform: scaleX(1);
+  }
+  100% {
+    top: 0;
+  }
+}
+@keyframes bounce-shadow {
+  0% {
+    transform: scaleX(1.5);
+    opacity: 0.35;
+  }
+  40% {
+    transform: scaleX(1);
+    opacity: 0.22;
+  }
+  100% {
+    transform: scaleX(0.3);
+    opacity: 0.12;
+  }
+}
+
 /* Shiki code viewer — strip the theme background, add CSS line numbers. */
 .shiki-wrap pre {
   background: transparent !important;
@@ -184,7 +244,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
+  *:not(.dot-pulse):not(.bounce-loader .circle):not(.bounce-loader .shadow),
   *::before,
   *::after {
     animation-duration: 0.001ms !important;

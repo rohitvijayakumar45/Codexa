@@ -21,7 +21,7 @@ from backend.graph.service import GraphService
 
 # Impact follows dependency edges in reverse: if a target changes, everything that imports/calls/
 # depends on it is affected.
-_DEP_EDGES = {"imports", "depends_on", "calls", "flows_into"}
+_DEP_EDGES = {"imports", "depends_on", "calls", "flows_into", "correlates_with"}
 
 
 class ImpactRequest(BaseModel):
@@ -41,11 +41,17 @@ class ImpactResult(BaseModel):
     affected: list[NodeRef]
     affected_count: int
     max_depth: int
+    max_depth_reached: int
     confidence: float
     risk_level: str  # None | Low | Medium | High | Critical
     risk_score: float
     paths_preview: list[list[str]]
     summary: str
+    breakdown: dict[str, int]  # affected count by node type (File, CodeSymbol, ApiRoute, ...)
+    files_touched: int  # distinct files across affected File + CodeSymbol nodes
+    call_edges: int  # CALLS edges crossing the target/affected subgraph — function-call impact
+    import_edges: int  # IMPORTS edges crossing the target/affected subgraph
+    coupling_edges: int  # CORRELATES_WITH edges — hidden, git-mined coupling with no code reference
 
 
 def _label(node: GraphNode) -> str:
@@ -132,11 +138,17 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
                 affected=[],
                 affected_count=0,
                 max_depth=request.max_depth,
+                max_depth_reached=0,
                 confidence=1.0,
                 risk_level="None",
                 risk_score=0.0,
                 paths_preview=[],
                 summary="Couldn't map this change to a known part of the graph. Name a file, symbol, or route to scope the blast radius.",
+                breakdown={},
+                files_touched=0,
+                call_edges=0,
+                import_edges=0,
+                coupling_edges=0,
             )
 
         # Build reverse dependency adjacency: for edge A -> B (A depends on B), a change in B
@@ -190,10 +202,54 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
             if len(preview) >= 3:
                 break
 
+        # Breakdown by node type — lets the card show "3 files, 5 functions, 1 API route" instead
+        # of one opaque count.
+        breakdown: dict[str, int] = {}
+        for node in affected_nodes:
+            breakdown[node.node_type] = breakdown.get(node.node_type, 0) + 1
+
+        # Distinct files touched: File nodes directly, plus the file each affected CodeSymbol lives
+        # in (a symbol's file may not itself appear as a separate affected File node).
+        files_touched: set[str] = set()
+        for node in affected_nodes:
+            if node.node_type == "File":
+                p = node.properties.get("path")
+                if isinstance(p, str) and p:
+                    files_touched.add(p)
+            elif node.node_type == "CodeSymbol":
+                f = node.properties.get("file")
+                if isinstance(f, str) and f:
+                    files_touched.add(f)
+
+        # Function-call / import edges that cross the target+affected subgraph — how much of the
+        # actual call graph and module wiring this change reaches, not just node count.
+        subgraph_ids = target_ids | affected_ids
+        call_edges = 0
+        import_edges = 0
+        coupling_edges = 0
+        for edge in graph.list_edges_at():
+            if edge.from_node_id in subgraph_ids and edge.to_node_id in subgraph_ids:
+                if edge.edge_type == "calls":
+                    call_edges += 1
+                elif edge.edge_type == "imports":
+                    import_edges += 1
+                elif edge.edge_type == "correlates_with":
+                    coupling_edges += 1
+
+        max_depth_reached = max((best_depth[nid] for nid in affected_ids), default=0)
+
         target_labels = ", ".join(_label(t) for t in targets)
+        extra = []
+        if files_touched:
+            extra.append(f"{len(files_touched)} file{'s' if len(files_touched) != 1 else ''}")
+        if call_edges:
+            extra.append(f"{call_edges} function call{'s' if call_edges != 1 else ''}")
+        if coupling_edges:
+            extra.append(f"{coupling_edges // 2} hidden coupling link{'s' if coupling_edges // 2 != 1 else ''}")
+        extra_str = f" ({', '.join(extra)})" if extra else ""
         summary = (
             f"Changing {target_labels} propagates to {len(affected_nodes)} downstream "
-            f"component{'s' if len(affected_nodes) != 1 else ''} within {request.max_depth} hops. "
+            f"component{'s' if len(affected_nodes) != 1 else ''}{extra_str} within {request.max_depth} hops. "
             f"Risk: {level}."
         )
 
@@ -203,11 +259,17 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
             affected=[NodeRef(id=str(n.id), label=_label(n), node_type=n.node_type) for n in affected_nodes],
             affected_count=len(affected_nodes),
             max_depth=request.max_depth,
+            max_depth_reached=max_depth_reached,
             confidence=confidence,
             risk_level=level,
             risk_score=score,
             paths_preview=preview,
             summary=summary,
+            breakdown=breakdown,
+            files_touched=len(files_touched),
+            call_edges=call_edges,
+            import_edges=import_edges,
+            coupling_edges=coupling_edges,
         )
 
     return router

@@ -25,6 +25,12 @@ export function ImpactCard({
   onCancel: () => void;
 }) {
   const risk = RISK[impact.risk_level] ?? RISK.None;
+  const filesTouched = impact.files_touched ?? 0;
+  const callEdges = impact.call_edges ?? 0;
+  const importEdges = impact.import_edges ?? 0;
+  const couplingPairs = Math.round((impact.coupling_edges ?? 0) / 2);
+  const maxDepthReached = impact.max_depth_reached ?? 0;
+  const breakdown = impact.breakdown ?? {};
 
   return (
     <motion.div
@@ -65,6 +71,30 @@ export function ImpactCard({
             </div>
           </div>
         </div>
+
+        {(filesTouched > 0 || callEdges > 0 || importEdges > 0 || couplingPairs > 0) && (
+          <div className="mt-4 flex flex-wrap gap-4 border-t border-line pt-3">
+            {filesTouched > 0 && <Metric value={filesTouched} label="files" />}
+            {callEdges > 0 && <Metric value={callEdges} label="function calls" />}
+            {importEdges > 0 && <Metric value={importEdges} label="imports" />}
+            {couplingPairs > 0 && <Metric value={couplingPairs} label="hidden coupling" />}
+            {maxDepthReached > 0 && <Metric value={maxDepthReached} label="hops deep" />}
+          </div>
+        )}
+
+        {Object.keys(breakdown).length > 0 && (
+          <div className="mt-4">
+            <p className="status-line mb-1.5">Affected by type</p>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(breakdown).map(([type, count]) => (
+                <span key={type} className="num rounded-md border border-line bg-paper-sunk px-2 py-1 text-[11px] text-ink-soft">
+                  {count} {type}
+                  {count !== 1 ? "s" : ""}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-4">
           <p className="status-line mb-1.5">Change targets</p>
@@ -115,5 +145,14 @@ export function ImpactCard({
         </div>
       )}
     </motion.div>
+  );
+}
+
+function Metric({ value, label }: { value: number; label: string }) {
+  return (
+    <div>
+      <span className="num text-base font-medium leading-none text-ink">{value}</span>
+      <p className="status-line mt-1">{label}</p>
+    </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessagesSquare, Code2, Share2, Activity, Gauge, LayoutGrid, BrainCircuit, History, FileText } from "lucide-react";
+import { MessagesSquare, Code2, Share2, Activity, Gauge, LayoutGrid, BrainCircuit, History, FileText, BarChart3 } from "lucide-react";
 import clsx from "clsx";
 import { Mark } from "./Mark";
 
@@ -15,6 +15,7 @@ const ITEMS: Item[] = [
   { href: "/ide", label: "Codebase", icon: Code2, ready: true },
   { href: "/graph", label: "Knowledge graph", icon: Share2, ready: true },
   { href: "/agents", label: "Agent network", icon: Activity, ready: true },
+  { href: "/usage", label: "Usage", icon: BarChart3, ready: true },
   { href: "/architecture", label: "Architecture", icon: LayoutGrid, ready: true },
   { href: "/repository", label: "Repository score", icon: Gauge, ready: true },
   { href: "/memory", label: "Memory", icon: BrainCircuit, ready: true },

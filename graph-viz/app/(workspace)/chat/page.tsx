@@ -10,6 +10,7 @@ import { EASE_OUT } from "@/components/ui/primitives";
 import { ImpactCard } from "@/components/chat/ImpactCard";
 import { RepoDialog } from "@/components/chat/RepoDialog";
 import { DotsLoader } from "@/components/ui/DotsLoader";
+import { ThinkingLoader } from "@/components/ui/ThinkingLoader";
 import { MarkdownView } from "@/components/ui/MarkdownView";
 import { useRepoStore } from "@/lib/repo-store";
 import { useChatStore, type Conversation, type StoredTurn } from "@/lib/chat-store";
@@ -41,24 +42,27 @@ export default function ChatPage() {
 
   const modelsQuery = useQuery({ queryKey: ["chat-models"], queryFn: api.chatModels });
   const activityQuery = useQuery({ queryKey: ["events", "recent"], queryFn: () => api.events(6) });
-  // The active repository's permanent memory, injected into every model's prompt.
-  const memoryQuery = useQuery({
-    queryKey: ["memory-records", activeRepo],
-    queryFn: () => api.memoryRecords(activeRepo),
-  });
-  const repoContext = useMemo(() => {
-    const records = memoryQuery.data ?? [];
-    if (records.length === 0) return "";
-    const lines = records
-      .slice(0, 12)
-      .map((r) => `- [${r.memory_type}] ${r.title}: ${r.content}`)
+
+  // Graph-anchored grounding: resolves the actual question to specific symbols/files and their
+  // immediate neighbors (falling back to generic repo-digest facts only when nothing resolves),
+  // instead of dumping the same flat top-12 memory records into every turn regardless of relevance.
+  async function buildRepoContext(query: string): Promise<string> {
+    let items: Awaited<ReturnType<typeof api.contextFor>> = [];
+    try {
+      items = await api.contextFor(activeRepo, query);
+    } catch {
+      return "";
+    }
+    if (items.length === 0) return "";
+    const lines = items
+      .map((it) => (it.content ? `- [${it.kind}] ${it.title}: ${it.content}` : `- ${it.title}`))
       .join("\n");
     return (
       `You are working on the repository '${activeRepo}'. Answer strictly from the facts in its ` +
       `persistent memory below. Do NOT invent features, modules, or use-cases that aren't supported ` +
       `by these facts; if something isn't covered, say you don't have that detail.\n${lines}`
     );
-  }, [memoryQuery.data, activeRepo]);
+  }
   // Persistent conversations — survive tab switches and reloads.
   const activeId = useChatStore((s) => s.activeId);
   const conversations = useChatStore((s) => s.conversations);
@@ -146,10 +150,26 @@ export default function ChatPage() {
     if (activeId) storeSetModel(activeId, m.id);
   }
 
+  // A stream left running after the user navigates away (new chat / switch conversation) used to
+  // keep delivering tool-call/delta events into whatever conversation happened to be active by the
+  // time they arrived — corrupting an unrelated later conversation with the old request's leftover
+  // work. Cancel it outright instead of letting it complete in the background.
+  function abortActiveStream() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStreaming(false);
+  }
+
   function startNewChat() {
+    abortActiveStream();
     setInput("");
     setAttachments([]);
     newConversation(model?.id ?? null);
+  }
+
+  function selectConversation(id: string) {
+    abortActiveStream();
+    setActiveConv(id);
   }
 
   function buildHistory(outgoing: string): ChatMessage[] {
@@ -164,22 +184,31 @@ export default function ChatPage() {
     setStreaming(true);
     const controller = new AbortController();
     abortRef.current = controller;
+    const lastUserText = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+    const repoContext = await buildRepoContext(lastUserText);
     const systemParts = [repoContext, systemNote].filter(Boolean) as string[];
     const messages: ChatMessage[] = systemParts.length
       ? [{ role: "system", content: systemParts.join("\n\n") }, ...history]
       : history;
 
+    if (controller.signal.aborted) return;
+
     await streamAgentChat(messages, model?.id ?? null, activeRepo, {
       signal: controller.signal,
-      // Tool trace rows are inserted before the streaming text turn (kept last).
+      // Tool trace rows are inserted before the streaming text turn (kept last). Every updater
+      // bails on `prev` unchanged if this stream was aborted — closes the race where a chunk was
+      // already in flight the instant `abortActiveStream()` fired (the fetch abort itself is
+      // handled below the closures, but a chunk mid-delivery can still land one tick later).
       onToolCall: ({ name, args }) =>
         setTurns((prev) => {
+          if (controller.signal.aborted) return prev;
           const next = [...prev];
           next.splice(next.length - 1, 0, { role: "assistant", tool: { name, args } });
           return next;
         }),
       onToolResult: ({ name, result }) =>
         setTurns((prev) => {
+          if (controller.signal.aborted) return prev;
           const next = [...prev];
           for (let i = next.length - 2; i >= 0; i--) {
             if (next[i].tool?.name === name && next[i].tool && !next[i].tool!.result) {
@@ -191,6 +220,7 @@ export default function ChatPage() {
         }),
       onDelta: (delta) =>
         setTurns((prev) => {
+          if (controller.signal.aborted) return prev;
           const next = [...prev];
           const last = next[next.length - 1];
           next[next.length - 1] = { role: "assistant", content: (last.content ?? "") + delta };
@@ -327,7 +357,7 @@ export default function ChatPage() {
       <ChatHistory
         conversations={order.map((id) => conversations[id]).filter(Boolean) as Conversation[]}
         activeId={activeId}
-        onSelect={setActiveConv}
+        onSelect={selectConversation}
         onNew={startNewChat}
         onDelete={removeConv}
       />
@@ -521,8 +551,8 @@ function Bubble({ turn, streaming }: { turn: Turn; streaming: boolean }) {
       </div>
       <div className={`min-w-0 text-sm leading-relaxed ${turn.error ? "whitespace-pre-wrap text-warn" : "text-ink-soft"}`}>
         {streaming && !turn.content ? (
-          <div className="py-1.5">
-            <DotsLoader />
+          <div className="py-1">
+            <ThinkingLoader />
           </div>
         ) : turn.error ? (
           turn.content

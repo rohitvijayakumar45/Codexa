@@ -30,6 +30,54 @@ function inline(text: string): ReactNode[] {
   return nodes;
 }
 
+const TABLE_ROW = /^\s*\|.*\|\s*$/;
+const TABLE_SEP = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/;
+
+// Some models emit an entire table as one run-on line (rows joined by "| |" instead of real
+// newlines). Split those back into rows before the normal per-line table parse below.
+function splitRunOnTableRows(line: string): string[] {
+  return line.split(/\|\s*\|/).map((seg, i, arr) => {
+    if (arr.length === 1) return seg;
+    if (i === 0) return `${seg}|`;
+    if (i === arr.length - 1) return `|${seg}`;
+    return `|${seg}|`;
+  });
+}
+
+function splitCells(row: string): string[] {
+  const trimmed = row.trim().replace(/^\|/, "").replace(/\|$/, "");
+  return trimmed.split("|").map((c) => c.trim());
+}
+
+function Table({ header, rows }: { header: string[]; rows: string[][] }) {
+  return (
+    <div className="my-4 overflow-x-auto rounded-lg border border-line">
+      <table className="w-full border-collapse text-[13.5px]">
+        <thead>
+          <tr className="bg-panel-2">
+            {header.map((h, i) => (
+              <th key={i} className="border-b border-line px-3 py-2 text-left font-semibold text-ink">
+                {inline(h)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-b border-line last:border-0">
+              {r.map((c, j) => (
+                <td key={j} className="px-3 py-2 align-top text-ink-soft">
+                  {inline(c)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function MarkdownView({ markdown }: { markdown: string }) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const blocks: ReactNode[] = [];
@@ -102,6 +150,26 @@ export function MarkdownView({ markdown }: { markdown: string }) {
       continue;
     }
 
+    if (TABLE_ROW.test(line)) {
+      const expanded: string[] = [];
+      while (i < lines.length && TABLE_ROW.test(lines[i])) {
+        expanded.push(...splitRunOnTableRows(lines[i]));
+        i++;
+      }
+      if (expanded.length >= 2 && TABLE_SEP.test(expanded[1])) {
+        const header = splitCells(expanded[0]);
+        const rows = expanded.slice(2).filter((r) => TABLE_ROW.test(r)).map(splitCells);
+        blocks.push(<Table key={key++} header={header} rows={rows} />);
+      } else {
+        blocks.push(
+          <p key={key++} className="my-3 text-[15px] leading-relaxed text-ink-soft">
+            {inline(expanded.join(" "))}
+          </p>,
+        );
+      }
+      continue;
+    }
+
     if (line.trim() === "") {
       i++;
       continue;
@@ -111,7 +179,8 @@ export function MarkdownView({ markdown }: { markdown: string }) {
     while (
       i < lines.length &&
       lines[i].trim() !== "" &&
-      !/^(#{1,6}\s|\s*[-*]\s|\s*\d+\.\s|```)/.test(lines[i])
+      !/^(#{1,6}\s|\s*[-*]\s|\s*\d+\.\s|```)/.test(lines[i]) &&
+      !TABLE_ROW.test(lines[i])
     )
       para.push(lines[i++]);
     blocks.push(

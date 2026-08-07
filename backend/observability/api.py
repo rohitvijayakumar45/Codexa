@@ -14,6 +14,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
+from backend.agents.llm import LLMClient
 from backend.graph.events import GraphEventWriter
 
 
@@ -110,8 +111,23 @@ def _attribute(event_type: str, payload: dict[str, Any]) -> str:
     return "perception"
 
 
-def create_observability_router(*, event_writer: GraphEventWriter) -> APIRouter:
+def create_observability_router(*, event_writer: GraphEventWriter, llm: LLMClient) -> APIRouter:
     router = APIRouter(prefix="/observability", tags=["observability"])
+
+    @router.get("/usage")
+    def usage_summary() -> dict:
+        return llm.usage.summary()
+
+    @router.get("/usage/records")
+    def usage_records(limit: int = Query(default=100, ge=1, le=500)) -> list[dict]:
+        return [
+            {
+                "at": r.at, "agent": r.agent, "model": r.model, "provider": r.provider,
+                "prompt_tokens": r.prompt_tokens, "completion_tokens": r.completion_tokens,
+                "total_tokens": r.total_tokens,
+            }
+            for r in llm.usage.records(limit)
+        ]
 
     @router.get("/events", response_model=list[EventRecord])
     def list_events(limit: int = Query(default=80, ge=1, le=500)) -> list[EventRecord]:
