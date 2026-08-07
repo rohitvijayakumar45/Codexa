@@ -8,6 +8,7 @@ import type { ChatMessage, ImpactResult } from "@/lib/api";
 export interface StoredTurn {
   role: "user" | "assistant";
   content?: string;
+  thinking?: string;
   error?: boolean;
   impact?: ImpactResult;
   pending?: boolean;

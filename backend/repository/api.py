@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.agents.llm import LLMClient
 from backend.graph.schemas import (
@@ -58,6 +58,11 @@ class LoadRepoRequest(BaseModel):
     url: str
 
 
+class CreateRepoRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str = ""
+
+
 class RepositoryInfo(BaseModel):
     name: str
     url: str
@@ -77,6 +82,11 @@ class RepoDocs(BaseModel):
 def _repo_name(url: str) -> str:
     tail = url.rstrip("/").split("/")[-1]
     return re.sub(r"[^\w.-]", "-", tail[:-4] if tail.endswith(".git") else tail) or "repository"
+
+
+def _slugify(name: str) -> str:
+    slug = re.sub(r"[^\w.-]", "-", name.strip()).strip("-")
+    return slug or "project"
 
 
 def _read_manifest(path: Path) -> dict:
@@ -218,6 +228,16 @@ def create_repository_router(*, store: MemoryStore, graph: GraphService, llm: LL
         background_tasks.add_task(_run_annotation, name, dest, store, llm)
         return info
 
+    @router.post("/create", response_model=RepositoryInfo)
+    def create(request: CreateRepoRequest) -> RepositoryInfo:
+        """Scaffold a brand-new, empty project — not cloned from anywhere. Lets the chat agent (or a
+        user) start a repository from nothing and build it up with the write_file/create_directory
+        tools, instead of every repository having to already exist somewhere as a git remote."""
+        try:
+            return create_local_repository(request.name, request.description, store=store, graph=graph)
+        except ValueError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
     @router.post("/annotate", response_model=dict)
     def annotate(repository: str = Query(...)) -> dict:
         dest = (DATA_DIR / "repos" / repository).resolve()
@@ -242,6 +262,32 @@ def create_repository_router(*, store: MemoryStore, graph: GraphService, llm: LL
         return _generate_docs(repository, llm, store)
 
     return router
+
+
+def create_local_repository(
+    name: str, description: str, *, store: MemoryStore, graph: GraphService,
+) -> RepositoryInfo:
+    """Scaffold a brand-new, empty project on disk and ingest it — shared by the /repository/create
+    route and the create_project agent tool, so "the LLM starts a project on its own" and "a user
+    starts one from the UI" go through identical, equally-real ingestion."""
+    slug = _slugify(name)
+    dest = (DATA_DIR / "repos" / slug).resolve()
+    if dest.exists():
+        raise ValueError(f"A repository named '{slug}' already exists.")
+
+    dest.mkdir(parents=True)
+    try:
+        subprocess.run(["git", "init", str(dest)], capture_output=True, text=True, timeout=15, check=True)
+    except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        pass  # git is a nice-to-have here (history mining), not a requirement to scaffold
+
+    if description:
+        (dest / "README.md").write_text(f"# {slug}\n\n{description}\n", encoding="utf-8")
+
+    (dest / ".codexa-repo.json").write_text(
+        json.dumps({"url": "", "name": slug, "created_locally": True}), encoding="utf-8",
+    )
+    return _ingest(slug, "", dest, False, store=store, graph=graph)
 
 
 def _run_annotation(repository: str, dest: Path, store: MemoryStore, llm: LLMClient) -> dict:
@@ -283,8 +329,9 @@ def _ingest(
                     f"Frameworks: {', '.join(d['frameworks'][:10]) or 'n/a'}.")
     created += _mem(store, name, "procedural", "How to build & run",
                     (" · ".join(f"npm run {s}" for s in d["scripts"][:5]) if d["scripts"] else "See README."))
+    origin = f"Cloned from {url}" if url else "Created locally (scaffolded from nothing, not cloned)"
     created += _mem(store, name, "episodic", "Loaded into Codexa",
-                    f"Cloned from {url} on {datetime.now(UTC):%Y-%m-%d %H:%M} UTC — {d['file_count']} files.")
+                    f"{origin} on {datetime.now(UTC):%Y-%m-%d %H:%M} UTC — {d['file_count']} files.")
 
     # Static-analyze the source and build the knowledge graph from it: files, the functions and
     # classes they define, file imports, and the call graph between symbols. All tagged with the

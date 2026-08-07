@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, GitBranch, Check } from "lucide-react";
+import { X, GitBranch, Check, Sparkles } from "lucide-react";
 import { api, type RepositoryInfo } from "@/lib/api";
 import { Button, EASE_OUT } from "@/components/ui/primitives";
 
@@ -15,7 +15,10 @@ export function RepoDialog({
   onClose: () => void;
   onLoaded: (info: RepositoryInfo) => void;
 }) {
+  const [mode, setMode] = useState<"load" | "create">("load");
   const [url, setUrl] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<RepositoryInfo | null>(null);
@@ -36,10 +39,29 @@ export function RepoDialog({
     }
   }
 
+  async function create() {
+    const trimmed = name.trim();
+    if (!trimmed || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const info = await api.createRepository(trimmed, description.trim());
+      setDone(info);
+      onLoaded(info);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function reset() {
     setUrl("");
+    setName("");
+    setDescription("");
     setError(null);
     setDone(null);
+    setMode("load");
     onClose();
   }
 
@@ -63,7 +85,12 @@ export function RepoDialog({
           >
             <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
               <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <GitBranch size={16} className="text-signal" /> Load a repository
+                {mode === "load" ? (
+                  <GitBranch size={16} className="text-signal" />
+                ) : (
+                  <Sparkles size={16} className="text-signal" />
+                )}
+                {mode === "load" ? "Load a repository" : "Create a new project"}
               </span>
               <button onClick={reset} className="text-muted hover:text-ink" aria-label="Close">
                 <X size={16} />
@@ -79,7 +106,9 @@ export function RepoDialog({
                 <p className="mt-2 text-sm text-muted">
                   {done.already_loaded
                     ? "Already loaded — its memory is available."
-                    : `Cloned ${done.file_count} files${done.languages.length ? `, ${done.languages.slice(0, 3).join(", ")}` : ""}. Wrote ${done.memories_created} permanent memories.`}
+                    : done.url
+                      ? `Cloned ${done.file_count} files${done.languages.length ? `, ${done.languages.slice(0, 3).join(", ")}` : ""}. Wrote ${done.memories_created} permanent memories.`
+                      : `Scaffolded from nothing. Wrote ${done.memories_created} permanent memories — ready to build with the chat agent.`}
                 </p>
                 <Button onClick={reset} className="mt-5 w-full">
                   Start working
@@ -87,22 +116,72 @@ export function RepoDialog({
               </div>
             ) : (
               <div className="px-5 py-5">
-                <p className="text-sm text-muted">
-                  Paste a git URL. Codexa clones it, reads it, and writes a permanent memory every model
-                  can use.
-                </p>
-                <input
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && load()}
-                  placeholder="https://github.com/owner/repo.git"
-                  autoFocus
-                  className="num mt-4 w-full rounded-lg border border-line-strong bg-panel px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-ink/30"
-                />
-                {error && <p className="mt-2 text-xs text-danger">{error}</p>}
-                <Button onClick={load} disabled={loading || !url.trim()} className="mt-4 w-full">
-                  {loading ? "Cloning…" : "Clone & analyze"}
-                </Button>
+                <div className="mb-4 flex gap-1 rounded-lg border border-line bg-panel-2 p-0.5">
+                  <button
+                    onClick={() => setMode("load")}
+                    className={`flex-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                      mode === "load" ? "bg-panel text-ink shadow-sm" : "text-muted hover:text-ink"
+                    }`}
+                  >
+                    From a git URL
+                  </button>
+                  <button
+                    onClick={() => setMode("create")}
+                    className={`flex-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                      mode === "create" ? "bg-panel text-ink shadow-sm" : "text-muted hover:text-ink"
+                    }`}
+                  >
+                    Start from nothing
+                  </button>
+                </div>
+
+                {mode === "load" ? (
+                  <>
+                    <p className="text-sm text-muted">
+                      Paste a git URL. Codexa clones it, reads it, and writes a permanent memory every
+                      model can use.
+                    </p>
+                    <input
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && load()}
+                      placeholder="https://github.com/owner/repo.git"
+                      autoFocus
+                      className="num mt-4 w-full rounded-lg border border-line-strong bg-panel px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-ink/30"
+                    />
+                    {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+                    <Button onClick={load} disabled={loading || !url.trim()} className="mt-4 w-full">
+                      {loading ? "Cloning…" : "Clone & analyze"}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted">
+                      Scaffold an empty project — no clone, nothing to point at. The chat agent can
+                      then build it up from scratch with its file tools, or you can ask it to right
+                      after creating.
+                    </p>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && create()}
+                      placeholder="my-new-app"
+                      autoFocus
+                      className="num mt-4 w-full rounded-lg border border-line-strong bg-panel px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-ink/30"
+                    />
+                    <input
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && create()}
+                      placeholder="One-line description (optional)"
+                      className="mt-2 w-full rounded-lg border border-line-strong bg-panel px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-ink/30"
+                    />
+                    {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+                    <Button onClick={create} disabled={loading || !name.trim()} className="mt-4 w-full">
+                      {loading ? "Creating…" : "Create project"}
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </motion.div>

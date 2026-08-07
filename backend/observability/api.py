@@ -115,19 +115,26 @@ def create_observability_router(*, event_writer: GraphEventWriter, llm: LLMClien
     router = APIRouter(prefix="/observability", tags=["observability"])
 
     @router.get("/usage")
-    def usage_summary() -> dict:
-        return llm.usage.summary()
+    def usage_summary(days: int | None = Query(default=None, ge=1, le=3650)) -> dict:
+        return llm.usage.summary(days)
 
     @router.get("/usage/records")
-    def usage_records(limit: int = Query(default=100, ge=1, le=500)) -> list[dict]:
+    def usage_records(
+        limit: int = Query(default=100, ge=1, le=500),
+        days: int | None = Query(default=None, ge=1, le=3650),
+    ) -> list[dict]:
         return [
             {
                 "at": r.at, "agent": r.agent, "model": r.model, "provider": r.provider,
                 "prompt_tokens": r.prompt_tokens, "completion_tokens": r.completion_tokens,
-                "total_tokens": r.total_tokens,
+                "reasoning_tokens": r.reasoning_tokens, "total_tokens": r.total_tokens,
             }
-            for r in llm.usage.records(limit)
+            for r in llm.usage.records(limit, days)
         ]
+
+    @router.get("/usage/daily")
+    def usage_daily(days: int = Query(default=30, ge=1, le=365)) -> list[dict]:
+        return llm.usage.daily(days)
 
     @router.get("/events", response_model=list[EventRecord])
     def list_events(limit: int = Query(default=80, ge=1, le=500)) -> list[EventRecord]:

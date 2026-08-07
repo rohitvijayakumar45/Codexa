@@ -174,6 +174,7 @@ export interface AgentNode {
 export interface UsageBucket {
   prompt_tokens: number;
   completion_tokens: number;
+  reasoning_tokens: number;
   total_tokens: number;
   calls: number;
 }
@@ -189,7 +190,16 @@ export interface UsageRecord {
   provider: string;
   prompt_tokens: number;
   completion_tokens: number;
+  reasoning_tokens: number;
   total_tokens: number;
+}
+export interface UsageDailyBucket {
+  date: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  reasoning_tokens: number;
+  total_tokens: number;
+  calls: number;
 }
 
 // --- Docs -------------------------------------------------------------------
@@ -295,8 +305,10 @@ export interface StreamHandlers {
   onDelta: (text: string) => void;
   onDone: (usage: ChatUsage | null) => void;
   onError: (message: string) => void;
+  onThinking?: (text: string) => void;
   onToolCall?: (call: { name: string; args: Record<string, unknown> }) => void;
   onToolResult?: (result: { name: string; result: string }) => void;
+  onRepoSwitched?: (repository: string) => void;
   signal?: AbortSignal;
 }
 
@@ -340,9 +352,11 @@ export async function streamAgentChat(
           const evt = JSON.parse(line.slice(5).trim());
           if (evt.error) handlers.onError(evt.error);
           else if (evt.done) handlers.onDone(evt.usage ?? null);
+          else if (evt.thinking) handlers.onThinking?.(evt.thinking);
           else if (evt.delta) handlers.onDelta(evt.delta);
           else if (evt.tool_call) handlers.onToolCall?.(evt.tool_call);
           else if (evt.tool_result) handlers.onToolResult?.(evt.tool_result);
+          else if (evt.repo_switched) handlers.onRepoSwitched?.(evt.repo_switched);
         } catch {
           /* ignore */
         }
@@ -396,6 +410,7 @@ export async function streamChat(
           const evt = JSON.parse(line.slice(5).trim());
           if (evt.error) handlers.onError(evt.error);
           else if (evt.done) handlers.onDone(evt.usage ?? null);
+          else if (evt.thinking) handlers.onThinking?.(evt.thinking);
           else if (evt.delta) handlers.onDelta(evt.delta);
         } catch {
           /* ignore malformed chunk */
@@ -441,6 +456,8 @@ export const api = {
       `/memory/context?repository=${encodeURIComponent(repository)}&query=${encodeURIComponent(query)}`,
     ),
   loadRepository: (url: string) => post<RepositoryInfo>("/repository/load", { url }),
+  createRepository: (name: string, description = "") =>
+    post<RepositoryInfo>("/repository/create", { name, description }),
   fileTree: (repository: string) =>
     get<FileTreeNode[]>(`/files/tree?repository=${encodeURIComponent(repository)}`),
   fileRead: (repository: string, path: string) =>
@@ -454,8 +471,11 @@ export const api = {
   events: (limit = 120) => get<EventRecord[]>(`/observability/events?limit=${limit}`),
   snapshots: () => get<SnapshotMarker[]>("/observability/snapshots"),
   agents: () => get<{ agents: AgentNode[] }>("/observability/agents"),
-  usageSummary: () => get<UsageSummary>("/observability/usage"),
-  usageRecords: (limit = 100) => get<UsageRecord[]>(`/observability/usage/records?limit=${limit}`),
+  usageSummary: (days?: number) =>
+    get<UsageSummary>(`/observability/usage${days ? `?days=${days}` : ""}`),
+  usageRecords: (limit = 100, days?: number) =>
+    get<UsageRecord[]>(`/observability/usage/records?limit=${limit}${days ? `&days=${days}` : ""}`),
+  usageDaily: (days = 30) => get<UsageDailyBucket[]>(`/observability/usage/daily?days=${days}`),
   archTrends: () =>
     get<
       {

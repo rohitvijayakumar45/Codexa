@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, FileCode, Folder, FolderOpen, X } from "lucide-react";
+import { ChevronRight, Download, FileCode, Folder, FolderOpen, X } from "lucide-react";
 import { api, type FileTreeNode } from "@/lib/api";
 import { useRepoStore } from "@/lib/repo-store";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -35,10 +35,34 @@ export default function IdePage() {
     });
   }
 
+  function downloadActive() {
+    if (!active || !fileQ.data) return;
+    const blob = new Blob([fileQ.data.content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = base(active);
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="flex h-full flex-col">
       <PageHeader eyebrow={`Repository · ${activeRepo}`} title="Codebase">
-        {active && <span className="num text-xs text-muted">{active}</span>}
+        {active && (
+          <div className="flex items-center gap-3">
+            <span className="num text-xs text-muted">{active}</span>
+            <button
+              onClick={downloadActive}
+              disabled={!fileQ.data}
+              className="flex items-center gap-1.5 rounded-md border border-line px-2 py-1 text-xs text-ink-soft transition-colors hover:bg-paper-sunk disabled:opacity-40"
+              title={`Download ${base(active)}`}
+            >
+              <Download size={12} />
+              Export
+            </button>
+          </div>
+        )}
       </PageHeader>
 
       <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr] overflow-hidden">

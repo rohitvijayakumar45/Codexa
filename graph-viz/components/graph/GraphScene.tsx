@@ -4,12 +4,33 @@ import { useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Line, Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import type { LineMaterial, OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { GraphEdgeSourceType } from "@/lib/api";
-import { EDGE_NEUTRAL, STATE_ACCENT, edgeOpacity, edgeWidth } from "@/lib/graph-visual";
+import { EDGE_NEUTRAL, STATE_ACCENT, STATE_ACCENT_SOFT, edgeOpacity, edgeWidth } from "@/lib/graph-visual";
 
 const RECENT_MS = 12 * 86_400_000; // an edge younger than this at the viewed time reads as "recent"
 const CURVE_SAMPLES = 18;
+const FLOW_CAPACITY = 96; // shared pool of "data flowing" particles across featured edges
+const FLOW_SPEED = 0.32;
+
+let glowTexture: THREE.Texture | null = null;
+// Soft radial falloff, generated once, tinted per-node via sprite/material color.
+function getGlowTexture(): THREE.Texture {
+  if (glowTexture) return glowTexture;
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, "rgba(255,255,255,0.95)");
+  g.addColorStop(0.35, "rgba(255,255,255,0.45)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  glowTexture = new THREE.CanvasTexture(canvas);
+  return glowTexture;
+}
 
 export interface SceneNode {
   id: string;
@@ -42,11 +63,16 @@ interface SceneProps {
 
 const tmp = new THREE.Vector3();
 const tmpB = new THREE.Vector3();
+const tmpFlow = new THREE.Vector3();
 const ctrl = new THREE.Vector3();
 const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3());
 const colNeutral = new THREE.Color(EDGE_NEUTRAL);
 const colAccent = new THREE.Color(STATE_ACCENT);
 const colTmp = new THREE.Color();
+const flowDummy = new THREE.Object3D();
+const flowHide = new THREE.Object3D();
+flowHide.scale.setScalar(0);
+flowHide.updateMatrix();
 
 function Scene({
   nodes,
@@ -65,11 +91,15 @@ function Scene({
   const positions = useRef<THREE.Vector3[]>([]);
   const velocities = useRef<THREE.Vector3[]>([]);
   const nodeMeshes = useRef<(THREE.Mesh | null)[]>([]);
+  const glowSprites = useRef<(THREE.Sprite | null)[]>([]);
   const edgeLines = useRef<(THREE.Object3D | null)[]>([]);
+  const flowMesh = useRef<THREE.InstancedMesh>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
   const born = useRef(0);
   const settleEnergy = useRef(1);
   const timeRef = useRef(timeMs);
   timeRef.current = timeMs;
+  const glow = useMemo(() => (typeof document === "undefined" ? null : getGlowTexture()), []);
 
   // Neighbor set of the selection, at the current time, for focus dimming.
   const neighbors = useMemo(() => {
@@ -183,9 +213,40 @@ function Scene({
       );
       // Selected node picks up a faint teal rim; everyone else stays their family hue.
       (mat.emissive as THREE.Color).lerp(isSel ? colAccent : (mesh.userData.base as THREE.Color), 0.15);
+
+      // Soft additive halo behind the node — a cheap stand-in for bloom that still reads as glow.
+      const sprite = glowSprites.current[i];
+      if (sprite) {
+        sprite.position.copy(pos[i]);
+        const haloScale = node.radius * emphasis * appear * (isPresent ? 1 : 0.5) * (isSel ? 4.4 : isHov ? 3.8 : 3.1);
+        sprite.scale.setScalar(THREE.MathUtils.lerp(sprite.scale.x, haloScale, 0.16));
+        const smat = sprite.material as THREE.SpriteMaterial;
+        const haloOpacity = appear * focusDim * presence * (isSel ? 0.6 : isHov ? 0.42 : 0.2);
+        smat.opacity = THREE.MathUtils.lerp(smat.opacity, haloOpacity, 0.16);
+      }
     }
 
-    // Curved, temporally-aware edges.
+    // The selection ring: a pulsing halo of accent light orbiting the chosen node.
+    if (ringRef.current) {
+      const idx = selectedId ? nodes.findIndex((n) => n.id === selectedId) : -1;
+      if (idx >= 0 && pos[idx]) {
+        ringRef.current.visible = true;
+        ringRef.current.position.copy(pos[idx]);
+        const pulse = 1 + (reducedMotion ? 0 : 0.14 * Math.sin(born.current * 3.1));
+        const ringScale = nodes[idx].radius * 2.1 * pulse;
+        ringRef.current.scale.setScalar(ringScale);
+        ringRef.current.rotation.z += reducedMotion ? 0 : dt * 0.5;
+        ringRef.current.rotation.x = Math.PI / 2.2;
+        const rmat = ringRef.current.material as THREE.MeshBasicMaterial;
+        rmat.opacity = THREE.MathUtils.lerp(rmat.opacity, 0.5 + 0.3 * Math.sin(born.current * 3.1), 0.2);
+      } else {
+        ringRef.current.visible = false;
+      }
+    }
+
+    // Curved, temporally-aware edges. A bounded pool of particles rides the featured ones so
+    // relationships read as live signal flow, not static wiring.
+    let flowCount = 0;
     for (let i = 0; i < edges.length; i++) {
       const line = edgeLines.current[i];
       if (!line) continue;
@@ -210,22 +271,46 @@ function Scene({
       const obj = line as unknown as {
         geometry: { setPositions: (n: number[]) => void };
         computeLineDistances?: () => void;
-        material: THREE.Material & { opacity: number; color: THREE.Color; dashed?: boolean };
+        material: LineMaterial & { opacity: number; color: THREE.Color; dashed?: boolean };
       };
       obj.geometry.setPositions(pts);
       obj.computeLineDistances?.();
 
       const active = edgePresent(e, t);
       const recent = active && t - e.validFrom < RECENT_MS && t - e.validFrom >= 0;
+      const isSelEdge =
+        !!selectedId && (nodes[e.from].id === selectedId || nodes[e.to].id === selectedId);
       const dimmed =
         !!selectedId &&
         nodes[e.from].id !== selectedId &&
         nodes[e.to].id !== selectedId &&
         !(neighbors.has(nodes[e.from].id) && neighbors.has(nodes[e.to].id));
-      const targetOpacity = active ? edgeOpacity(e.confidence, dimmed) : 0;
+      const featured = active && !reducedMotion && (recent || isSelEdge);
+      const targetOpacity = active ? edgeOpacity(e.confidence, dimmed) * (featured ? 1.15 : 1) : 0;
       obj.material.opacity = THREE.MathUtils.lerp(obj.material.opacity, targetOpacity, 0.16);
-      colTmp.copy(recent ? colAccent : colNeutral);
+      colTmp.copy(recent || isSelEdge ? colAccent : colNeutral);
       obj.material.color.lerp(colTmp, 0.12);
+      const widthTarget =
+        edgeWidth(e.confidence) * (featured ? 1.5 + 0.25 * Math.sin(born.current * 3 + i) : 1);
+      obj.material.linewidth = THREE.MathUtils.lerp(obj.material.linewidth, widthTarget, 0.15);
+
+      if (featured && flowMesh.current && flowCount < FLOW_CAPACITY) {
+        const phase = (((born.current * FLOW_SPEED + i * 0.173) % 1) + 1) % 1;
+        curve.getPoint(phase, tmpFlow);
+        flowDummy.position.copy(tmpFlow);
+        const shimmer = 0.15 + 0.06 * Math.sin(born.current * 6 + i * 1.7);
+        flowDummy.scale.setScalar(shimmer);
+        flowDummy.updateMatrix();
+        flowMesh.current.setMatrixAt(flowCount, flowDummy.matrix);
+        flowCount++;
+      }
+    }
+
+    if (flowMesh.current) {
+      for (let k = flowCount; k < FLOW_CAPACITY; k++) {
+        flowMesh.current.setMatrixAt(k, flowHide.matrix);
+      }
+      flowMesh.current.instanceMatrix.needsUpdate = true;
     }
 
     const c = controls.current;
@@ -246,9 +331,25 @@ function Scene({
 
   return (
     <>
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[10, 14, 8]} intensity={0.65} />
-      <directionalLight position={[-8, -6, -10]} intensity={0.22} />
+      <ambientLight intensity={0.95} />
+      <directionalLight position={[10, 14, 8]} intensity={0.7} />
+      <directionalLight position={[-8, -6, -10]} intensity={0.24} color="#c7d2fe" />
+      <pointLight position={[0, 4, 14]} intensity={0.5} color={STATE_ACCENT_SOFT} distance={40} />
+
+      {/* Halos render first, additively, so they sit as soft light behind the crisp node spheres. */}
+      {glow &&
+        nodes.map((node, i) => (
+          <sprite key={`glow-${node.id}`} ref={(el) => { glowSprites.current[i] = el; }} scale={0}>
+            <spriteMaterial
+              map={glow}
+              color={node.color}
+              transparent
+              opacity={0}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </sprite>
+        ))}
 
       {edges.map((e, i) => (
         <Line
@@ -266,6 +367,25 @@ function Scene({
           gapSize={0.4}
         />
       ))}
+
+      {/* A bounded pool of instanced particles rides featured edges — recent changes and the
+          selected node's relationships glow and visibly travel, so the graph reads as live. */}
+      <instancedMesh ref={flowMesh} args={[undefined, undefined, FLOW_CAPACITY]} frustumCulled={false}>
+        <sphereGeometry args={[1, 8, 8]} />
+        <meshBasicMaterial
+          color={STATE_ACCENT_SOFT}
+          transparent
+          opacity={0.85}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </instancedMesh>
+
+      {/* Pulsing accent ring around the selected node — the one place motion carries meaning. */}
+      <mesh ref={ringRef} visible={false}>
+        <torusGeometry args={[1, 0.045, 12, 56]} />
+        <meshBasicMaterial color={STATE_ACCENT} transparent opacity={0} depthWrite={false} />
+      </mesh>
 
       {nodes.map((node, i) => (
         <mesh
@@ -289,19 +409,26 @@ function Scene({
             onSelect(node.id === selectedId ? null : node.id);
           }}
         >
-          <sphereGeometry args={[1, 32, 32]} />
+          <sphereGeometry args={[1, 40, 40]} />
           <meshStandardMaterial
             color={node.color}
             emissive={node.color}
-            emissiveIntensity={0.12}
-            roughness={0.32}
-            metalness={0.04}
+            emissiveIntensity={0.16}
+            roughness={0.22}
+            metalness={0.12}
+            envMapIntensity={0.6}
             transparent
             opacity={0}
           />
           {(node.id === hoveredId || node.id === selectedId) && (
             <Html center distanceFactor={26} zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
-              <div className="translate-y-[-2.4em] whitespace-nowrap rounded-md border border-line bg-panel/95 px-2 py-1 text-[11px] font-medium text-ink shadow-sm backdrop-blur-sm">
+              <div
+                className="translate-y-[-2.4em] whitespace-nowrap rounded-md border bg-panel/95 px-2 py-1 text-[11px] font-medium text-ink shadow-md backdrop-blur-sm"
+                style={{
+                  borderColor: node.id === selectedId ? STATE_ACCENT : "var(--color-line)",
+                  boxShadow: node.id === selectedId ? `0 0 0 1px ${STATE_ACCENT}22, 0 8px 20px -6px ${STATE_ACCENT}55` : undefined,
+                }}
+              >
                 {node.label}
               </div>
             </Html>
@@ -332,7 +459,7 @@ export function GraphScene(props: SceneProps) {
       gl={{ antialias: true, alpha: true }}
       onPointerMissed={() => props.onSelect(null)}
     >
-      <fog attach="fog" args={["#f2f1ec", 36, 74]} />
+      <fog attach="fog" args={["#f1f0f7", 34, 72]} />
       <Scene {...props} />
     </Canvas>
   );

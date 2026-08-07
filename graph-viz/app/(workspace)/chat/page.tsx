@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, Wrench } from "lucide-react";
+import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, Wrench, BrainCircuit, Copy, Check, RotateCcw } from "lucide-react";
 import { api, streamAgentChat, type ChatMessage, type ChatModel, type ImpactResult } from "@/lib/api";
 import { Mark } from "@/components/shell/Mark";
 import { EASE_OUT } from "@/components/ui/primitives";
@@ -23,6 +23,10 @@ interface Attachment {
 type Turn = StoredTurn & { analyzing?: boolean };
 
 const approxTokens = (s: string) => Math.max(0, Math.ceil(s.length / 4));
+
+const DESIGN_TOOL_HINT =
+  "Before writing or redesigning any frontend/UI code (HTML, CSS, React, Tailwind), call the " +
+  "get_design_guidance tool first to load a real design system's rules — do not freestyle a look.";
 
 // A change request is where the blast radius must run before anything else.
 const CHANGE_INTENT =
@@ -160,6 +164,19 @@ export default function ChatPage() {
     setStreaming(false);
   }
 
+  // Everything that reflects the active repository must refresh — used both when a repo is
+  // explicitly loaded/created via the dialog, and when the agent creates a new project mid-chat
+  // (create_project tool) and the backend tells the frontend to follow along via onRepoSwitched.
+  function switchRepo(name: string) {
+    setActiveRepo(name);
+    for (const key of [
+      ["memory-records"], ["memory-repos"], ["nodes"], ["edges", "all"],
+      ["arch-trends"], ["repo-docs"], ["events", "recent"],
+    ]) {
+      qc.invalidateQueries({ queryKey: key });
+    }
+  }
+
   function startNewChat() {
     abortActiveStream();
     setInput("");
@@ -186,7 +203,7 @@ export default function ChatPage() {
     abortRef.current = controller;
     const lastUserText = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
     const repoContext = await buildRepoContext(lastUserText);
-    const systemParts = [repoContext, systemNote].filter(Boolean) as string[];
+    const systemParts = [DESIGN_TOOL_HINT, repoContext, systemNote].filter(Boolean) as string[];
     const messages: ChatMessage[] = systemParts.length
       ? [{ role: "system", content: systemParts.join("\n\n") }, ...history]
       : history;
@@ -199,6 +216,9 @@ export default function ChatPage() {
       // bails on `prev` unchanged if this stream was aborted — closes the race where a chunk was
       // already in flight the instant `abortActiveStream()` fired (the fetch abort itself is
       // handled below the closures, but a chunk mid-delivery can still land one tick later).
+      onRepoSwitched: (repository) => {
+        if (!controller.signal.aborted) switchRepo(repository);
+      },
       onToolCall: ({ name, args }) =>
         setTurns((prev) => {
           if (controller.signal.aborted) return prev;
@@ -218,12 +238,20 @@ export default function ChatPage() {
           }
           return next;
         }),
+      onThinking: (chunk) =>
+        setTurns((prev) => {
+          if (controller.signal.aborted) return prev;
+          const next = [...prev];
+          const last = next[next.length - 1];
+          next[next.length - 1] = { ...last, role: "assistant", thinking: (last.thinking ?? "") + chunk };
+          return next;
+        }),
       onDelta: (delta) =>
         setTurns((prev) => {
           if (controller.signal.aborted) return prev;
           const next = [...prev];
           const last = next[next.length - 1];
-          next[next.length - 1] = { role: "assistant", content: (last.content ?? "") + delta };
+          next[next.length - 1] = { ...last, role: "assistant", content: (last.content ?? "") + delta };
           return next;
         }),
       onError: (message) =>
@@ -284,6 +312,16 @@ export default function ChatPage() {
       setTurns((prev) => prev.slice(0, -1)); // completely failed (e.g. 500 error) — answer normally
     }
 
+    await runCompletion(history);
+  }
+
+  async function retryFrom(index: number) {
+    if (streaming) return;
+    const trimmed = turns.slice(0, index);
+    const history: ChatMessage[] = trimmed
+      .filter((t) => !t.error && !t.impact && !t.analyzing && typeof t.content === "string" && t.content)
+      .map((t) => ({ role: t.role, content: t.content as string }));
+    setTurns(trimmed);
     await runCompletion(history);
   }
 
@@ -397,7 +435,12 @@ export default function ChatPage() {
                 ) : turn.tool ? (
                   <ToolTrace key={i} tool={turn.tool} />
                 ) : (
-                  <Bubble key={i} turn={turn} streaming={streaming && i === turns.length - 1} />
+                  <Bubble
+                    key={i}
+                    turn={turn}
+                    streaming={streaming && i === turns.length - 1}
+                    onRetry={() => retryFrom(i)}
+                  />
                 ),
               )}
             </div>
@@ -423,21 +466,7 @@ export default function ChatPage() {
       <RepoDialog
         open={repoDialogOpen}
         onClose={() => setRepoDialogOpen(false)}
-        onLoaded={(info) => {
-          setActiveRepo(info.name);
-          // Everything that reflects the loaded repo must refresh.
-          for (const key of [
-            ["memory-records"],
-            ["memory-repos"],
-            ["nodes"],
-            ["edges", "all"],
-            ["arch-trends"],
-            ["repo-docs"],
-            ["events", "recent"],
-          ]) {
-            qc.invalidateQueries({ queryKey: key });
-          }
-        }}
+        onLoaded={(info) => switchRepo(info.name)}
       />
       </div>
     </div>
@@ -524,18 +553,19 @@ function RecentActivity({ events }: { events: { id: string; summary: string; occ
   );
 }
 
-function Bubble({ turn, streaming }: { turn: Turn; streaming: boolean }) {
+function Bubble({ turn, streaming, onRetry }: { turn: Turn; streaming: boolean; onRetry: () => void }) {
   if (turn.role === "user") {
     return (
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, ease: EASE_OUT }}
-        className="mb-6 flex justify-end"
+        className="mb-6 flex flex-col items-end"
       >
         <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-ink px-4 py-2.5 text-sm leading-relaxed text-panel">
           {turn.content}
         </div>
+        {turn.content && <CopyButton text={turn.content} />}
       </motion.div>
     );
   }
@@ -550,19 +580,94 @@ function Bubble({ turn, streaming }: { turn: Turn; streaming: boolean }) {
         <Mark size={22} />
       </div>
       <div className={`min-w-0 text-sm leading-relaxed ${turn.error ? "whitespace-pre-wrap text-warn" : "text-ink-soft"}`}>
-        {streaming && !turn.content ? (
+        {turn.thinking ? (
+          <ThinkingPanel text={turn.thinking} live={streaming && !turn.content} />
+        ) : null}
+        {streaming && !turn.content && !turn.thinking ? (
           <div className="py-1">
             <ThinkingLoader />
           </div>
         ) : turn.error ? (
-          turn.content
-        ) : (
-          <div className="chat-md">
-            <MarkdownView markdown={turn.content ?? ""} />
-          </div>
-        )}
+          <>
+            {turn.content}
+            <button
+              onClick={onRetry}
+              className="mt-2 flex items-center gap-1.5 rounded-md border border-warn/30 px-2 py-1 text-xs font-medium text-warn transition-colors hover:bg-warn/10"
+            >
+              <RotateCcw size={12} />
+              Retry
+            </button>
+          </>
+        ) : turn.content ? (
+          <>
+            <div className="chat-md">
+              <MarkdownView markdown={turn.content} />
+            </div>
+            {!streaming && <CopyButton text={turn.content} />}
+          </>
+        ) : null}
       </div>
     </motion.div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      return;
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button
+      onClick={copy}
+      className="mt-2 flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-faint transition-colors hover:bg-paper-sunk hover:text-ink-soft"
+    >
+      {copied ? <Check size={12} className="text-signal" /> : <Copy size={12} />}
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
+function ThinkingPanel({ text, live }: { text: string; live: boolean }) {
+  const [open, setOpen] = useState(live);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (live && open) bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
+  }, [text, live, open]);
+
+  // Once the answer starts streaming, collapse automatically — matches the "thought, now
+  // answering" transition rather than leaving a wall of reasoning text pinned open.
+  useEffect(() => {
+    if (!live) setOpen(false);
+  }, [live]);
+
+  return (
+    <div className="mb-3">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-xs font-medium text-faint transition-colors hover:text-muted"
+      >
+        <BrainCircuit size={12} className={live ? "animate-pulse text-signal" : ""} />
+        {live ? "Thinking…" : "Thought process"}
+        <ChevronDown size={11} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div
+          ref={bodyRef}
+          className="num mt-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg border border-line bg-panel-2 p-2.5 text-[11px] leading-relaxed text-muted"
+        >
+          {text}
+        </div>
+      )}
+    </div>
   );
 }
 

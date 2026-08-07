@@ -156,10 +156,15 @@ class LLMClient:
         usage_obj = getattr(response, "usage", None)
         prompt = int(getattr(usage_obj, "prompt_tokens", 0) or 0) if usage_obj else 0
         completion = int(getattr(usage_obj, "completion_tokens", 0) or 0) if usage_obj else 0
+        # Reasoning-capable models (Gemini 2.5, GLM thinking mode) bill internal "thinking" tokens
+        # as part of completion_tokens with no visible text — break it out so a tiny visible answer
+        # doesn't look like a mystery 500-token response.
+        details = getattr(usage_obj, "completion_tokens_details", None) if usage_obj else None
+        reasoning = int(getattr(details, "reasoning_tokens", 0) or 0) if details else 0
         provider = MODEL_REGISTRY.get(model, ("", 0, "", "unknown"))[3]
         self.usage.record(
             agent=agent, model=model, provider=provider,
-            prompt_tokens=prompt, completion_tokens=completion,
+            prompt_tokens=prompt, completion_tokens=completion, reasoning_tokens=reasoning,
         )
         return {"prompt_tokens": prompt, "completion_tokens": completion}
 
@@ -172,6 +177,11 @@ class LLMClient:
     def stream(self, model: str, messages: list[dict], **kwargs: Any) -> Iterator[Any]:
         model = model or self.default_model
         return litellm.completion(messages=messages, stream=True, **self._kwargs(model), **kwargs)
+
+    def record_usage(self, agent: str, model: str, response: Any) -> dict[str, int]:
+        """Public entry point for callers that assembled their own response (e.g. from raw stream
+        chunks via litellm.stream_chunk_builder) and need it logged the same way as complete()."""
+        return self._record_usage(agent, model, response)
 
     def complete_message(
         self, messages: list[dict], *, model: str | None = None, tools: list | None = None, agent: str = "chat",

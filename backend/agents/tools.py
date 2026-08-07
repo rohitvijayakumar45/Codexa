@@ -14,6 +14,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from backend.files.api import (
@@ -26,11 +27,37 @@ from backend.files.api import (
     search_files,
     write_file,
 )
+from backend.repository.api import create_local_repository
 
 # The agent may freely scaffold/edit a loaded or newly-created repository, but must not mutate the
 # live Codexa OS platform's own source through a chat message — read/search/list stay open on
 # codexa-os (docs generation and "explain this platform" chats rely on that), only mutations are blocked.
 _MUTATING_TOOLS = {"write_file", "create_directory", "delete_file", "move_file", "edit_file"}
+
+# Design systems the agent can pull into context before writing UI code — professional,
+# production-tested rulesets (typography, color, motion, anti-slop constraints) so scaffolded
+# frontends don't default to generic AI-template output. Files are self-contained copies (not a
+# live path into the user's global Claude Code skills dir) so this works on any machine.
+_DESIGN_SKILLS_DIR = Path(__file__).parent / "design_skills"
+_DESIGN_SKILLS: dict[str, tuple[str, str]] = {
+    "anti_slop": (
+        "anti_slop.md",
+        "Default. Anti-slop rules for landing pages, portfolios, marketing sites, redesigns — "
+        "infers the right direction from the brief instead of a fixed look.",
+    ),
+    "high_end_agency": (
+        "high_end_agency.md",
+        "Expensive-agency polish: exact fonts/spacing/shadow/motion recipes (Awwwards-tier).",
+    ),
+    "minimalist_editorial": (
+        "minimalist_editorial.md",
+        "Clean editorial minimalism: warm monochrome, flat bento grids, muted pastels, no gradients.",
+    ),
+    "industrial_brutalist": (
+        "industrial_brutalist.md",
+        "Raw industrial/terminal aesthetic: rigid grids, monospace-heavy, for data-dense dashboards.",
+    ),
+}
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -77,6 +104,27 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
                 "required": ["path", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_project",
+            "description": (
+                "Create a brand-new, empty repository/project from scratch (not cloned from "
+                "anywhere) and switch to working in it. Use this when asked to build a new project, "
+                "app, or tool that doesn't already exist as a loaded repository — after this "
+                "succeeds, use create_directory/write_file/edit_file to scaffold it. Fails if a "
+                "repository with this name already exists."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Short, filesystem-safe project name."},
+                    "description": {"type": "string", "description": "One-line description, written into the README."},
+                },
+                "required": ["name"],
             },
         },
     },
@@ -158,6 +206,31 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "get_design_guidance",
+            "description": (
+                "Returns a professional design system's exact rules (typography, color, spacing, "
+                "motion, component patterns, and anti-slop constraints) so generated UI doesn't look "
+                "like generic AI/template output. ALWAYS call this before writing or redesigning any "
+                "HTML/CSS/React/Tailwind/component code — call it once per task, before the first "
+                "write_file, not for pure backend/logic-only work. Note: 'anti_slop' explicitly "
+                "excludes dense dashboards/admin panels/data tables — prefer 'industrial_brutalist' "
+                "or 'high_end_agency' for those, or ask the user which direction they want."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "style": {
+                        "type": "string",
+                        "enum": list(_DESIGN_SKILLS.keys()),
+                        "description": "Which design system to load. Default 'anti_slop' if unsure.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "web_search",
             "description": "Search the public web for current information. Returns top results.",
             "parameters": {
@@ -211,6 +284,24 @@ def _web_search(query: str) -> str:
     for r in data.get("results", [])[:5]:
         lines.append(f"- {r.get('title', '')}: {r.get('content', '')[:300]} ({r.get('url', '')})")
     return "\n".join(lines) if lines else "No results found."
+
+
+def _get_design_guidance(style: str) -> str:
+    style = style or "anti_slop"
+    entry = _DESIGN_SKILLS.get(style)
+    if entry is None:
+        options = ", ".join(_DESIGN_SKILLS.keys())
+        return f"Unknown design style '{style}'. Available: {options}."
+    filename, _desc = entry
+    try:
+        text = (_DESIGN_SKILLS_DIR / filename).read_text(encoding="utf-8")
+    except OSError as exc:
+        return f"Design guidance unavailable: {exc}"
+    # anti_slop.md alone is ~90KB (~22k tokens) — the tool result stays in the conversation for
+    # every remaining round of a multi-step scaffolding task, and re-sending that much context on
+    # every round is what was pushing GLM 5.2 past its response timeout. Cap generously; the other
+    # three skill files are already well under this.
+    return _truncate(text, limit=24000)
 
 
 def _run_python(code: str) -> str:
@@ -276,15 +367,35 @@ def _lookup_symbol(name: str, repository: str, *, graph: Any, store: Any) -> str
 
 
 def execute_tool(
-    name: str, args: dict[str, Any], repository: str, *, graph: Any = None, store: Any = None,
+    name: str, args: dict[str, Any], repository: str, *,
+    graph: Any = None, store: Any = None, context: dict[str, Any] | None = None,
 ) -> str:
-    """Run a tool by name and return a text result for the model."""
+    """Run a tool by name and return a text result for the model.
+
+    `context` is an optional side-channel a caller can pass to observe effects beyond the text
+    result — specifically, create_project writes the new repository's name into
+    `context["new_repository"]` so the chat loop can switch subsequent tool calls to it without
+    requiring a whole extra request/response round-trip.
+    """
     if name in _MUTATING_TOOLS and repository == "codexa-os":
         return (
             f"Tool '{name}' refused: the chat agent may not modify the Codexa OS platform's own "
             "source. Load or create a separate repository to scaffold or edit code in."
         )
     try:
+        if name == "create_project":
+            try:
+                info = create_local_repository(
+                    args["name"], args.get("description", ""), store=store, graph=graph,
+                )
+            except ValueError as exc:
+                return f"Could not create project: {exc}"
+            if context is not None:
+                context["new_repository"] = info.name
+            return (
+                f"Created new project '{info.name}'. Now working in it — use create_directory/"
+                "write_file/edit_file to scaffold it."
+            )
         if name == "read_file":
             return _truncate(read_file(repo_root(repository), args["path"]).content)
         if name == "list_directory":
@@ -317,6 +428,8 @@ def execute_tool(
             return f"Moved {args['from_path']} -> {args['to_path']}."
         if name == "lookup_symbol":
             return _lookup_symbol(args["name"], repository, graph=graph, store=store)
+        if name == "get_design_guidance":
+            return _get_design_guidance(args.get("style", "anti_slop"))
         if name == "web_search":
             return _web_search(args["query"])
         if name == "run_python":

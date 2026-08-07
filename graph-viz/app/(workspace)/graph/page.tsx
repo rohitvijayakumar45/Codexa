@@ -19,8 +19,11 @@ const GraphScene = dynamic(() => import("@/components/graph/GraphScene").then((m
 });
 
 const SURFACE =
-  "radial-gradient(circle at 1px 1px, rgba(26,26,24,0.04) 1px, transparent 0) 0 0 / 27px 27px, " +
-  "radial-gradient(120% 100% at 50% 18%, #fffffe 0%, #f4f2ec 52%, #ebe8e1 100%)";
+  "radial-gradient(circle at 1px 1px, rgba(26,26,24,0.045) 1px, transparent 0) 0 0 / 27px 27px, " +
+  "radial-gradient(38% 42% at 14% 12%, rgba(99,102,241,0.10) 0%, transparent 60%), " +
+  "radial-gradient(34% 38% at 90% 20%, rgba(244,63,94,0.08) 0%, transparent 60%), " +
+  "radial-gradient(40% 44% at 78% 92%, rgba(245,158,11,0.08) 0%, transparent 60%), " +
+  "radial-gradient(120% 100% at 50% 18%, #fffffe 0%, #f5f3ef 52%, #ecebe6 100%)";
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
