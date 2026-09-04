@@ -39,27 +39,18 @@ ZAI_API_BASE = "https://api.z.ai/api/paas/v4"
 # actually called, despite still appearing in the catalog — every entry below was verified with a
 # real completion call, not taken from docs alone.
 MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
-    "nvidia_nim/meta/llama-3.1-8b-instruct": ("Llama 3.1 8B", 131072, "light", "nvidia"),
-    "nvidia_nim/meta/llama-3.1-70b-instruct": ("Llama 3.1 70B", 131072, "balanced", "nvidia"),
-    "nvidia_nim/mistralai/mistral-nemotron": ("Mistral Nemotron", 128000, "balanced", "nvidia"),
-    # NVIDIA's 2026 flagship — 550B total / 55B active MoE, built for long-running agents.
-    "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b": ("Nemotron 3 Ultra 550B", 1000000, "heavy", "nvidia"),
+    # Heavy tier
+    "nvidia_nim/deepseek-ai/deepseek-v4-pro-0813": ("DeepSeek V4 Pro", 128000, "heavy", "nvidia"),
     "nvidia_nim/nvidia/nemotron-3-super-120b-a12b": ("Nemotron 3 Super 120B", 1000000, "heavy", "nvidia"),
-    # Reasoning-tuned; puts most of its output in thinking tokens, so give it room in prompts.
-    "nvidia_nim/nvidia/llama-3.3-nemotron-super-49b-v1.5": ("Nemotron Super 49B (reasoning)", 131072, "balanced", "nvidia"),
-    # Same model as the Groq entry below, hosted separately on NVIDIA NIM — kept as two distinct
-    # entries on purpose: independent API keys/quotas, so one provider running dry (as z.ai did
-    # this session) doesn't take this model out too.
-    "nvidia_nim/openai/gpt-oss-120b": ("GPT-OSS 120B (NVIDIA)", 131072, "heavy", "nvidia"),
     "groq/openai/gpt-oss-120b": ("GPT-OSS 120B (Groq)", 131072, "heavy", "groq"),
-    # 27B dense but scores 77.2% SWE-bench Verified / matches Opus-class on Terminal-Bench — small
-    # and fast enough for "balanced" while punching at heavy-tier coding quality.
+    # Balanced tier
     "groq/qwen/qwen3.6-27b": ("Qwen3.6 27B (Groq)", 131072, "balanced", "groq"),
+    "openrouter/minimax/minimax-m3:free": ("MiniMax M3 (free)", 1048576, "balanced", "openrouter"),
+    "nvidia_nim/mistralai/mistral-nemotron": ("Mistral Nemotron", 128000, "balanced", "nvidia"),
+    # Light tier
     "groq/openai/gpt-oss-20b": ("GPT-OSS 20B (Groq)", 131072, "light", "groq"),
     "gemini/gemini-2.5-flash": ("Gemini 2.5 Flash", 1048576, "light", "gemini"),
-    "gemini/gemini-2.5-pro": ("Gemini 2.5 Pro", 1048576, "heavy", "gemini"),
-    "zai/glm-5.2": ("GLM 5.2", 1000000, "heavy", "zai"),
-    "zai/glm-4.5-air": ("GLM 4.5 Air", 128000, "light", "zai"),
+    "openrouter/nvidia/nemotron-3.5-lightning:free": ("Nemotron 3.5 Lightning (free)", 1000000, "light", "openrouter"),
 }
 
 _PROVIDER_ENV = {
@@ -67,37 +58,26 @@ _PROVIDER_ENV = {
     "groq": "GROQ_API_KEY",
     "gemini": "GEMINI_API_KEY",
     "zai": "ZAI_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
 }
 
-# Preference order within each tier (first available wins). GLM 5.2 leads "heavy" when its own
-# balance holds, but z.ai running dry mid-session (as happened) no longer means falling all the way
-# back to a 70B model — Nemotron 3 Ultra and GPT-OSS 120B are real frontier-adjacent options now.
+# Preference order within each tier (only verified live endpoints).
 _TIER_ORDER: dict[str, list[str]] = {
     "heavy": [
-        "zai/glm-5.2",
-        "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b",
-        "gemini/gemini-2.5-pro",
-        "groq/openai/gpt-oss-120b",
-        "nvidia_nim/openai/gpt-oss-120b",
+        "nvidia_nim/deepseek-ai/deepseek-v4-pro-0813",
         "nvidia_nim/nvidia/nemotron-3-super-120b-a12b",
-        "nvidia_nim/meta/llama-3.1-70b-instruct",
+        "groq/openai/gpt-oss-120b",
     ],
     "balanced": [
-        # qwen3.6-27b is NOT first despite the benchmark scores above — this account's Groq tier caps
-        # it at 8000 TPM, which a normal chat request (repo-context system message included) blows
-        # past immediately ("Requested 20738" on a real turn). Real accounts on a higher Groq tier can
-        # reorder this; on the free/on_demand tier it's only usable hand-picked for small requests.
-        "groq/openai/gpt-oss-120b",
-        "nvidia_nim/nvidia/llama-3.3-nemotron-super-49b-v1.5",
-        "nvidia_nim/meta/llama-3.1-70b-instruct",
-        "zai/glm-5.2",
         "groq/qwen/qwen3.6-27b",
+        "openrouter/minimax/minimax-m3:free",
+        "groq/openai/gpt-oss-120b",
+        "nvidia_nim/mistralai/mistral-nemotron",
     ],
     "light": [
         "groq/openai/gpt-oss-20b",
-        "nvidia_nim/meta/llama-3.1-8b-instruct",
-        "zai/glm-4.5-air",
         "gemini/gemini-2.5-flash",
+        "openrouter/nvidia/nemotron-3.5-lightning:free",
     ],
 }
 
