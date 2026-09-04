@@ -217,6 +217,33 @@ body {
   user-select: none;
 }
 
+/* Glassmorphism — the workspace chrome (rail, headers, floating panels) reads as frosted glass:
+   translucent, blurred, with a soft inner highlight and a hairline edge instead of a flat border.
+   Only visible where there's something with variation behind it to blur — pair with
+   .workspace-ambient on the page background, never place over a flat single color. */
+.glass-panel {
+  background: color-mix(in srgb, var(--color-panel) 58%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--color-line-strong) 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 8px 32px -14px rgba(26, 26, 24, 0.14);
+}
+
+/* Soft ambient light behind the glass chrome — teal signal + muted gold, strong enough to actually
+   tint through a translucent panel (the first version of this was ~0.07 peak opacity, which reads
+   as nothing through 72%-opacity glass — glass needs real color behind it to look like glass, a
+   flat near-white-on-white blur is invisible). One blob sits directly behind the rail's column so
+   the glass panel visibly picks up color, not just a shadow. */
+.workspace-ambient {
+  background:
+    radial-gradient(50% 65% at 3% 35%, rgba(15, 125, 113, 0.30) 0%, transparent 68%),
+    radial-gradient(42% 55% at 8% 82%, rgba(156, 125, 51, 0.24) 0%, transparent 65%),
+    radial-gradient(55% 50% at 92% 6%, rgba(15, 125, 113, 0.16) 0%, transparent 62%),
+    radial-gradient(60% 55% at 55% 102%, rgba(26, 26, 24, 0.07) 0%, transparent 70%),
+    var(--color-paper);
+}
+
 /* Markdown inside a chat bubble: no leading gap, tighter than doc pages. */
 .chat-md > div {
   max-width: none;

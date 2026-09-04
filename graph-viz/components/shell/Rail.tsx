@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MessagesSquare, Code2, Share2, Activity, Gauge, LayoutGrid, BrainCircuit, History, FileText, BarChart3 } from "lucide-react";
 import clsx from "clsx";
 import { Mark } from "./Mark";
+import { RepoSwitcher } from "./RepoSwitcher";
 
 type Item = { href: string; label: string; icon: typeof Share2; ready: boolean };
 
@@ -27,7 +28,7 @@ export function Rail() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex h-full w-[68px] shrink-0 flex-col items-center border-r border-line bg-panel py-5">
+    <nav className="glass-panel relative z-10 my-3 ml-3 flex h-[calc(100%-1.5rem)] w-[68px] shrink-0 flex-col items-center rounded-[26px] py-5">
       <Link
         href="/graph"
         aria-label="Codexa OS"
@@ -73,6 +74,8 @@ export function Rail() {
           );
         })}
       </ul>
+
+      <RepoSwitcher />
 
       <div className="mt-4 grid h-9 w-9 place-items-center rounded-full border border-line-strong bg-paper-sunk text-[13px] font-medium text-ink-soft">
         R

@@ -24,6 +24,56 @@ def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
+_COMPACTED_MARK = "[compacted"
+# How many rounds a bulky payload stays in full before being collapsed. Deliberately generous (not
+# 1) so the model still has it available if it circles back to reference it a round or two later —
+# this trades a small amount of extra tokens for zero risk of the model losing information it still
+# needs, per the "zero impact on output" requirement this was built under.
+_STALE_AFTER_ROUNDS = 3
+
+
+def _compact_stale_payloads(messages: list[dict], message_rounds: list[int], current_round: int) -> None:
+    """Collapses old, already-acted-upon bulky tool payloads in place so a long multi-round
+    tool-calling task doesn't keep re-sending the same huge blobs on every subsequent round.
+
+    Targets only content that (a) the model has already had multiple rounds to act on, and (b) is
+    reconstructable/irrelevant to future reasoning even once removed: get_design_guidance's dumped
+    style-guide text (the model already used it to decide what to write; it can call the tool again
+    if it genuinely needs it later), and write_file/edit_file's file content (the file is on disk —
+    that's the source of truth, not the chat transcript; edit_file's old_text match happens against
+    the live file too, not history). Nothing else is touched, so ordinary conversation, tool_call_id
+    pairing, and every other message stay exactly as the model produced them.
+    """
+    for i, msg in enumerate(messages):
+        if current_round - message_rounds[i] < _STALE_AFTER_ROUNDS:
+            continue
+        if msg.get("role") == "tool" and msg.get("name") == "get_design_guidance":
+            content = msg.get("content", "")
+            if isinstance(content, str) and not content.startswith(_COMPACTED_MARK):
+                msg["content"] = (
+                    f"{_COMPACTED_MARK} — this design guidance ({len(content)} chars) was loaded "
+                    "earlier in this conversation and already used. Call get_design_guidance again "
+                    "if you need to re-check its rules.]"
+                )
+        elif msg.get("role") == "assistant" and msg.get("tool_calls"):
+            for tc in msg["tool_calls"]:
+                fn = tc.get("function", {})
+                if fn.get("name") not in ("write_file", "edit_file"):
+                    continue
+                try:
+                    args = json.loads(fn.get("arguments") or "{}")
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                changed = False
+                for key in ("content", "new_text", "old_text"):
+                    val = args.get(key)
+                    if isinstance(val, str) and len(val) > 200 and not val.startswith(_COMPACTED_MARK):
+                        args[key] = f"{_COMPACTED_MARK} — {len(val)} chars, already written to disk.]"
+                        changed = True
+                if changed:
+                    fn["arguments"] = json.dumps(args)
+
+
 class ChatMessage(BaseModel):
     role: str = Field(pattern="^(system|user|assistant|tool)$")
     content: str
@@ -91,6 +141,11 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
         model = request.model if (request.model in llm.available) else llm.default_model
         repo = request.repository or "codexa-os"
         messages = [m.model_dump() for m in request.messages]
+        # Parallel array (same length/order as `messages`) tracking which round each entry was
+        # appended at, so _compact_stale_payloads knows how old something is. Pre-existing messages
+        # get a sentinel far in the past — harmless, since compaction only ever touches messages that
+        # structurally match a tool result/tool call, which none of the original request messages are.
+        message_rounds = [-100] * len(messages)
         prompt_tokens = sum(_approx_tokens(m.content) for m in request.messages)
 
         def _stream_round(*, with_tools: bool):
@@ -117,12 +172,16 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
             yield ("final", (final.choices[0].message if final else None, usage))
 
         def _run_round(*, with_tools: bool):
-            """Wraps _stream_round with one retry: if the provider dies (timeout or otherwise)
-            before emitting a single chunk, silently retry once from scratch — covers a stall that
-            happens before any output exists yet, so nothing shown to the user needs to be undone.
-            Once any chunk has been emitted for this round, a failure is no longer safely retryable
-            (partial content is already on screen) and is raised as before."""
-            for attempt in range(2):
+            """Wraps _stream_round with retries for failures that happen before any output exists
+            yet — safe to retry since nothing shown to the user needs to be undone. A rate-limit
+            error (litellm.RateLimitError) switches to the next available model in the same tier
+            instead of just retrying the same one — Groq's TPM rejections fire before a single token
+            streams, on the pre-flight size check, so this never risks duplicating output. Any other
+            failure gets one retry against the same model. Once any chunk has been emitted for this
+            round, nothing here is safely retryable and the failure is raised as before."""
+            nonlocal model
+            tried = {model}
+            for attempt in range(1, 6):
                 emitted = False
                 try:
                     for kind, payload in _stream_round(with_tools=with_tools):
@@ -130,8 +189,20 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
                             emitted = True
                         yield (kind, payload)
                     return
-                except Exception:
-                    if emitted or attempt == 1:
+                except Exception as exc:
+                    if emitted:
+                        raise
+                    if isinstance(exc, litellm.RateLimitError):
+                        tier = llm.tier_of(model)
+                        next_model = next(
+                            (m for m in llm.models_for_tier(tier) if m not in tried), None,
+                        ) if tier else None
+                        if next_model:
+                            model = next_model
+                            tried.add(model)
+                            yield ("model_switched", model)
+                            continue
+                    if attempt >= 2:
                         raise
 
         def gen():
@@ -154,6 +225,7 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
                 # scaffold (create_project + design guidance + several directories/files) can
                 # legitimately need more than 6 tool rounds on its own.
                 for _round in range(10):
+                    _compact_stale_payloads(messages, message_rounds, _round)
                     msg = None
                     usage = {"prompt_tokens": 0, "completion_tokens": 0}
                     saw_any_chunk = False
@@ -162,6 +234,12 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
                         for kind, payload in _run_round(with_tools=True):
                             if kind == "final":
                                 msg, usage = payload
+                            elif kind == "model_switched":
+                                # Not real model output — a rate-limited model was swapped for the
+                                # next one in its tier before anything streamed, so this must NOT
+                                # mark saw_any_chunk (that would wrongly block the no-tools fallback
+                                # path below on a genuine tool-support failure).
+                                yield _sse({kind: payload})
                             else:
                                 saw_any_chunk = True
                                 if kind == "delta":
@@ -174,6 +252,7 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
                             stall_recoveries += 1
                             if partial_content:
                                 messages.append({"role": "assistant", "content": partial_content})
+                                message_rounds.append(_round)
                             messages.append({
                                 "role": "user",
                                 "content": (
@@ -184,6 +263,7 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
                                     "content, since a partial/interrupted tool call was not saved.]"
                                 ),
                             })
+                            message_rounds.append(_round)
                             continue
                         # model may not support tools — fall back to plain streaming
                         for kind, payload in _run_round(with_tools=False):
@@ -204,17 +284,19 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
                                 for tc in tool_calls
                             ],
                         })
+                        message_rounds.append(_round)
                         for tc in tool_calls:
                             name = tc.function.name
                             args = parse_args(tc.function.arguments)
                             yield _sse({"tool_call": {"name": name, "args": args}})
                             tool_ctx: dict = {}
-                            result = execute_tool(name, args, working_repo, graph=graph, store=store, context=tool_ctx)
+                            result = execute_tool(name, args, working_repo, graph=graph, store=store, context=tool_ctx, llm=llm)
                             if tool_ctx.get("new_repository"):
                                 working_repo = tool_ctx["new_repository"]
                                 yield _sse({"repo_switched": working_repo})
                             yield _sse({"tool_result": {"name": name, "result": result[:600]}})
                             messages.append({"role": "tool", "tool_call_id": tc.id, "name": name, "content": result})
+                            message_rounds.append(_round)
                         continue
                     content = msg.content or "" if msg else ""
                     break

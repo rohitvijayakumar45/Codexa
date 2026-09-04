@@ -24,6 +24,18 @@ type Turn = StoredTurn & { analyzing?: boolean };
 
 const approxTokens = (s: string) => Math.max(0, Math.ceil(s.length / 4));
 
+function formatTokenCount(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
+  return `${(n / 1_000_000).toFixed(2)}M`;
+}
+
+// Sliding-window cap on how much prior conversation gets resent to the model on every message —
+// see docs/token_usage_investigation.md. Turn-count cap (not token-budget) per the second opinion's
+// recommendation to start simple; the full untrimmed history still lives in the local store/UI,
+// this only bounds what's sent to the API.
+const MAX_HISTORY_MESSAGES = 20;
+
 const DESIGN_TOOL_HINT =
   "Before writing or redesigning any frontend/UI code (HTML, CSS, React, Tailwind), call the " +
   "get_design_guidance tool first to load a real design system's rules — do not freestyle a look.";
@@ -62,9 +74,13 @@ export default function ChatPage() {
       .map((it) => (it.content ? `- [${it.kind}] ${it.title}: ${it.content}` : `- ${it.title}`))
       .join("\n");
     return (
-      `You are working on the repository '${activeRepo}'. Answer strictly from the facts in its ` +
-      `persistent memory below. Do NOT invent features, modules, or use-cases that aren't supported ` +
-      `by these facts; if something isn't covered, say you don't have that detail.\n${lines}`
+      `You are working on the repository '${activeRepo}'. The facts below are a snapshot from when ` +
+      `the repo was last analyzed — they can be stale (files/directories may have been added, ` +
+      `moved, or deleted since). Do NOT invent features, modules, or use-cases these facts don't ` +
+      `support. But for anything about CURRENT file/directory existence or structure — especially ` +
+      `before reading, editing, or deleting something — call list_directory or search_code to check ` +
+      `the live filesystem instead of trusting this snapshot; don't answer "it doesn't exist" from ` +
+      `memory alone.\n${lines}`
     );
   }
   // Persistent conversations — survive tab switches and reloads.
@@ -78,6 +94,7 @@ export default function ChatPage() {
   const storeSetTurns = useChatStore((s) => s.setTurns);
   const storeSetModel = useChatStore((s) => s.setModel);
   const storeSetTitle = useChatStore((s) => s.setTitle);
+  const storeAddTokens = useChatStore((s) => s.addTokens);
 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
@@ -192,7 +209,8 @@ export default function ChatPage() {
   function buildHistory(outgoing: string): ChatMessage[] {
     const prior = turns
       .filter((t) => !t.error && !t.impact && !t.analyzing && typeof t.content === "string" && t.content)
-      .map((t) => ({ role: t.role, content: t.content as string }));
+      .map((t) => ({ role: t.role, content: t.content as string }))
+      .slice(-MAX_HISTORY_MESSAGES); // sliding window — see token_usage_investigation.md
     return [...prior, { role: "user", content: outgoing }];
   }
 
@@ -218,6 +236,14 @@ export default function ChatPage() {
       // handled below the closures, but a chunk mid-delivery can still land one tick later).
       onRepoSwitched: (repository) => {
         if (!controller.signal.aborted) switchRepo(repository);
+      },
+      onModelSwitched: (modelId) => {
+        // The requested model hit a rate limit and the server fell back to the next one in its
+        // tier — follow along so the NEXT message in this conversation uses the working model
+        // instead of immediately re-hitting the same limit.
+        if (controller.signal.aborted) return;
+        const next = modelsQuery.data?.find((m) => m.id === modelId);
+        if (next) handleModel(next);
       },
       onToolCall: ({ name, args }) =>
         setTurns((prev) => {
@@ -266,7 +292,18 @@ export default function ChatPage() {
           };
           return next;
         }),
-      onDone: () => {},
+      onDone: (usage) => {
+        if (!usage) return;
+        const total = usage.prompt_tokens + usage.completion_tokens;
+        if (activeId) storeAddTokens(activeId, total);
+        setTurns((prev) => {
+          if (controller.signal.aborted) return prev;
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last && last.role === "assistant" && !last.error) next[next.length - 1] = { ...last, tokens: total };
+          return next;
+        });
+      },
     });
 
     setStreaming(false);
@@ -320,7 +357,8 @@ export default function ChatPage() {
     const trimmed = turns.slice(0, index);
     const history: ChatMessage[] = trimmed
       .filter((t) => !t.error && !t.impact && !t.analyzing && typeof t.content === "string" && t.content)
-      .map((t) => ({ role: t.role, content: t.content as string }));
+      .map((t) => ({ role: t.role, content: t.content as string }))
+      .slice(-MAX_HISTORY_MESSAGES);
     setTurns(trimmed);
     await runCompletion(history);
   }
@@ -467,6 +505,9 @@ export default function ChatPage() {
         open={repoDialogOpen}
         onClose={() => setRepoDialogOpen(false)}
         onLoaded={(info) => switchRepo(info.name)}
+        onDeleted={(name) => {
+          if (name === activeRepo) switchRepo("codexa-os");
+        }}
       />
       </div>
     </div>
@@ -508,11 +549,16 @@ function ChatHistory({
             >
               <button
                 onClick={() => onSelect(c.id)}
-                className={`min-w-0 flex-1 truncate rounded-lg px-2.5 py-2 text-left text-[13px] ${
-                  c.id === activeId ? "font-medium text-signal" : "text-ink-soft hover:bg-paper-sunk"
+                className={`min-w-0 flex-1 rounded-lg px-2.5 py-2 text-left ${
+                  c.id === activeId ? "text-signal" : "text-ink-soft hover:bg-paper-sunk"
                 }`}
               >
-                {c.title || "New chat"}
+                <span className={`block truncate text-[13px] ${c.id === activeId ? "font-medium" : ""}`}>
+                  {c.title || "New chat"}
+                </span>
+                {c.totalTokens > 0 && (
+                  <span className="num block text-[10.5px] text-faint">{formatTokenCount(c.totalTokens)} tokens</span>
+                )}
               </button>
               <button
                 onClick={() => onDelete(c.id)}
@@ -565,7 +611,11 @@ function Bubble({ turn, streaming, onRetry }: { turn: Turn; streaming: boolean; 
         <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-ink px-4 py-2.5 text-sm leading-relaxed text-panel">
           {turn.content}
         </div>
-        {turn.content && <CopyButton text={turn.content} />}
+        {turn.content && (
+          <div className="mt-2">
+            <CopyButton text={turn.content} />
+          </div>
+        )}
       </motion.div>
     );
   }
@@ -603,7 +653,14 @@ function Bubble({ turn, streaming, onRetry }: { turn: Turn; streaming: boolean; 
             <div className="chat-md">
               <MarkdownView markdown={turn.content} />
             </div>
-            {!streaming && <CopyButton text={turn.content} />}
+            {!streaming && (
+              <div className="mt-2 flex items-center gap-3">
+                <CopyButton text={turn.content} />
+                {typeof turn.tokens === "number" && (
+                  <span className="num text-xs text-faint">{formatTokenCount(turn.tokens)} tokens</span>
+                )}
+              </div>
+            )}
           </>
         ) : null}
       </div>
@@ -627,7 +684,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="mt-2 flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-faint transition-colors hover:bg-paper-sunk hover:text-ink-soft"
+      className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-faint transition-colors hover:bg-paper-sunk hover:text-ink-soft"
     >
       {copied ? <Check size={12} className="text-signal" /> : <Copy size={12} />}
       {copied ? "Copied" : "Copy"}
@@ -803,7 +860,7 @@ function Composer(props: {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
                   transition={{ duration: 0.16, ease: EASE_OUT }}
-                  className="absolute bottom-11 right-0 z-30 w-60 overflow-hidden rounded-xl border border-line bg-panel p-1 shadow-lg"
+                  className="absolute bottom-11 right-0 z-30 max-h-80 w-60 overflow-y-auto rounded-xl border border-line bg-panel p-1 shadow-lg"
                 >
                   {props.models.length === 0 && (
                     <p className="px-3 py-2 text-xs text-muted">No models configured.</p>

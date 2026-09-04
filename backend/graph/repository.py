@@ -26,6 +26,10 @@ class GraphRepository(Protocol):
     def list_all_edges(self) -> list[GraphEdge]:
         """Return all temporal edges, including edges no longer active."""
 
+    def remove_by_repository(self, repository: str) -> int:
+        """Delete every node (and edges touching them) tagged with this repository. Returns the
+        number of nodes removed."""
+
 
 class InMemoryGraphRepository:
     def __init__(self) -> None:
@@ -76,6 +80,17 @@ class InMemoryGraphRepository:
 
     def list_all_edges(self) -> list[GraphEdge]:
         return list(self.edges.values())
+
+    def remove_by_repository(self, repository: str) -> int:
+        dead_ids = {nid for nid, n in self.nodes.items() if n.properties.get("repository") == repository}
+        for nid in dead_ids:
+            node = self.nodes.pop(nid)
+            if self.node_ids_by_stable_id.get(node.stable_id) == nid:
+                del self.node_ids_by_stable_id[node.stable_id]
+        for eid, edge in list(self.edges.items()):
+            if edge.from_node_id in dead_ids or edge.to_node_id in dead_ids:
+                del self.edges[eid]
+        return len(dead_ids)
 
 
 class PostgresGraphRepository:
@@ -255,3 +270,19 @@ class PostgresGraphRepository:
             )
             for row in rows
         ]
+
+    def remove_by_repository(self, repository: str) -> int:
+        with psycopg.connect(self.database_url) as conn:
+            conn.execute(
+                """
+                DELETE FROM graph_edges
+                WHERE from_node_id IN (SELECT id FROM graph_nodes WHERE properties->>'repository' = %s)
+                   OR to_node_id IN (SELECT id FROM graph_nodes WHERE properties->>'repository' = %s)
+                """,
+                (repository, repository),
+            )
+            cursor = conn.execute(
+                "DELETE FROM graph_nodes WHERE properties->>'repository' = %s",
+                (repository,),
+            )
+            return cursor.rowcount if cursor.rowcount is not None else 0

@@ -32,7 +32,7 @@ from backend.repository.api import create_local_repository
 # The agent may freely scaffold/edit a loaded or newly-created repository, but must not mutate the
 # live Codexa OS platform's own source through a chat message — read/search/list stay open on
 # codexa-os (docs generation and "explain this platform" chats rely on that), only mutations are blocked.
-_MUTATING_TOOLS = {"write_file", "create_directory", "delete_file", "move_file", "edit_file"}
+_MUTATING_TOOLS = {"write_file", "create_directory", "delete_file", "move_file", "edit_file", "delegate_task"}
 
 # Design systems the agent can pull into context before writing UI code — professional,
 # production-tested rulesets (typography, color, motion, anti-slop constraints) so scaffolded
@@ -188,6 +188,38 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "delegate_task",
+            "description": (
+                "Hand off a fully-specified, mechanical sequence of file/directory operations to a "
+                "fast worker model, instead of calling create_directory/write_file/etc. yourself one "
+                "at a time. Use this once YOU have already decided everything — all file paths and "
+                "the COMPLETE content of anything to write. The worker does not think, design, or "
+                "invent: it only executes exactly what the plan says, verbatim. Good for: 'create "
+                "directory site, then write site/index.html with this exact content: <full HTML>'. "
+                "NOT for anything requiring judgment or content you haven't already fully written "
+                "out — do that yourself first, then delegate the mechanical execution. Saves you "
+                "from burning your own context on routine tool-call round-trips. Returns a terse "
+                "summary of what was executed, not the raw output of each step."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "plan": {
+                        "type": "string",
+                        "description": (
+                            "A precise, numbered list of steps. Include exact paths and the COMPLETE "
+                            "content of any file to write, inline, in full — the worker will not add, "
+                            "invent, or guess anything not explicitly given here."
+                        ),
+                    },
+                },
+                "required": ["plan"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "lookup_symbol",
             "description": (
                 "Look up a function, class, hook, or component by name in the knowledge graph. Returns "
@@ -253,6 +285,28 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         },
     },
 ]
+
+
+# The tools a delegated worker is allowed to use — mechanical file/dir ops plus read-only lookups
+# for verification. Deliberately excludes anything requiring judgment (get_design_guidance,
+# web_search), scope changes (create_project — delegation stays inside the calling repository), and
+# delegate_task itself (no recursive delegation).
+_EXECUTOR_TOOL_NAMES = {
+    "create_directory", "write_file", "edit_file", "delete_file", "move_file",
+    "list_directory", "read_file", "search_code", "run_python", "lookup_symbol",
+}
+
+_DELEGATE_SYSTEM = (
+    "You are a mechanical task executor, not a decision-maker. Another model has already made every "
+    "content and design decision and given you an exact, fully-specified plan below. Execute it "
+    "precisely with your tools — use the paths and content EXACTLY as given, verbatim. Never invent, "
+    "rewrite, summarize, improve, or add anything the plan didn't specify. If a step is ambiguous, "
+    "a path conflicts with something unexpected, or a tool call fails, STOP calling tools and reply "
+    "with a plain-text explanation of the problem instead of guessing or improvising a fix. Once "
+    "every step is genuinely done, reply with a short plain-text confirmation — no tool calls in "
+    "that final reply."
+)
+_MAX_DELEGATE_ROUNDS = 6
 
 
 def _truncate(text: str, limit: int = 6000) -> str:
@@ -366,9 +420,65 @@ def _lookup_symbol(name: str, repository: str, *, graph: Any, store: Any) -> str
     return "\n".join(lines)
 
 
+def _delegate_task(plan: str, repository: str, *, llm: Any, graph: Any, store: Any) -> str:
+    """Runs a short, bounded tool-calling loop against a light/fast model that only ever executes
+    the caller's plan verbatim — see _DELEGATE_SYSTEM. Returns a terse summary (what was called,
+    truncated results) instead of the raw tool outputs, which is the actual point: the calling
+    (heavy) model's own context grows by one tool_call + one short summary for the whole sequence,
+    not by every intermediate round-trip it would have paid for doing this itself.
+    """
+    if llm is None:
+        return "Delegation unavailable in this context (no LLM client) — perform the steps yourself."
+    worker_models = llm.models_for_tier("light")
+    model = worker_models[0] if worker_models else llm.default_model
+    executor_tools = [t for t in TOOL_SCHEMAS if t["function"]["name"] in _EXECUTOR_TOOL_NAMES]
+
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": _DELEGATE_SYSTEM},
+        {"role": "user", "content": plan},
+    ]
+    executed: list[str] = []
+    for _round in range(_MAX_DELEGATE_ROUNDS):
+        try:
+            msg, _usage = llm.complete_message(messages, model=model, tools=executor_tools, agent="delegate")
+        except Exception as exc:  # noqa: BLE001 - report back to the calling model, don't crash the turn
+            return (
+                f"Delegation failed to reach the worker model ({exc}). Nothing was executed — "
+                f"perform these steps yourself:\n{plan[:800]}"
+            )
+        tool_calls = getattr(msg, "tool_calls", None) or []
+        if not tool_calls:
+            final = (msg.content or "").strip()
+            executed.append(final or "(worker finished without a final message)")
+            break
+        messages.append({
+            "role": "assistant",
+            "content": msg.content or "",
+            "tool_calls": [
+                {"id": tc.id, "type": "function",
+                 "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                for tc in tool_calls
+            ],
+        })
+        for tc in tool_calls:
+            tname = tc.function.name
+            targs = parse_args(tc.function.arguments)
+            if tname not in _EXECUTOR_TOOL_NAMES:
+                result = f"Tool '{tname}' is not available to a delegated worker."
+            else:
+                result = execute_tool(tname, targs, repository, graph=graph, store=store)
+            label = targs.get("path") or targs.get("from_path") or targs.get("query") or ""
+            executed.append(f"{tname}({label}) -> {result[:150]}")
+            messages.append({"role": "tool", "tool_call_id": tc.id, "name": tname, "content": result})
+    else:
+        executed.append(f"(stopped after {_MAX_DELEGATE_ROUNDS} steps — plan may be incomplete, check manually)")
+
+    return "Delegated execution:\n" + "\n".join(f"- {line}" for line in executed[-12:])
+
+
 def execute_tool(
     name: str, args: dict[str, Any], repository: str, *,
-    graph: Any = None, store: Any = None, context: dict[str, Any] | None = None,
+    graph: Any = None, store: Any = None, context: dict[str, Any] | None = None, llm: Any = None,
 ) -> str:
     """Run a tool by name and return a text result for the model.
 
@@ -428,6 +538,8 @@ def execute_tool(
             return f"Moved {args['from_path']} -> {args['to_path']}."
         if name == "lookup_symbol":
             return _lookup_symbol(args["name"], repository, graph=graph, store=store)
+        if name == "delegate_task":
+            return _delegate_task(args["plan"], repository, llm=llm, graph=graph, store=store)
         if name == "get_design_guidance":
             return _get_design_guidance(args.get("style", "anti_slop"))
         if name == "web_search":

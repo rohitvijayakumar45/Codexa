@@ -10,8 +10,16 @@ import { EDGE_NEUTRAL, STATE_ACCENT, STATE_ACCENT_SOFT, edgeOpacity, edgeWidth }
 
 const RECENT_MS = 12 * 86_400_000; // an edge younger than this at the viewed time reads as "recent"
 const CURVE_SAMPLES = 18;
-const FLOW_CAPACITY = 96; // shared pool of "data flowing" particles across featured edges
+const FLOW_TRAIL = 4; // dots per featured edge — head + 3 tapering ghosts, reads as a comet not a bead
+const FLOW_TRAIL_SPACING = 0.05; // phase gap between trail dots, in curve-fraction units
+const FLOW_CAPACITY = 96 * FLOW_TRAIL; // shared pool of "data flowing" particles across featured edges
 const FLOW_SPEED = 0.32;
+
+// Idle "breathing" life: with nothing selected or hovered, a random node quietly pulses every few
+// seconds so the graph reads as alive rather than inert until touched.
+const PULSE_MIN_GAP = 2.2;
+const PULSE_MAX_GAP = 4.4;
+const PULSE_DURATION = 1.1;
 
 let glowTexture: THREE.Texture | null = null;
 // Soft radial falloff, generated once, tinted per-node via sprite/material color.
@@ -99,6 +107,7 @@ function Scene({
   const settleEnergy = useRef(1);
   const timeRef = useRef(timeMs);
   timeRef.current = timeMs;
+  const pulse = useRef({ idx: -1, until: 0, next: PULSE_MIN_GAP });
   const glow = useMemo(() => (typeof document === "undefined" ? null : getGlowTexture()), []);
 
   // Neighbor set of the selection, at the current time, for focus dimming.
@@ -184,6 +193,17 @@ function Scene({
       }
     }
 
+    // Idle life: pick a new random node to softly pulse every couple of seconds, but only while
+    // nothing is already claiming attention — a real selection/hover always wins.
+    const p = pulse.current;
+    if (reducedMotion || selectedId || hoveredId) {
+      p.idx = -1;
+    } else if (born.current >= p.next && nodeMeshes.current.length > 0) {
+      p.idx = Math.floor(Math.random() * nodeMeshes.current.length);
+      p.until = born.current + PULSE_DURATION;
+      p.next = p.until + PULSE_MIN_GAP + Math.random() * (PULSE_MAX_GAP - PULSE_MIN_GAP);
+    }
+
     for (let i = 0; i < nodeMeshes.current.length; i++) {
       const mesh = nodeMeshes.current[i];
       if (!mesh || !pos[i]) continue;
@@ -200,7 +220,15 @@ function Scene({
       const isPresent = present.has(node.id);
       const focusDim = selectedId && !isSel && !isNeighbor ? 0.24 : 1;
       const presence = isPresent ? 1 : 0.09;
-      const emphasis = isSel ? 1.55 : isHov ? 1.28 : 1;
+
+      // Idle breathing pulse envelope for whichever node the ambient-life timer picked (0 for
+      // everyone else) — a gentle 0→1→0 rise/fall over PULSE_DURATION, never fighting a real
+      // selection or hover since those suppress pulse.current.idx entirely above.
+      const pulsing = i === p.idx && born.current < p.until;
+      const pulsePhase = pulsing ? 1 - (p.until - born.current) / PULSE_DURATION : 0;
+      const pulseEnv = pulsing ? Math.sin(Math.PI * THREE.MathUtils.clamp(pulsePhase, 0, 1)) : 0;
+
+      const emphasis = isSel ? 1.55 : isHov ? 1.28 : 1 + pulseEnv * 0.22;
       const target = node.radius * emphasis * appear * (isPresent ? 1 : 0.5);
       mesh.scale.setScalar(THREE.MathUtils.lerp(mesh.scale.x, target, 0.18));
 
@@ -208,7 +236,7 @@ function Scene({
       mat.opacity = THREE.MathUtils.lerp(mat.opacity, appear * focusDim * presence, 0.18);
       mat.emissiveIntensity = THREE.MathUtils.lerp(
         mat.emissiveIntensity,
-        isSel ? 0.85 : isHov ? 0.5 : 0.12,
+        isSel ? 0.85 : isHov ? 0.5 : 0.12 + pulseEnv * 0.4,
         0.18,
       );
       // Selected node picks up a faint teal rim; everyone else stays their family hue.
@@ -218,10 +246,11 @@ function Scene({
       const sprite = glowSprites.current[i];
       if (sprite) {
         sprite.position.copy(pos[i]);
-        const haloScale = node.radius * emphasis * appear * (isPresent ? 1 : 0.5) * (isSel ? 4.4 : isHov ? 3.8 : 3.1);
+        const haloScale =
+          node.radius * emphasis * appear * (isPresent ? 1 : 0.5) * (isSel ? 4.4 : isHov ? 3.8 : 3.1 + pulseEnv * 1.4);
         sprite.scale.setScalar(THREE.MathUtils.lerp(sprite.scale.x, haloScale, 0.16));
         const smat = sprite.material as THREE.SpriteMaterial;
-        const haloOpacity = appear * focusDim * presence * (isSel ? 0.6 : isHov ? 0.42 : 0.2);
+        const haloOpacity = appear * focusDim * presence * (isSel ? 0.6 : isHov ? 0.42 : 0.2 + pulseEnv * 0.35);
         smat.opacity = THREE.MathUtils.lerp(smat.opacity, haloOpacity, 0.16);
       }
     }
@@ -232,8 +261,8 @@ function Scene({
       if (idx >= 0 && pos[idx]) {
         ringRef.current.visible = true;
         ringRef.current.position.copy(pos[idx]);
-        const pulse = 1 + (reducedMotion ? 0 : 0.14 * Math.sin(born.current * 3.1));
-        const ringScale = nodes[idx].radius * 2.1 * pulse;
+        const ringPulse = 1 + (reducedMotion ? 0 : 0.14 * Math.sin(born.current * 3.1));
+        const ringScale = nodes[idx].radius * 2.1 * ringPulse;
         ringRef.current.scale.setScalar(ringScale);
         ringRef.current.rotation.z += reducedMotion ? 0 : dt * 0.5;
         ringRef.current.rotation.x = Math.PI / 2.2;
@@ -295,14 +324,20 @@ function Scene({
       obj.material.linewidth = THREE.MathUtils.lerp(obj.material.linewidth, widthTarget, 0.15);
 
       if (featured && flowMesh.current && flowCount < FLOW_CAPACITY) {
-        const phase = (((born.current * FLOW_SPEED + i * 0.173) % 1) + 1) % 1;
-        curve.getPoint(phase, tmpFlow);
-        flowDummy.position.copy(tmpFlow);
+        // A short comet — a bright head plus tapering ghost dots trailing behind it along the same
+        // curve — instead of one bead sliding along the wire. Reads as motion, not a static marker.
+        const headPhase = (((born.current * FLOW_SPEED + i * 0.173) % 1) + 1) % 1;
         const shimmer = 0.15 + 0.06 * Math.sin(born.current * 6 + i * 1.7);
-        flowDummy.scale.setScalar(shimmer);
-        flowDummy.updateMatrix();
-        flowMesh.current.setMatrixAt(flowCount, flowDummy.matrix);
-        flowCount++;
+        for (let k = 0; k < FLOW_TRAIL && flowCount < FLOW_CAPACITY; k++) {
+          const trailPhase = (((headPhase - k * FLOW_TRAIL_SPACING) % 1) + 1) % 1;
+          curve.getPoint(trailPhase, tmpFlow);
+          flowDummy.position.copy(tmpFlow);
+          const falloff = 1 - k / FLOW_TRAIL; // 1 at the head, tapering to near-zero at the tail
+          flowDummy.scale.setScalar(shimmer * falloff * falloff);
+          flowDummy.updateMatrix();
+          flowMesh.current.setMatrixAt(flowCount, flowDummy.matrix);
+          flowCount++;
+        }
       }
     }
 

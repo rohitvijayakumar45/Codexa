@@ -14,6 +14,7 @@ export interface StoredTurn {
   pending?: boolean;
   history?: ChatMessage[];
   tool?: { name: string; args: Record<string, unknown>; result?: string };
+  tokens?: number; // this response's own prompt+completion total, from the backend's done event
 }
 
 export interface Conversation {
@@ -23,6 +24,7 @@ export interface Conversation {
   turns: StoredTurn[];
   createdAt: number;
   updatedAt: number;
+  totalTokens: number; // cumulative prompt+completion across every message sent in this conversation
 }
 
 interface ChatState {
@@ -35,6 +37,7 @@ interface ChatState {
   setTurns: (id: string, turns: StoredTurn[]) => void;
   setModel: (id: string, modelId: string | null) => void;
   setTitle: (id: string, title: string) => void;
+  addTokens: (id: string, count: number) => void;
   remove: (id: string) => void;
 }
 
@@ -42,7 +45,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 function makeConversation(modelId: string | null = null): Conversation {
   const now = Date.now();
-  return { id: uid(), title: "New chat", modelId, turns: [], createdAt: now, updatedAt: now };
+  return { id: uid(), title: "New chat", modelId, turns: [], createdAt: now, updatedAt: now, totalTokens: 0 };
 }
 
 export const useChatStore = create<ChatState>()(
@@ -94,6 +97,15 @@ export const useChatStore = create<ChatState>()(
           const conv = s.conversations[id];
           if (!conv) return s;
           return { conversations: { ...s.conversations, [id]: { ...conv, title } } };
+        }),
+
+      addTokens: (id, count) =>
+        set((s) => {
+          const conv = s.conversations[id];
+          if (!conv || count <= 0) return s;
+          return {
+            conversations: { ...s.conversations, [id]: { ...conv, totalTokens: (conv.totalTokens ?? 0) + count } },
+          };
         }),
 
       remove: (id) =>

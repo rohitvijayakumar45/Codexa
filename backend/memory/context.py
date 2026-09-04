@@ -25,6 +25,14 @@ _DEP_EDGES = {"imports", "calls", "depends_on", "flows_into"}
 _MAX_MATCHES = 5
 _MAX_NEIGHBORS_PER_MATCH = 6
 _MAX_ITEMS = 16
+# Digest records (project structure, function listings) can be several KB uncapped — this is what
+# was quietly padding every chat request's prompt regardless of relevance. See
+# docs/token_usage_investigation.md.
+_MAX_CONTENT_CHARS = 1200
+
+
+def _truncate(text: str, limit: int = _MAX_CONTENT_CHARS) -> str:
+    return text if len(text) <= limit else text[:limit] + f"… [truncated, {len(text)} chars total]"
 
 
 class ContextItem(BaseModel):
@@ -101,7 +109,7 @@ def create_context_router(*, store: MemoryStore, graph: GraphService) -> APIRout
                 content = entry["summary"] if entry else (
                     f"{node.node_type} at {node.properties.get('path') or node.properties.get('file')}"
                 )
-                items.append(ContextItem(kind=node.node_type, title=title, content=content))
+                items.append(ContextItem(kind=node.node_type, title=title, content=_truncate(content)))
 
                 neighbor_count = 0
                 for edge in edges:
@@ -132,7 +140,7 @@ def create_context_router(*, store: MemoryStore, graph: GraphService) -> APIRout
         for r in baseline:
             if len(items) >= _MAX_ITEMS:
                 break
-            items.append(ContextItem(kind=r.memory_type, title=r.title, content=r.content))
+            items.append(ContextItem(kind=r.memory_type, title=r.title, content=_truncate(r.content)))
 
         return items[:_MAX_ITEMS]
 

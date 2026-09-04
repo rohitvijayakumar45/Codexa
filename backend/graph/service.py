@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import uuid4
 
 from backend.graph.events import GraphEventWriter
 from backend.graph.repository import GraphRepository
@@ -39,6 +40,18 @@ class GraphService:
 
     def list_nodes(self) -> list[GraphNode]:
         return self.repository.list_nodes()
+
+    def remove_repository(self, repository: str) -> int:
+        removed = self.repository.remove_by_repository(repository)
+        if removed:
+            # No node survives deletion to anchor the event to, so use a fresh id — the repository
+            # name lives in the payload, which is what Time Machine / audit trails actually read.
+            self.event_writer.append(
+                event_type="repository.deleted",
+                aggregate_id=uuid4(),
+                payload={"repository": repository, "nodes_removed": removed},
+            )
+        return removed
 
     def list_edges_at(self, at_time: datetime | None = None) -> list[GraphEdge]:
         return self.repository.list_edges_at(at_time)

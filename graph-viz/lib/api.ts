@@ -263,6 +263,11 @@ export interface RepositoryInfo {
   already_loaded: boolean;
   memories_created: number;
 }
+export interface RepoListing {
+  name: string;
+  url: string;
+  loaded: boolean;
+}
 export interface RepoDocs {
   repository: string;
   generated_at: string;
@@ -301,6 +306,17 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function del<T>(path: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { method: "DELETE", headers: { accept: "application/json" } });
+  } catch (cause) {
+    throw new ApiError(`Can't reach the Codexa backend at ${API_BASE}.`, null, cause);
+  }
+  if (!res.ok) throw new ApiError(`Backend responded ${res.status} for ${path}.`, res.status);
+  return (await res.json()) as T;
+}
+
 export interface StreamHandlers {
   onDelta: (text: string) => void;
   onDone: (usage: ChatUsage | null) => void;
@@ -309,6 +325,7 @@ export interface StreamHandlers {
   onToolCall?: (call: { name: string; args: Record<string, unknown> }) => void;
   onToolResult?: (result: { name: string; result: string }) => void;
   onRepoSwitched?: (repository: string) => void;
+  onModelSwitched?: (modelId: string) => void;
   signal?: AbortSignal;
 }
 
@@ -357,6 +374,7 @@ export async function streamAgentChat(
           else if (evt.tool_call) handlers.onToolCall?.(evt.tool_call);
           else if (evt.tool_result) handlers.onToolResult?.(evt.tool_result);
           else if (evt.repo_switched) handlers.onRepoSwitched?.(evt.repo_switched);
+          else if (evt.model_switched) handlers.onModelSwitched?.(evt.model_switched);
         } catch {
           /* ignore */
         }
@@ -458,6 +476,13 @@ export const api = {
   loadRepository: (url: string) => post<RepositoryInfo>("/repository/load", { url }),
   createRepository: (name: string, description = "") =>
     post<RepositoryInfo>("/repository/create", { name, description }),
+  listRepositories: () => get<RepoListing[]>("/repository/list"),
+  activateRepository: (name: string) =>
+    post<RepositoryInfo>(`/repository/activate?name=${encodeURIComponent(name)}`, {}),
+  deleteRepository: (name: string) =>
+    del<{ name: string; nodes_removed: number; memories_removed: number; deleted_from_disk: boolean }>(
+      `/repository/${encodeURIComponent(name)}`,
+    ),
   fileTree: (repository: string) =>
     get<FileTreeNode[]>(`/files/tree?repository=${encodeURIComponent(repository)}`),
   fileRead: (repository: string, path: string) =>

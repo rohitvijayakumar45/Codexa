@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
@@ -77,6 +78,19 @@ class RepoDocs(BaseModel):
     repository: str
     generated_at: datetime
     markdown: str
+
+
+class RepoListing(BaseModel):
+    name: str
+    url: str
+    loaded: bool  # already has graph data in memory right now (vs. only sitting on disk)
+
+
+class DeleteRepoResponse(BaseModel):
+    name: str
+    nodes_removed: int
+    memories_removed: int
+    deleted_from_disk: bool
 
 
 def _repo_name(url: str) -> str:
@@ -237,6 +251,84 @@ def create_repository_router(*, store: MemoryStore, graph: GraphService, llm: LL
             return create_local_repository(request.name, request.description, store=store, graph=graph)
         except ValueError as exc:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    @router.get("/list", response_model=list[RepoListing])
+    def list_repositories() -> list[RepoListing]:
+        """Every repository sitting on disk (previously cloned or created), for switching between
+        them without re-cloning — plus the platform's own always-available 'codexa-os'."""
+        have = {n.properties.get("repository") for n in graph.list_nodes() if n.node_type == GraphNodeType.REPOSITORY}
+        out = [RepoListing(name="codexa-os", url="", loaded=True)]
+        repos_dir = DATA_DIR / "repos"
+        if not repos_dir.exists():
+            return out
+        for dest in sorted(p for p in repos_dir.iterdir() if p.is_dir()):
+            meta_path = dest / ".codexa-repo.json"
+            if not meta_path.exists():
+                continue
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            name = meta.get("name") or dest.name
+            out.append(RepoListing(name=name, url=meta.get("url", ""), loaded=name in have))
+        return out
+
+    @router.post("/activate", response_model=RepositoryInfo)
+    def activate(name: str = Query(...)) -> RepositoryInfo:
+        """Switch to a repository already sitting on disk, without re-cloning or recreating it. If
+        its graph data isn't in memory right now (e.g. ingestion never completed), (re)ingest it
+        from the existing local copy — still zero network/clone cost."""
+        if name == "codexa-os":
+            return RepositoryInfo(
+                name="codexa-os", url="", path="", file_count=0, languages=[],
+                already_loaded=True, memories_created=0,
+            )
+        dest = (DATA_DIR / "repos" / name).resolve()
+        if not dest.exists():
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Repository '{name}' isn't on disk.")
+        url = ""
+        meta_path = dest / ".codexa-repo.json"
+        if meta_path.exists():
+            try:
+                url = json.loads(meta_path.read_text(encoding="utf-8")).get("url", "")
+            except (json.JSONDecodeError, OSError):
+                pass
+        have = {n.properties.get("repository") for n in graph.list_nodes() if n.node_type == GraphNodeType.REPOSITORY}
+        if name in have:
+            d = _analyze(dest)
+            return RepositoryInfo(
+                name=name, url=url, path=str(dest), file_count=d["file_count"],
+                languages=d["languages"], already_loaded=True, memories_created=0,
+            )
+        return _ingest(name, url, dest, False, store=store, graph=graph, invalidate_docs=False)
+
+    @router.delete("/{name}", response_model=DeleteRepoResponse)
+    def delete(name: str) -> DeleteRepoResponse:
+        """Forget a repository entirely: its graph nodes/edges, every memory record, cached docs,
+        and its on-disk copy. The platform's own 'codexa-os' can never be deleted this way."""
+        if name == "codexa-os":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "codexa-os can't be deleted.")
+
+        nodes_removed = graph.remove_repository(name)
+        memories_removed = store.remove(name)
+        _docs_cache.pop(name, None)
+
+        # Resolve strictly inside DATA_DIR/repos before removing anything from disk — `name` is
+        # arbitrary client input, and this guards against a crafted "../../something" traversal.
+        repos_dir = (DATA_DIR / "repos").resolve()
+        dest = (repos_dir / name).resolve()
+        deleted_from_disk = False
+        if dest.is_relative_to(repos_dir) and dest.exists():
+            shutil.rmtree(dest, ignore_errors=True)
+            deleted_from_disk = not dest.exists()
+
+        if nodes_removed == 0 and memories_removed == 0 and not deleted_from_disk:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Repository '{name}' wasn't found.")
+
+        return DeleteRepoResponse(
+            name=name, nodes_removed=nodes_removed, memories_removed=memories_removed,
+            deleted_from_disk=deleted_from_disk,
+        )
 
     @router.post("/annotate", response_model=dict)
     def annotate(repository: str = Query(...)) -> dict:
