@@ -75,6 +75,19 @@ _INFORMATIVE_TOOLS = frozenset({
 })
 
 
+# Files Codexa itself writes into the repository as a side effect of inspecting it. They are not
+# work, and counting them as work broke the two checks that matter most: every screenshot round
+# created or modified `.codexa-screenshot.png`, so `made_progress` was true with nothing built, and
+# `is_thrashing` — whose own docstring names the screenshot loop as the exact escape it exists to
+# catch — could never fire, because the screenshot tool's own output supplied the disk change the
+# check was looking for.
+_AGENT_ARTEFACTS = frozenset({".codexa-screenshot.png", ".codexa-repo.json"})
+
+
+def _is_agent_artefact(rel_path: str) -> bool:
+    return rel_path.rsplit("/", 1)[-1] in _AGENT_ARTEFACTS
+
+
 def _is_skipped_dir(name: str) -> bool:
     """Named skip-list, plus every dotfile directory. The blanket dot rule catches the long tail
     (.mypy_cache, .turbo, .ruff_cache, .idea, .vercel …) that would otherwise need adding one
@@ -142,7 +155,10 @@ def snapshot(repository: str, *, max_files: int = _MAX_FILES_WALKED) -> RepoSnap
                     # Raced against the agent's own write, or an unreadable file. Skipping one entry
                     # is right; abandoning the snapshot over it is not.
                     continue
-                files[prefix + name] = (st.st_size, st.st_mtime_ns)
+                rel = prefix + name
+                if _is_agent_artefact(rel):
+                    continue
+                files[rel] = (st.st_size, st.st_mtime_ns)
     except OSError:
         return RepoSnapshot(files=files, taken_at=taken_at)
     return RepoSnapshot(files=files, taken_at=taken_at)

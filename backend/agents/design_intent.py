@@ -124,13 +124,17 @@ _VISUAL_STYLE = {
 MAX_SKILLS = 3
 
 
-# Briefs say what they are NOT at least as often as what they are, and a keyword match cannot tell
-# the difference. Measured: VELUM's brief contains "not a conventional website or dashboard", which
-# matched the data-dense signal on "dashboard" and gave a manuscript archive a dense, terminal-ish
-# reading of itself — the exact opposite of what the sentence said. Negated clauses are removed
-# before any character matching runs.
+# A negated clause ends at the first contrast word, clause boundary, or ~40 characters — whichever
+# comes first.
+#
+# The first version consumed 80 characters after any negation word and stopped only at a full stop.
+# "not X but Y" is the most common shape a brief uses to state what it wants, and that version ate
+# the Y: "Build not a landing page but a luxurious editorial archive of rare manuscripts" reduced to
+# "Build", so a classical archive classified as generic contemporary and got the wrong skill set.
+# The clause being removed is the X; the Y is the actual instruction and must survive.
 _NEGATED = re.compile(
-    r"\b(?:not|never|avoid|avoiding|rather than|instead of|without|no)\b[^.;\n]{0,80}",
+    r"\b(?:not|never|avoid|avoiding|rather than|instead of|without|no)\b"
+    r"(?:(?!\b(?:but|rather|instead|however|yet)\b)[^.;,\n]){0,40}",
     re.I,
 )
 

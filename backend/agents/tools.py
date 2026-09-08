@@ -24,6 +24,7 @@ import litellm
 from backend.agents.llm import is_rate_limit_error
 from backend.files.api import (
     build_tree,
+    is_platform_repo,
     create_directory,
     delete_path,
     edit_file,
@@ -45,6 +46,17 @@ _trust_boundary = TrustBoundaryService()
 _MUTATING_TOOLS = {
     "write_file", "create_directory", "delete_file", "move_file", "edit_file",
     "delegate_task", "delegate_build", "apply_patch", "create_files", "commit", "create_branch",
+    # Everything below reaches the disk through a SHELL rather than through the file API, which is
+    # why they were missing. The guard enumerated file-API tools and the shell tools walked straight
+    # past it: run_command executes with shell=True and cwd=repo_root(repository), so on the
+    # platform repository `run_command("echo x > backend/main.py")` edited Codexa's own source —
+    # exactly what this guard exists to prevent, through a door it was not watching.
+    #
+    # run_python is worse: it takes no repository argument at all, so the check could never apply to
+    # it however the set was written. It runs arbitrary code in a subprocess that inherits the
+    # server's environment, including every provider key.
+    "run_command", "run_python", "run_tests", "typecheck", "lint", "build",
+    "start_dev_server",
 }
 
 # Subset of _MUTATING_TOOLS that can change what's on disk in a way the knowledge graph should
@@ -67,6 +79,43 @@ GRAPH_DIRTYING_TOOLS = {
 # forcing the model to notice and recover (read_file for the real content) instead of silently
 # corrupting the repo.
 _COMPACTED_MARK = "[compacted"
+
+
+# Files whose contents are credentials rather than code. Reads stay deliberately open on the
+# platform repository — "explain this platform" chats depend on it — but `.env` sits at the project
+# root, `_safe` correctly allows it because it IS inside the root, and nothing filtered it. A single
+# `read_file(".env")` put every provider key into the conversation history, into the job event log
+# streamed to the browser, and into the checkpoint JSON on disk, where it persists after the job.
+#
+# Matched on the filename, not the path, so it holds wherever the file lives and in any repository
+# the agent has cloned. Refusing the read is the only safe answer: redacting values still confirms
+# which keys exist, and a partial secret in a transcript is still a secret in a transcript.
+_SECRET_FILENAMES = frozenset({
+    ".env", ".env.local", ".env.production", ".env.development", ".env.test",
+    "credentials", "credentials.json", "secrets.json", "secrets.yaml", "secrets.yml",
+    ".npmrc", ".pypirc", ".netrc", "_netrc", ".git-credentials", ".htpasswd",
+    "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", ".pgpass",
+})
+_SECRET_SUFFIXES = (".pem", ".key", ".pfx", ".p12", ".keystore", ".jks")
+_SECRET_PREFIXES = (".env.",)
+
+
+def _is_secret_file(path: str) -> bool:
+    name = (path or "").replace("\\", "/").rsplit("/", 1)[-1].strip().lower()
+    if not name:
+        return False
+    if name in _SECRET_FILENAMES or name.endswith(_SECRET_SUFFIXES):
+        return True
+    return name.startswith(_SECRET_PREFIXES)
+
+
+def _refuse_secret(path: str) -> str:
+    return (
+        f"Refused to read {path}: this file holds credentials, and anything returned here enters "
+        "the conversation, the event stream and the job checkpoint on disk. If you need to know "
+        "whether a setting exists, look at how the code reads it (os.getenv / process.env) rather "
+        "than at the file."
+    )
 
 
 def _reject_if_stale_placeholder(text: Any) -> str | None:
@@ -218,6 +267,43 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "commit_direction",
+            "description": (
+                "Record the decision you have reached, so it survives into later rounds and you "
+                "never have to work it out twice. Call this as soon as you know what you are "
+                "building - before writing the implementation, not after. It is cheap and creates "
+                "nothing on disk; it makes your decision durable."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "direction": {
+                        "type": "string",
+                        "description": "One or two sentences: what this product is and its "
+                                       "signature idea.",
+                    },
+                    "decisions": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Short implementation decisions that must survive - type "
+                                       "pairing, palette, layout approach, key interaction.",
+                    },
+                    "primary_artifact": {
+                        "type": "string",
+                        "description": "Repo-relative path of the main file, e.g. index.html.",
+                    },
+                    "next_action": {
+                        "type": "string",
+                        "description": "The concrete next tool call, e.g. write_file(index.html).",
+                    },
+                },
+                "required": ["direction"],
             },
         },
     },
@@ -1230,6 +1316,61 @@ def _get_design_guidance(style: str) -> str:
     # enough that every other skill file (emil_design_eng.md is the next-largest at ~28KB) fits
     # whole, only the deliberately-oversized anti_slop.md still truncates.
     return _truncate(text, limit=30000)
+
+
+def _commit_direction(
+    direction: str,
+    decisions: list[str] | None = None,
+    primary_artifact: str = "",
+    next_action: str = "",
+    *,
+    context: dict | None = None,
+) -> str:
+    """Record what the agent has decided, as a durable fact rather than as reasoning.
+
+    This exists because of a specific deadlock. A round that spends its whole generation budget
+    deliberating gets cut, and the partial reasoning is discarded — deliberately, because re-feeding
+    it invites the model straight back into the deliberation it was stopped for. But that made the
+    two states indistinguishable:
+
+        "I have not decided what to build."
+        "I have decided exactly what to build and had not yet emitted the tool call."
+
+    Both looked identical to the controller: a cut round with nothing to show. So the next round
+    started from scratch, re-derived the same decisions, and was cut again at almost exactly the
+    same size — 40,053 then 40,002 characters, twice in a row, with no artifact ever written.
+
+    A commitment cannot be recovered from a discarded transcript, so it has to be made as an ACTION.
+    A tool call survives the cut, lands in the checkpoint, and can be handed to the next round as
+    settled fact. It is also cheap: a few hundred characters the model can reach inside any budget,
+    which is what makes it a usable escape from a round it cannot otherwise finish.
+
+    Deliberately not a substitute for the work. It records a decision; it creates nothing.
+    """
+    decisions = [d.strip() for d in (decisions or []) if isinstance(d, str) and d.strip()]
+    record = {
+        "direction": (direction or "").strip()[:1200],
+        "decisions": decisions[:12],
+        "primary_artifact": (primary_artifact or "").strip()[:200],
+        "next_action": (next_action or "").strip()[:200],
+    }
+    if not record["direction"]:
+        return ("Refused: `direction` is required — one or two sentences saying what you are "
+                "building. This call is how that decision survives; an empty one records nothing.")
+    if context is not None:
+        context["commitment"] = record
+    lines = [f"Committed: {record['direction']}"]
+    if record["decisions"]:
+        lines.append("Decisions recorded: " + "; ".join(record["decisions"]))
+    if record["primary_artifact"]:
+        lines.append(f"Primary artifact: {record['primary_artifact']}")
+    if record["next_action"]:
+        lines.append(f"Next action: {record['next_action']}")
+    lines.append(
+        "This is now settled and will be carried into every following round. Do not reconsider the "
+        "direction — implement it."
+    )
+    return "\n".join(lines)
 
 
 def _run_python(code: str) -> str:
@@ -2533,7 +2674,11 @@ def execute_tool(
     issued this call — only used by screenshot, to decide whether the actual image is worth
     base64-encoding into context["screenshot_b64"] (only a vision-capable model can use it).
     """
-    if name in _MUTATING_TOOLS and repository == "codexa-os":
+    # is_platform_repo RESOLVES the path instead of comparing the string. `repository="../.."`
+    # resolved to the project root while being unequal to "codexa-os", so the guard passed and the
+    # agent could edit Codexa's own source. repo_root now refuses traversal outright; this check
+    # asks the question the guard actually means rather than a proxy for it.
+    if name in _MUTATING_TOOLS and is_platform_repo(repository):
         return (
             f"Tool '{name}' refused: the chat agent may not modify the Codexa OS platform's own "
             "source. Load or create a separate repository to scaffold or edit code in."
@@ -2552,7 +2697,15 @@ def execute_tool(
                 f"Created new project '{info.name}'. Now working in it — use create_directory/"
                 "write_file/edit_file to scaffold it."
             )
+        if name == "commit_direction":
+            return _commit_direction(
+                args.get("direction", ""), args.get("decisions"),
+                args.get("primary_artifact", ""), args.get("next_action", ""),
+                context=context,
+            )
         if name == "read_file":
+            if _is_secret_file(args["path"]):
+                return _refuse_secret(args["path"])
             return _read_window(
                 read_file(repo_root(repository), args["path"]).content,
                 path=args["path"],
@@ -2584,6 +2737,9 @@ def execute_tool(
                 context["exit_code"] = exit_code
             return text
         if name == "read_files":
+            leaked = [p for p in args["paths"] if _is_secret_file(p)]
+            if leaked:
+                return _refuse_secret(", ".join(leaked))
             return _read_files(args["paths"], repository)
         if name == "write_file":
             rejection = _reject_if_stale_placeholder(args["content"])
@@ -2731,6 +2887,7 @@ def parse_args(raw: Any) -> dict[str, Any]:
 
 tool_groups: dict[str, list[str]] = {
     "repo": [
+        "commit_direction",
         "tree", "list_symbols", "lookup_symbol", "get_dependencies",
         "search_code", "read_file", "read_files", "list_directory",
         "get_project_metadata", "find_references", "get_file_outline", "detect_conventions",
@@ -2873,6 +3030,33 @@ def classify_intent(message: str, system_note: str = "") -> list[str]:
             matched.add("code")
 
     return sorted(matched)
+
+
+def groups_providing(tool_names) -> set[str]:
+    """The smallest set of tool groups that makes every named tool callable.
+
+    Exists to enforce one invariant: **a job must be given the tools its own contract requires of
+    it.** That was not true, and the failure was silent and total. `classify_intent` matched
+    "build an html game of snake" to `['repo', 'runtime']` — the `code` regex needs `build.?a`,
+    which "build an" does not match, while bare "build" matches `runtime` — so `write_file`,
+    `edit_file`, `create_files` and `delegate_build` were absent from the schema list for the whole
+    job. The contract still demanded write_file, so the model was told to call a tool it had never
+    been offered, could not, and the job could not possibly succeed.
+
+    The same gap hid `get_design_guidance`: the resident design brief instructs the model to load
+    specific skills, and for most real briefs the `design` group was never selected, so the tool the
+    brief names did not exist.
+
+    Deriving the groups from the requirement rather than from the wording of the request closes the
+    whole class. Keyword classification stays — it is what offers USEFUL extras — but it is no
+    longer what decides whether the job is possible.
+    """
+    wanted = {t for t in tool_names if t}
+    needed: set[str] = set()
+    for group, members in tool_groups.items():
+        if wanted & set(members):
+            needed.add(group)
+    return needed
 
 
 def tools_for_groups(groups: list[str]) -> list[dict[str, Any]]:

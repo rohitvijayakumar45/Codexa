@@ -308,6 +308,56 @@ class _RateLimiter:
             time.sleep(max(sleep_for, 0.05))
 
 
+class CancellableStream:
+    """A provider stream that can actually be stopped from another thread.
+
+    The consumer of a stream runs on the job thread; the producer that pulls from it runs on a
+    watchdog thread (backend/agents/jobs.py `_stream_with_watchdog`). When a round is cut — a
+    generation budget, the wall clock, a user cancel — the consumer needs to stop the provider, and
+    it is not the thread inside the iteration.
+
+    Calling `close()` on the generator itself does not work, and failed silently. Python raises
+    `ValueError: generator already executing` when a generator is closed while another thread is
+    inside it, and that was swallowed by a best-effort `except Exception`. So every cut left the
+    producer blocked on a live HTTP response with the provider still generating and still billing,
+    until it happened to finish on its own. Orphaned generation was the normal case, not an edge.
+
+    What can be closed safely from another thread is litellm's own stream wrapper. This holds a
+    reference to whichever one is currently live — it changes on key failover — and closes that.
+    """
+
+    __slots__ = ("_gen", "_live")
+
+    def __init__(self, gen, live: dict):
+        self._gen = gen
+        self._live = live
+
+    def __iter__(self):
+        return self._gen
+
+    def __next__(self):
+        return next(self._gen)
+
+    def close(self) -> None:
+        """Tear down the underlying provider response. Safe to call from any thread, more than
+        once, and while the producer is mid-iteration — which is the only situation it is ever
+        called in."""
+        stream = self._live.get("stream")
+        if stream is None:
+            return
+        for method in ("close", "cancel"):
+            fn = getattr(stream, method, None)
+            if callable(fn):
+                try:
+                    fn()
+                    return
+                except Exception:  # noqa: BLE001 - already finished, or the provider dislikes it
+                    continue
+        # No teardown method: drop the reference so the socket is collected rather than pinned for
+        # the lifetime of the process.
+        self._live["stream"] = None
+
+
 class LLMClient:
     def __init__(self) -> None:
         overrides_env = os.getenv("AGENT_MODEL_OVERRIDES", "{}")
@@ -566,9 +616,16 @@ class LLMClient:
     def stream(self, model: str, messages: list[dict], **kwargs: Any) -> Iterator[Any]:
         model = model or self.default_model
         self._limiter.wait(model, self._active_key_index.get(model, 0))
-        return self._stream_with_key_failover(model, messages, **kwargs)
+        # `live` is shared with the generator below, which records whichever provider stream is
+        # currently open into it. That is what makes cancellation reach the provider instead of
+        # stopping at a generator that cannot be closed from another thread.
+        live: dict[str, Any] = {"stream": None}
+        return CancellableStream(
+            self._stream_with_key_failover(model, messages, _live=live, **kwargs), live)
 
-    def _stream_with_key_failover(self, model: str, messages: list[dict], **kwargs: Any) -> Iterator[Any]:
+    def _stream_with_key_failover(
+        self, model: str, messages: list[dict], _live: dict | None = None, **kwargs: Any,
+    ) -> Iterator[Any]:
         """Same idea as _with_key_failover, but a stream can't be silently retried once the caller
         has already seen real output from it — that would hand back duplicated/garbled content.
         So the rule here is: rate-limited before a single chunk went out → nothing was lost, retry
@@ -583,7 +640,13 @@ class LLMClient:
         while True:
             emitted = False
             try:
-                for chunk in litellm.completion(messages=messages, stream=True, **self._kwargs(model), **kwargs):
+                provider_stream = litellm.completion(
+                    messages=messages, stream=True, **self._kwargs(model), **kwargs)
+                if _live is not None:
+                    # Publish the live wrapper so CancellableStream.close() can tear it down. Set on
+                    # every attempt, because key failover replaces it.
+                    _live["stream"] = provider_stream
+                for chunk in provider_stream:
                     emitted = True
                     yield chunk
                 return

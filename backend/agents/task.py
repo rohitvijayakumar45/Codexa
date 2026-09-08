@@ -428,7 +428,13 @@ def validate_completion(
     # this, delegating (which the tool description now actively encourages, for exactly the
     # multi-file builds this validator exists to check) would look identical to never having
     # written anything, and the model would be told its completed work is incomplete.
-    if "delegate_task" in called_set:
+    # Both delegating tools author files inside a sub-loop the parent cannot see, so both must
+    # count. Only delegate_task did, so a job that built everything through delegate_build — the
+    # path the tool descriptions actively recommend for substantial files — was told "you must call
+    # write_file" with the files already on disk, and rewrote work it had already done.
+    # backend/agents/validators.py already allowed both and its comment noted the divergence; this
+    # closes it rather than documenting it.
+    if called_set & {"delegate_task", "delegate_build"}:
         called_set |= _DELEGATABLE_TOOLS
 
     # For MODIFY, edit_file OR apply_patch OR write_file all count as "the edit happened" — but

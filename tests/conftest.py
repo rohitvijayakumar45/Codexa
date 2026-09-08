@@ -54,13 +54,36 @@ import pytest  # noqa: E402
 
 
 @pytest.fixture(autouse=True, scope="session")
-def _isolate_job_checkpoints():
-    from backend.agents import jobs
+def _isolate_persistent_state():
+    """Redirect every directory the suite writes to.
 
-    with tempfile.TemporaryDirectory(prefix="codexa-test-jobs-") as tmp:
-        original, jobs.JOBS_DIR = jobs.JOBS_DIR, Path(tmp)
-        jobs.JOBS_DIR.mkdir(parents=True, exist_ok=True)
+    Job checkpoints were already redirected; an audit of what the suite leaves behind found two more
+    that were not. A full run appended rows to the developer's real `.codexa/usage.jsonl` — 2,835 of
+    them had accumulated — and wrote files into `backend/data/phased_builds/`, which held 330. Both
+    are the developer's actual state, and one test's assertion depended on it: a "records nothing"
+    check compared `len(records())` before and after, but `records()` returns the last 200 rows of a
+    ledger with thousands, so both sides were 200 and the test could not fail.
+
+    A suite that writes real state cannot gate anything, and a suite that READS it is measuring the
+    machine rather than the code.
+    """
+    from backend.agents import jobs, phased_build, usage
+
+    with tempfile.TemporaryDirectory(prefix="codexa-test-state-") as tmp:
+        root = Path(tmp)
+        originals = {
+            "jobs": jobs.JOBS_DIR,
+            "phased": phased_build.PHASED_BUILDS_DIR,
+            "usage": usage.DATA_DIR,
+        }
+        jobs.JOBS_DIR = root / "jobs"
+        phased_build.PHASED_BUILDS_DIR = root / "phased_builds"
+        usage.DATA_DIR = root / "usage"
+        for d in (jobs.JOBS_DIR, phased_build.PHASED_BUILDS_DIR, usage.DATA_DIR):
+            d.mkdir(parents=True, exist_ok=True)
         try:
             yield
         finally:
-            jobs.JOBS_DIR = original
+            jobs.JOBS_DIR = originals["jobs"]
+            phased_build.PHASED_BUILDS_DIR = originals["phased"]
+            usage.DATA_DIR = originals["usage"]

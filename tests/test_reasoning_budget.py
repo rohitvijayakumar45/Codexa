@@ -64,7 +64,9 @@ class ThinksHardThenActsLLM:
         self.saw_nudge = False
 
     def stream(self, model, messages, timeout=240, **kwargs):
-        if any(m.get("content") == _REASONING_NUDGE_TEXT for m in messages):
+        if any(str(m.get("content", "")).startswith("[SYSTEM: that round was stopped")
+               or str(m.get("content", "")).startswith("[SYSTEM: planning for this task")
+               for m in messages):
             self.saw_nudge = True
             yield _text_chunk("Writing it now.")
             return
@@ -113,8 +115,14 @@ class TestTheBudgetIsSane:
         # A stall nudge says "carry on from where you left off". That is the wrong instruction
         # here and would restart the very deliberation that was just cut.
         text = _REASONING_NUDGE_TEXT.lower()
-        assert "write_file" in text
-        assert "must call a tool" in text
+        # It now points at commit_direction rather than write_file. Forcing an expensive
+        # implementation call on a model that could not reach the end of its own planning asks it to
+        # do the hard thing under a shorter leash — which deadlocked, twice, at 40,053 and 40,002
+        # characters. commit_direction is cheap enough to reach inside any budget, and once it lands
+        # the decision is durable and the next round is genuinely different.
+        assert "commit_direction" in text
+        assert "must be a single commit_direction call" in text
+        # Still must not invite it back into the deliberation it was just stopped for.
         assert "continue exactly from where you left off" not in text
 
 
@@ -182,7 +190,8 @@ class TestRecovery:
         with patch("backend.agents.jobs.litellm.stream_chunk_builder", return_value=None):
             manager._loop(job, resuming=False)
 
-        nudges = [m for m in job.messages if m.get("content") == _REASONING_NUDGE_TEXT]
+        nudges = [m for m in job.messages
+                  if str(m.get("content", "")).startswith("[SYSTEM: that round was stopped")]
         assert len(nudges) <= 2, f"nudge stacked {len(nudges)} times"
 
     def test_messages_and_message_rounds_stay_in_sync(self):
@@ -199,9 +208,13 @@ class TestRecovery:
 
 
 class TestTheExceptionItself:
-    def test_it_carries_the_measured_size(self):
-        exc = _ReasoningBudgetExceeded(41234)
+    def test_it_carries_the_measured_size_and_the_cause(self):
+        # The cause is load-bearing now: a cut before any commitment exists recovers differently
+        # from one after, and a wall-clock cut differently again. Recovering them identically is
+        # what let the same round repeat itself.
+        exc = _ReasoningBudgetExceeded(41234, 63.0, "planning")
         assert exc.chars == 41234
+        assert exc.reason == "planning"
         assert "41234" in str(exc)
 
 

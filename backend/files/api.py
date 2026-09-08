@@ -75,10 +75,52 @@ class EditRequest(BaseModel):
     new_text: str
 
 
+def is_platform_repo(repository: str | None) -> bool:
+    """True when this name resolves to Codexa's own source tree.
+
+    The single question every mutation guard needs to ask, answered by RESOLVING the path rather
+    than by comparing the string to "codexa-os". String comparison was the whole vulnerability:
+    `repository="../.."` resolves to the project root while being unequal to "codexa-os", so the
+    guard passed and write_file, delete_file and apply_patch all operated on Codexa's own code.
+    """
+    try:
+        return repo_root(repository) == PROJECT_ROOT
+    except HTTPException:
+        return False
+
+
 def repo_root(repository: str | None) -> Path:
+    """Resolve a repository name to its root, refusing anything that escapes the repository store.
+
+    Two separate protections, both load-bearing.
+
+    Containment: the resolved path must sit directly inside DATA_DIR/"repos". Previously this only
+    checked `root.exists()`, so a caller-supplied name containing `..` produced any directory on the
+    machine — `"../.."` reached the project root, `"../../.."` its parent. Repository names arrive
+    from HTTP request bodies and from model-authored tool arguments, so this is reachable input, and
+    every path check downstream inherits whatever root it returns: `_safe` faithfully confines
+    traversal to a root that was already wrong.
+
+    Shape: a repository is one path segment. Rejecting separators and `..` up front means the
+    resolve below cannot be steered at all, rather than being steered and then caught.
+    """
     if not repository or repository == "codexa-os":
         return PROJECT_ROOT
-    root = (DATA_DIR / "repos" / repository).resolve()
+
+    name = repository.strip().replace("\\", "/")
+    if not name or name in (".", "..") or "/" in name or name.startswith("~"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Repository names are a single path segment: no separators, no '..'.",
+        )
+
+    store = (DATA_DIR / "repos").resolve()
+    root = (store / name).resolve()
+    if root.parent != store:
+        # Belt and braces. The shape check above should make this unreachable; it stays because this
+        # function is the single choke point every file operation in the platform depends on, and a
+        # wrong root here silently disarms every check that runs after it.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Repository path escapes the repository store.")
     if not root.exists():
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Repository '{repository}' is not loaded.")
     return root

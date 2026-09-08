@@ -53,6 +53,7 @@ from backend.agents.tools import (
     GRAPH_DIRTYING_TOOLS,
     classify_intent,
     execute_tool,
+    groups_providing,
     parse_args,
     tools_for_groups,
 )
@@ -118,6 +119,88 @@ def _contract_from_dict(contract_dict: dict) -> TaskContract:
     )
 
 
+def _attach_preamble(job: "Job", preamble: str) -> None:
+    """Put the task prompt and design brief into the job's system message, whatever shape it is in.
+
+    This is the second time this guarantee has been broken by the SHAPE of the caller's message
+    rather than by its absence.
+
+    The first version lived in backend/chat/api.py and ran only `if messages[0]["role"] ==
+    "system"`, so a job started through the API with just a user message got no task prompt at all.
+    Moving it here fixed that. But the frontend's system message is not a string: chat/api.py wraps
+    it as `[{"type": "text", "text": ..., "cache_control": {...}}]` for prefix caching, and the
+    replacement checked `isinstance(existing, str)` — so for every job started from the UI it
+    matched neither branch and silently did nothing. Verified on a live job: TASK MODE present
+    (added by the HTTP layer, which handles the list), DESIGN INTENT absent. The design pipeline was
+    dark again, in exactly the way it had just been fixed not to be.
+
+    So this handles all three shapes explicitly, and appends to the CACHED block on purpose: the
+    preamble is stable for the life of the job, which is what a cached prefix is for.
+    """
+    if not preamble:
+        return
+    first = job.messages[0] if job.messages else None
+    if first is None or first.get("role") != "system":
+        job.messages.insert(0, {"role": "system", "content": preamble})
+        job.message_rounds.insert(0, -100)
+        return
+
+    existing = first.get("content")
+    if isinstance(existing, str):
+        if "DESIGN INTENT" not in existing:
+            first["content"] = existing + "\n\n" + preamble
+        return
+    if isinstance(existing, list):
+        for block in existing:
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = block.get("text", "")
+                if "DESIGN INTENT" not in text:
+                    block["text"] = text + "\n\n" + preamble
+                return
+        existing.append({"type": "text", "text": preamble})
+        return
+    # Some other shape entirely — never silently drop it, which is the whole failure being fixed.
+    job.messages.insert(0, {"role": "system", "content": preamble})
+    job.message_rounds.insert(0, -100)
+
+
+# The prefixes of the two recovery directives. Used to find and REPLACE a stale one rather than
+# appending another, so exactly one is ever live.
+_DIRECTIVE_MARKS = ("[SYSTEM: that round was stopped", "[SYSTEM: planning for this task")
+
+
+def _replace_directive(
+    messages: list[dict], message_rounds: list[int], text: str, current_round: int
+) -> None:
+    """Keep exactly one recovery directive in the transcript, at the end.
+
+    The previous rule was "do not append if an identical one is among the last three messages", and
+    it does not hold. By the time a later round is cut, the earlier directive has scrolled past that
+    window behind the assistant/tool pairs in between — so it appended again. Measured on a live
+    job: FOUR copies of the same 2,227-character execution directive, ~9KB of duplicated instruction
+    re-sent on every subsequent request for the rest of the run.
+
+    That is not merely wasteful. A history filling with byte-identical system messages is the exact
+    pattern documented in this file's stall-recovery path as having preceded two providers going
+    permanently silent, which is why that path collapses its own runs of nudges.
+
+    Replacing rather than appending also keeps the instruction adjacent to the round it applies to,
+    where a model is most likely to act on it. The two lists are edited together — they are
+    index-matched and compaction reads round numbers positionally.
+    """
+    for i in range(len(messages) - 1, -1, -1):
+        content = messages[i].get("content")
+        if (
+            messages[i].get("role") == "user"
+            and isinstance(content, str)
+            and content.startswith(_DIRECTIVE_MARKS)
+        ):
+            del messages[i]
+            del message_rounds[i]
+    messages.append({"role": "user", "content": text})
+    message_rounds.append(current_round)
+
+
 def _recent_non_context_messages(messages: list[dict], count: int) -> list[dict]:
     """The last `count` messages, ignoring the controller's execution-state block.
 
@@ -145,28 +228,96 @@ def _last_user_text(messages: list[dict]) -> str:
     return ""
 
 
-class _ReasoningBudgetExceeded(Exception):
-    """One round spent more than _MAX_REASONING_CHARS_PER_ROUND thinking without finishing."""
+class _GenerationBudgetExceeded(Exception):
+    """One round generated too much, or ran too long, without producing an action.
 
-    def __init__(self, chars: int) -> None:
-        super().__init__(f"round exceeded the reasoning budget ({chars} chars) without acting")
+    Carries WHY so the controller can recover differently for different causes — see
+    backend/agents/controller.py. `chars` is deliberation only; tool-call arguments are never
+    counted, because those are the product rather than the deliberation.
+    """
+
+    def __init__(self, chars: int, seconds: float, reason: str) -> None:
+        super().__init__(f"round exceeded its {reason} budget ({chars} chars, {seconds:.0f}s)")
         self.chars = chars
+        self.seconds = seconds
+        self.reason = reason
 
 
-# ~40k characters is roughly 10k reasoning tokens — far more than any single step of a real build
-# needs, and deliberately generous so ordinary deep thinking never touches it. It exists for the
-# pathological case actually observed: a model restating and re-deciding its plan indefinitely
-# inside one round, producing nothing. Recoverable by design (see _REASONING_NUDGE_TEXT): the round
-# is cut and retried with an instruction to act, not failed.
-_MAX_REASONING_CHARS_PER_ROUND = 40_000
+# Deliberation characters one round may generate before it is cut. Counted across BOTH channels.
+#
+# The original version counted only `reasoning_content`, and that hole caused a real deadlock. A job
+# sat on one round for over twenty minutes: not stalled (chunks kept arriving, so the 90s watchdog
+# reset every time) and never cut (the counter saw nothing, because the model was deliberating in
+# the CONTENT channel instead). Two guards, both blind, and an unbounded round between them. The
+# lesson is that a budget which depends on correctly classifying what a provider is emitting will
+# eventually be wrong about it — so this counts every character the model generates that is not a
+# tool-call argument, and the wall-clock ceiling below backs it up regardless of classification.
+_PLANNING_CHARS = 40_000
+# Once a direction is committed, thinking has already happened and been recorded. A round whose job
+# is to emit one write_file does not need another forty thousand characters to decide what to write,
+# and letting it have them is how "deep task" turns back into "deep round".
+_EXECUTION_CHARS = 18_000
 
-_REASONING_NUDGE_TEXT = (
-    "[SYSTEM: that round was stopped — it spent a very long time planning without calling a single "
-    "tool. Planning is done. Do not restate the plan, do not reconsider the approach, and do not "
-    "compare alternatives. Your next message must call a tool. If you were deciding what to write, "
-    "write the first version now with write_file; you can refine it afterwards with edit_file. A "
-    "complete file on disk that you improve later is worth more than any further planning.]"
+# The backstop. Independent of channel, of token counting, and of anything the provider chooses to
+# call its output — the one guard that cannot be evaded by emitting through an unexpected field.
+# Generous: a large write_file legitimately streams for minutes on a slow free-tier provider, and
+# cutting real output would be far worse than the hang this prevents.
+_MAX_ROUND_SECONDS = 9 * 60.0
+
+
+# Back-compat alias: the exception was named for the reasoning channel before it learned to
+# count both. Kept so existing imports resolve to the same class rather than silently catching
+# nothing.
+_ReasoningBudgetExceeded = _GenerationBudgetExceeded
+_MAX_REASONING_CHARS_PER_ROUND = _PLANNING_CHARS
+
+_COMMIT_FIRST_TEXT = (
+    "[SYSTEM: that round was stopped — it spent its whole generation budget deciding, and the "
+    "work was lost because nothing recorded it. That has now happened without producing anything, "
+    "so stop deciding and record what you have already decided.\n\n"
+    "Your next message must be a single commit_direction call. It is cheap, it writes nothing to "
+    "disk, and it is the only thing that makes your decision survive into the next round. Give it "
+    "the concept in one or two sentences, the handful of implementation decisions that must not be "
+    "re-litigated (typography, palette, layout approach, the signature interaction), the primary "
+    "artifact path, and the concrete next call.\n\n"
+    "If you have not decided yet, decide now with whatever you have and commit that — a committed "
+    "direction you refine while building is worth incomparably more than a better one you never "
+    "reach.]"
 )
+
+
+def _execution_directive(commitment: dict | None, forced_tool: str | None) -> str:
+    """The message that opens an execution round: what was settled, and the one thing left to do.
+
+    Carries decisions and outcomes, never deliberation. Replaying the reasoning that produced a
+    decision is what invites a model back into the deliberation it was cut out of; replaying the
+    decision itself ends it.
+    """
+    lines = ["[SYSTEM: planning for this task is finished. The direction below is settled — do not "
+             "reconsider it, do not compare alternatives, do not restate it.", ""]
+    if commitment:
+        if commitment.get("direction"):
+            lines.append(f"COMMITTED DIRECTION: {commitment['direction']}")
+        for decision in commitment.get("decisions", [])[:8]:
+            lines.append(f"  - {decision}")
+        if commitment.get("primary_artifact"):
+            lines.append(f"PRIMARY ARTIFACT: {commitment['primary_artifact']}")
+        lines.append("")
+    if forced_tool:
+        lines.append(
+            f"OUTSTANDING ACTION: call {forced_tool} now, and nothing else. Write the complete "
+            "content in that one call — a partial version you intend to finish later costs a second "
+            "full generation of everything you already wrote."
+        )
+    else:
+        lines.append("OUTSTANDING ACTION: perform the implementation this task requires, with a tool.")
+    lines.append("]")
+    return "\n".join(lines)
+
+# Superseded by the two directives above, which distinguish 'decide first' from
+# 'the decision is made, act'. Kept so older references resolve.
+_REASONING_NUDGE_TEXT = _COMMIT_FIRST_TEXT
+
 
 _MAX_STALL_RECOVERIES = 2
 # This no longer needs to be raised on its own to tolerate a genuinely flaky provider — once
@@ -336,6 +487,15 @@ def _compact_stale_payloads(
                     args = json.loads(fn.get("arguments") or "{}")
                 except (json.JSONDecodeError, TypeError):
                     continue
+                if not isinstance(args, dict):
+                    # A model can emit arguments that are valid JSON but not an object — a bare
+                    # string or a list. json.loads then SUCCEEDS and the next line does .get() on a
+                    # str, raising AttributeError out of compaction, which runs outside any try in
+                    # the round loop. That killed the job with error_reason=None, so it was neither
+                    # auto-continued nor eligible for Continue, and the bad message stayed in the
+                    # history so every resume re-crashed on it. Permanently unrecoverable, from one
+                    # malformed argument.
+                    continue
                 threshold = _STALE_AFTER_ROUNDS
                 if protected_paths and args.get("path") in protected_paths:
                     threshold *= GRACE_MULTIPLIER_IN_RADIUS
@@ -447,6 +607,17 @@ class Job:
     # Persisted so a resumed job, a rotated model and every refinement pass all build against
     # the same decided intent rather than re-inferring one from whatever is left in context.
     design: dict | None = None
+    # What the agent has DECIDED, recorded by the commit_direction tool. This is the semantic
+    # checkpoint: a compact set of settled facts that survives a cut round, so the next round
+    # continues from "I already decided what this is, now build it" instead of re-deriving the same
+    # decisions and being cut again at the same size. Never chain-of-thought — a discarded
+    # transcript cannot be a continuity mechanism, which is exactly why the previous design
+    # deadlocked.
+    commitment: dict | None = None
+    # Consecutive rounds cut without the active task advancing. Reset by real progress and by a task
+    # change. Drives escalation: two identical cuts in a row means repeating the round is pointless,
+    # so the controller must change execution mode rather than retry.
+    consecutive_cuts: int = 0
     # Where in `tools_called` / `exit_code_log` each task began. Without these, a per-task validator
     # would answer "did this task call write_file?" using a write_file from three tasks ago, and
     # every later task would validate itself on the strength of earlier work.
@@ -570,7 +741,17 @@ class JobManager:
             "constraints": contract.constraints,
             "suggested_workflow": contract.suggested_workflow,
         }
-        job.active_tool_groups = classify_intent(contract_source)
+        intent = derive_design(contract_source, contract)
+        groups = set(classify_intent(contract_source))
+        # The contract decides what this job MUST do; the groups decide what it CAN do. Those two
+        # were derived independently from the same text by different regexes, so they disagreed —
+        # a job could be required to call write_file and never be offered it. Union them.
+        groups |= groups_providing(contract.required_tools)
+        if intent is not None:
+            # A frontend task is told which design skills to load; the tool that loads them has to
+            # be there.
+            groups |= groups_providing(["get_design_guidance", "screenshot", "start_dev_server"])
+        job.active_tool_groups = sorted(groups)
         # Kept so _loop can build (or rebuild) the execution plan from the ORIGINAL request. A plan
         # derived from a later "continue" nudge would describe the wrong job entirely.
         job.contract_source = contract_source
@@ -582,19 +763,11 @@ class JobManager:
         # at all: no TASK MODE, no REQUIRED TOOLS, no constraints. Every job of a real overnight
         # benchmark run was in exactly that shape. A guarantee that depends on what the caller
         # happened to send is not a guarantee.
-        intent = derive_design(contract_source, contract)
         job.design = intent.to_dict() if intent else None
         preamble = "\n\n".join(
             x for x in (build_task_prompt(contract), design_brief(intent)) if x
         )
-        if preamble:
-            if job.messages and job.messages[0].get("role") == "system":
-                existing = job.messages[0].get("content")
-                if isinstance(existing, str) and "TASK MODE" not in existing:
-                    job.messages[0]["content"] = existing + "\n\n" + preamble
-            else:
-                job.messages.insert(0, {"role": "system", "content": preamble})
-                job.message_rounds.insert(0, -100)
+        _attach_preamble(job, preamble)
         # Informational, not enforced (backend/agents/token_budget.py) — how many tokens tasks of
         # this same classified intent have actually cost historically, surfaced before any work
         # starts. Safe to compute before the thread launches: job.events isn't touched by anything
@@ -869,7 +1042,6 @@ class JobManager:
             job.plan = plan.to_dict()
             if plan.tasks:
                 logger.info("job %s: planned %s tasks", job.id, len(plan.tasks))
-                self._emit(job, {"plan": summarize_for_event(plan)})
                 # Size the round budget to the plan. _MAX_ROUNDS (10) was chosen for the old
                 # single-shot loop, where one round was expected to do everything; an eight-task
                 # plan cannot fit in it, and observed runs spent seven rounds on task 1 alone. The
@@ -890,6 +1062,13 @@ class JobManager:
             ExecutionController(job, plan, repository=working_repo, emit=lambda p: self._emit(job, p))
             if plan.tasks else None
         )
+        if plan.tasks:
+            # Emitted on EVERY entry to the loop, not only when the plan was first constructed.
+            # The emit used to sit inside `if plan is None:`, so a resumed job, an auto-continue or
+            # a Continue click never re-sent it — and `continue_job` clears `job.events`, so a
+            # client replaying from index 0 saw no plan at all until the next task transition, which
+            # on a stuck job may never arrive. That is the "task card does not show up" report.
+            self._emit(job, {"plan": summarize_for_event(plan)})
 
         # Set by the reasoning-budget cut or by the execution controller, and consumed by the very
         # next round then cleared. Asking a model that is deep in planning to please call a tool does
@@ -933,30 +1112,41 @@ class JobManager:
             forced_tool, force_any_tool = None, False
             kwargs = {"tools": active_tools, "tool_choice": choice} if with_tools else {}
             chunks = []
-            reasoning_chars = 0
-            round_reasoning_chars = 0
+            # Deliberation characters, across BOTH channels. Counting only reasoning_content left a
+            # hole a real job fell into for twenty minutes: chunks kept arriving so the stall
+            # watchdog reset every time, while the model deliberated in the content channel where
+            # the counter could not see it. Tool-call arguments are never counted here — those
+            # arrive via delta.tool_calls and are the product, not the deliberation.
+            spent = 0
+            started_at = time.time()
+            # Once a direction is committed the thinking has been done and recorded, so a round
+            # whose job is to emit one call gets a much shorter leash than one still deciding.
+            limit = _EXECUTION_CHARS if job.commitment else _PLANNING_CHARS
+            phase = "execution" if job.commitment else "planning"
             for chunk in _stream_with_watchdog(llm.stream(model, messages, timeout=240, **kwargs)):
                 if job.cancelled:
                     break
+                # The backstop, checked on every chunk: independent of channel, of token counting,
+                # and of whatever a provider chooses to call its output. It is the only guard here
+                # that cannot be evaded by emitting through an unexpected field, which is exactly
+                # how the last deadlock survived two other guards.
+                elapsed = time.time() - started_at
+                if elapsed > _MAX_ROUND_SECONDS:
+                    raise _GenerationBudgetExceeded(spent, elapsed, "wall-clock")
                 chunks.append(chunk)
                 delta = chunk.choices[0].delta
                 thinking = getattr(delta, "reasoning_content", None)
                 if thinking:
-                    reasoning_chars += len(thinking)
-                    round_reasoning_chars = reasoning_chars
-                    # The one blind spot every other guard shares: they all act BETWEEN rounds. The
-                    # 90s watchdog resets on each chunk, so a model that keeps emitting never trips
-                    # it; the round budget counts rounds, so a single endless round reads as
-                    # "round 0, healthy"; validate_completion only runs once a round returns. A real
-                    # build sat in round 0 for tens of minutes emitting reasoning and nothing
-                    # noticed — one observed call spent 30,478 reasoning tokens to produce 131
-                    # tokens of output. Cutting the round here converts an invisible hang into an
-                    # ordinary recoverable failure the loop below already knows how to nudge and
-                    # retry, and costs nothing on the normal path where rounds end long before this.
-                    if reasoning_chars > _MAX_REASONING_CHARS_PER_ROUND:
-                        raise _ReasoningBudgetExceeded(reasoning_chars)
+                    spent += len(thinking)
+                    round_reasoning_chars = spent
+                    if spent > limit:
+                        raise _GenerationBudgetExceeded(spent, elapsed, phase)
                     yield ("thinking", thinking)
                 if delta.content:
+                    spent += len(delta.content)
+                    round_reasoning_chars = spent
+                    if spent > limit:
+                        raise _GenerationBudgetExceeded(spent, elapsed, phase)
                     yield ("delta", delta.content)
             final = litellm.stream_chunk_builder(chunks, messages=messages)
             usage = (
@@ -1048,6 +1238,12 @@ class JobManager:
                 self._checkpoint(job)
                 return
             job.round = _round
+            # Reset per ROUND. It was initialised once at _loop scope, so a round that emitted no
+            # reasoning at all (a pure write_file round) left the previous round's value in place
+            # and charged it to the task a second time. Three such rounds crossed the per-task
+            # reasoning ceiling and triggered a spurious intervention on a task that was writing
+            # files perfectly.
+            round_reasoning_chars = 0
             _compact_stale_payloads(messages, message_rounds, _round, graph=self._graph, repository=working_repo)
 
             # --- select the task this round is for --------------------------------------------
@@ -1125,31 +1321,54 @@ class JobManager:
                         if kind == "delta":
                             partial_content += payload
                         self._emit(job, {kind: payload})
-            except _ReasoningBudgetExceeded as exc:
-                # Deliberately NOT routed through stall recovery below: a stall is a dead
-                # connection and the right response is "continue where you left off", which is the
-                # exact opposite of what an over-thinking round needs to hear. Discarding the
-                # partial reasoning is the point — re-feeding it would invite the model to resume
-                # the same deliberation it just got stopped for. This costs a round rather than
-                # failing the job, and does not touch stall_recoveries.
-                logger.warning("job %s: round %s cut at %s reasoning chars", job.id, _round, exc.chars)
-                self._emit(job, {"status": "Stopped a long planning pass — switching to writing"})
-                # The nudge explains WHY; tool_choice is what actually enforces it. When a plan is
-                # active the controller can name the exact call this task is missing, which is
-                # strictly better than the contract-level guess — a job-wide "write_file was never
-                # called" says nothing once task 3 of 8 has already written something.
+            except _GenerationBudgetExceeded as exc:
+                # A cut is not one failure, it is four, and they need different answers. Recovering
+                # them identically is what produced the deadlock: rounds 32 and 33 were cut at
+                # 40,053 and 40,002 characters — the same deliberation regenerated and thrown away
+                # twice — because "retry the round" was the only response available.
+                #
+                # The distinction that matters is whether anything was DECIDED. Before a commitment
+                # exists, the useful recovery is to make deciding itself the next action: forcing an
+                # expensive write_file on a model that could not reach the end of its own planning
+                # asks it to do the hard thing under a shorter leash. commit_direction is cheap
+                # enough to reach inside any budget, and once it lands the decision is durable and
+                # the next round is a genuinely different round.
+                job.consecutive_cuts += 1
+                committed = bool(job.commitment)
+                available = {s["function"]["name"] for s in active_tools}
+                cause = (
+                    "wall_clock" if exc.reason == "wall-clock"
+                    else ("cap_after_commit" if committed else "cap_before_commit")
+                )
+                logger.warning(
+                    "job %s: round %s cut (%s) at %s chars / %.0fs — streak %s, committed=%s",
+                    job.id, _round, cause, exc.chars, exc.seconds, job.consecutive_cuts, committed,
+                )
+                self._emit(job, {"tool_call": {"name": "_round_cut", "args": {
+                    "cause": cause, "chars": exc.chars, "seconds": round(exc.seconds),
+                    "consecutive": job.consecutive_cuts, "committed": committed,
+                }}})
+
                 if controller is not None and active_task is not None:
                     active_task.reasoning_chars += round_reasoning_chars
-                    forced_tool = controller.forced_tool_for(
-                        active_task, {s["function"]["name"] for s in active_tools}
-                    )
-                force_any_tool = forced_tool is None and bool(active_tools)
-                if not any(
-                    m.get("content") == _REASONING_NUDGE_TEXT
-                    for m in _recent_non_context_messages(messages, 3)
-                ):
-                    messages.append({"role": "user", "content": _REASONING_NUDGE_TEXT})
-                    message_rounds.append(_round)
+
+                if not committed and "commit_direction" in available:
+                    # Make the decision the action. This is the whole fix: the model stops being
+                    # asked to finish a large implementation inside a budget it keeps overrunning,
+                    # and is asked instead for the one cheap call that turns its thinking into state.
+                    forced_tool = "commit_direction"
+                    self._emit(job, {"status": "Pausing planning — recording the decision first"})
+                    guidance = _COMMIT_FIRST_TEXT
+                else:
+                    # Committed already, or no commitment tool available: drive the outstanding
+                    # action with the shortest possible horizon.
+                    if controller is not None and active_task is not None:
+                        forced_tool = controller.forced_tool_for(active_task, available)
+                    force_any_tool = forced_tool is None and bool(active_tools)
+                    self._emit(job, {"status": "Planning is done — performing the outstanding action"})
+                    guidance = _execution_directive(job.commitment, forced_tool)
+
+                _replace_directive(messages, message_rounds, guidance, _round)
                 self._checkpoint(job)
                 continue
             except Exception:
@@ -1225,6 +1444,21 @@ class JobManager:
 
             job.prompt_tokens += usage["prompt_tokens"]
             job.completion_tokens += usage["completion_tokens"]
+            if job.cancelled:
+                # Cancellation was checked between chunks and at the top of the round, and nowhere
+                # in between — so a cancel that landed mid-stream still fell through to the tool
+                # executor below and ran every write_file, delete_file and run_command in the
+                # partial message. Worse, if the break truncated before any tool call arrived, the
+                # round looked like a completion claim and could mark the active task COMPLETED.
+                # Stopping means stopping: nothing after this point should act on a cancelled round.
+                job.status = "done"
+                self._emit(job, {"done": True, "cancelled": True, "usage": {
+                    "prompt_tokens": job.prompt_tokens, "completion_tokens": job.completion_tokens,
+                    "context_window": llm.context_window(model), "model": model,
+                }})
+                self._checkpoint(job)
+                return
+
             tool_calls = getattr(msg, "tool_calls", None) or [] if msg else []
             if tool_calls:
                 messages.append({
@@ -1260,7 +1494,19 @@ class JobManager:
                         if tool_ctx.get("new_repository"):
                             working_repo = tool_ctx["new_repository"]
                             job.working_repo = working_repo
+                            if controller is not None:
+                                # The controller captured the repository name at construction and
+                                # kept it, so after a mid-job switch every snapshot, progress
+                                # comparison and validator inspected the abandoned repository:
+                                # perpetual "no progress" and failed tasks while real files were
+                                # being written somewhere else.
+                                controller.repository = working_repo
                             self._emit(job, {"repo_switched": working_repo})
+                        if tool_ctx.get("commitment"):
+                            # Promote it onto the job so it is checkpointed and survives the cut,
+                            # the restart and the model rotation that would otherwise lose it.
+                            job.commitment = tool_ctx["commitment"]
+                            self._emit(job, {"status": "Direction committed"})
                         if "exit_code" in tool_ctx:
                             job.tool_exit_codes[tc.id] = tool_ctx["exit_code"]
                             # Ordered mirror of the same data. tool_exit_codes is keyed by
@@ -1324,6 +1570,10 @@ class JobManager:
                     if signal.made_progress:
                         self._emit(job, {"status": signal.describe()})
                     controller.sync()
+                    # A task whose checks now pass is finished, whether or not the model has
+                    # noticed. Waiting for it to fall silent to find out is what let one task run
+                    # fifteen rounds past its own completion, manufacturing work to fill them.
+                    controller.try_advance(active_task)
                 self._checkpoint(job)
                 continue
 
@@ -1331,7 +1581,11 @@ class JobManager:
             # is finished — never the finding that it is. Check it against the repository, and either
             # advance the plan or hand back exactly what is still missing. Only once every task is
             # genuinely complete does the round fall through to the job-level gates below.
-            if controller is not None and active_task is not None:
+            if controller is not None and active_task is not None and not active_task.is_terminal:
+                # `active_task` was captured at the top of the round. An intervention during that
+                # round can FAIL it and insert a recovery task, after which treating this round as a
+                # completion claim marked the FAILED task COMPLETED — leaving the plan showing the
+                # task both done and awaiting recovery.
                 controller.record_round(
                     active_task,
                     before=snapshot_before or controller.snapshot_repo(),
@@ -1344,9 +1598,21 @@ class JobManager:
                 job.model = model
                 self._checkpoint(job)
                 if not task_completed:
-                    # Validation rejected the claim (or the task failed and was replaced by a
-                    # repair). The correction naming exactly what is missing is already in the
-                    # transcript; run another round against the same task.
+                    # Validation rejected the claim. The correction naming what is missing is
+                    # already in the transcript — but a model that just declared itself finished has
+                    # demonstrated it will not reach for the tool on its own, so prose alone is the
+                    # weakest possible response. Force the outstanding call.
+                    #
+                    # This also fixes an ordering race: a no-tool round increments BOTH the
+                    # validation attempts and the no-progress streak, and with both budgets at 3 the
+                    # attempts always won — the task reached FAILED at round 2 while the streak was
+                    # still 2, so the intervention that would have forced the tool never fired at
+                    # all. Forcing here means the rejection itself drives the next round.
+                    if not active_task.is_terminal:
+                        forced_tool = controller.forced_tool_for(
+                            active_task, {s["function"]["name"] for s in active_tools}
+                        )
+                        force_any_tool = forced_tool is None and bool(active_tools)
                     continue
                 if controller.blocking_reason() is not None:
                     # A task finished but the plan has not. Keep going rather than treating this

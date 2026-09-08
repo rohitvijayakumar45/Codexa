@@ -577,4 +577,14 @@ def infer_validators(task: Task) -> list[str]:
     if renderable and "screenshot" in required:
         inferred.append("renders_cleanly")
 
+    # design_evidence existed, was fully plumbed (_Ctx.design, the controller's design= argument)
+    # and was referenced by nothing outside its own registry and two unit tests — because
+    # plan_builder OVERWRITES every task's validators with whatever this function returns, and this
+    # function never returned it. The whole design-completion dimension was dead code that looked
+    # wired end to end. It is cheap (a regex pass over a file already on disk), so it belongs
+    # wherever an artifact is expected; validate_task no-ops it when the task carries no design
+    # intent, so it can never invent an opinion about work nobody asked to be designed.
+    if renderable:
+        inferred.append("design_evidence")
+
     return [name for name in inferred if name in _VALIDATORS]
