@@ -549,6 +549,14 @@ class ExecutionController:
             return f"blocked with work outstanding: {outstanding}"
         if not self.plan.is_complete():
             remaining = self.plan.remaining()
+            if not remaining:
+                # Every task reached a terminal state and NONE succeeded — is_complete() is False
+                # (correctly: a plan that only failed has not succeeded) while is_stuck() is also
+                # False (nothing is left to block). Indexing remaining[0] here raised IndexError out
+                # of the round loop, which killed the job with error_reason=None: not auto-continued,
+                # not eligible for Continue, unrecoverable. The honest answer is the plainest one.
+                failed = [t.objective for t in self.plan.tasks if t.status is TaskStatus.FAILED]
+                return ("every task failed: " + "; ".join(failed[:4])) if failed else "no task succeeded"
             return f"{len(remaining)} task(s) still outstanding: {remaining[0].objective}"
         return None
 

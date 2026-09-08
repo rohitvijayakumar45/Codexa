@@ -426,25 +426,39 @@ def make_task(
 
 
 def task_context_block(plan: ExecutionPlan, task: Task, *, max_notes: int = 6) -> str:
-    """The message the model actually receives each round in place of "solve the whole problem".
+    """The message the model receives each round in place of "solve the whole problem".
 
-    Structure is fixed on purpose — overall objective, where we are, this one task, what it must
-    produce, what already happened, and the single outstanding action. Everything here is state and
+    Structure is fixed on purpose — overall objective, what is settled, this one task, what it must
+    produce, what already happened, the single outstanding action. Everything here is state and
     outcome; none of it is prior deliberation. Replaying reasoning to preserve continuity is what
-    made a model re-enter the same deliberation it was cut out of, so continuity is carried by facts
+    made a model re-enter the deliberation it was cut out of, so continuity is carried by facts
     instead: files written, commands run, what validation said.
+
+    Future tasks are named and nothing more. An earlier version rendered the entire plan in full
+    every round, and a model given the whole plan solves the whole plan: on one run it called
+    commit_direction, acknowledged in as many words that writing the page "is task 3", and then
+    designed task 3's CSS architecture, JavaScript architecture, fourteen archive records, timeline
+    behaviour, FLIP implementation and mobile layout — before task 1 had returned. Listing later
+    work in detail is an invitation to do it early; the plan already holds those tasks and will
+    present each one when it becomes active.
     """
-    done = len([t for t in plan.tasks if t.status is TaskStatus.COMPLETED])
+    completed = [t for t in plan.tasks if t.status is TaskStatus.COMPLETED]
+    later = [t for t in plan.tasks if not t.is_terminal and t is not task]
+
     lines = [
         "[EXECUTION STATE — this is managed by Codexa, not by you.]",
         "",
-        f"OVERALL OBJECTIVE: {plan.objective}" if plan.objective else "",
-        f"PROGRESS: task {plan.index_of(task.id) + 1} of {len(plan.tasks)} ({done} completed)",
-        "",
-        plan.render_progress(),
-        "",
-        f"CURRENT TASK: {task.objective}",
     ]
+    if plan.objective:
+        lines.append(f"OVERALL OBJECTIVE: {plan.objective}")
+    lines.append(f"PROGRESS: task {plan.index_of(task.id) + 1} of {len(plan.tasks)} "
+                 f"({len(completed)} completed)")
+
+    if completed:
+        lines += ["", "ALREADY DONE (do not redo):"]
+        lines += [f"  [x] {t.objective}" for t in completed[-4:]]
+
+    lines += ["", "=" * 60, f"CURRENT TASK: {task.objective}", "=" * 60]
     if task.required_tools:
         lines.append(f"REQUIRED TOOLS FOR THIS TASK: {', '.join(task.required_tools)}")
     if task.expected_artifacts:
@@ -453,34 +467,36 @@ def task_context_block(plan: ExecutionPlan, task: Task, *, max_notes: int = 6) -
         lines.append("DONE MEANS:")
         lines.extend(f"  - {c}" for c in task.completion_criteria)
     if task.progress_notes:
-        lines.append("")
-        lines.append("ALREADY DONE IN THIS TASK:")
+        lines += ["", "ALREADY DONE IN THIS TASK:"]
         lines.extend(f"  - {n}" for n in task.progress_notes[-max_notes:])
     if task.validation_state is ValidationState.FAILED and task.validation_detail:
-        lines.append("")
-        lines.append(f"LAST CHECK FAILED: {task.validation_detail}")
+        lines += ["", f"LAST CHECK FAILED: {task.validation_detail}"]
     if task.next_action:
-        lines.append("")
-        lines.append(f"OUTSTANDING ACTION: {task.next_action}")
+        lines += ["", f"OUTSTANDING ACTION: {task.next_action}"]
+
+    if later:
+        lines += [
+            "",
+            f"LATER — {len(later)} task(s), listed only so you know they are covered:",
+            "  " + "; ".join(t.objective for t in later[:6])
+            + ("; ..." if len(later) > 6 else ""),
+            "Do NOT design, plan or write any part of these now. Each becomes the current task in "
+            "its turn, with its own full context. Work spent on them here is discarded.",
+        ]
+
     lines += [
         "",
-        "Work ONLY on the current task. Do not plan or start later tasks — Codexa advances the "
-        "plan for you once this one is verified on disk. Do not restate the plan. Act with tools; "
-        "Codexa decides when this task is complete by checking reality, not by your description "
-        "of it.",
+        "Work ONLY on the current task. Codexa advances the plan for you once this one is verified "
+        "on disk, and ends the round as soon as it is — so finishing it is how you move on. Do not "
+        "restate the plan. Act with tools; Codexa decides when this task is complete by checking "
+        "reality, not by your description of it.",
         "",
-        # Verification is expensive in wall-clock time in a way that is invisible from inside a
-        # round: a dev server start plus a screenshot plus a console read is tens of seconds, and a
-        # model that runs the whole sequence after every one-line edit can spend hours doing it
-        # without ever being wrong about anything. Batch the edits, then look once. This is
-        # specifically NOT a licence to skip verification — the tasks that require a screenshot
-        # still require one, and Codexa checks that it happened.
         "ECONOMY: do not re-run the dev server, screenshots, tests or type-checks after every "
         "small edit. Make a batch of related changes, then verify once at the end of them. If this "
         "task does not list a verification tool above, it does not need one — running it anyway "
         "costs minutes and proves nothing new.",
     ]
-    return "\n".join(line for line in lines if line is not None)
+    return "\n".join(lines)
 
 
 def summarize_for_event(plan: ExecutionPlan) -> dict[str, Any]:

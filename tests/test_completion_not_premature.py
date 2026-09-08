@@ -97,5 +97,10 @@ def test_unsatisfied_contract_never_falsely_completes_near_the_old_round_cap():
     # user's wall-clock time and provider quota spent proving a foregone conclusion.
     assert len(validation_events) < _MAX_ROUNDS * (_MAX_AUTO_CONTINUES + 1)
     assert job.error_reason in ("tasks_failed", "plan_blocked", "max_rounds")
-    assert any("incomplete task" in str(e.get("error", "")) for e in job.events) or \
-        job.error_reason == "max_rounds"
+    # However it terminates, it must say WHY in words the user can act on — an unexplained stop
+    # is indistinguishable from a crash, and a job ending with error_reason=None is neither
+    # auto-continued nor eligible for Continue.
+    if job.error_reason != "max_rounds":
+        errors = " ".join(str(e.get("error", "")) for e in job.events)
+        assert ("incomplete task" in errors or "task failed" in errors
+                or "outstanding" in errors), errors
