@@ -19,6 +19,7 @@ task.
 
 from __future__ import annotations
 
+import itertools
 import json
 import logging
 import os
@@ -68,6 +69,18 @@ JOBS_DIR = Path(__file__).parent.parent / "data" / "jobs"
 
 _STALE_AFTER_ROUNDS = 3
 _MAX_ROUNDS = 10
+
+# Debug escape hatch: CODEXA_ROUND_BUDGET=0 (or "unlimited") removes the round cap entirely, so a
+# job runs until it finishes, fails, or is cancelled.
+#
+# Deliberately an env override rather than a raised constant, because this codebase has real history
+# here: removing a bound to "let it finish" is what produced runs that burned quota until a human
+# noticed. It is safe to use for debugging only because the round cap is not what makes a job
+# terminate — the per-round generation budget, the wall-clock ceiling, the per-task round and
+# intervention budgets, and the validation-attempt budget all still apply, and a plan whose tasks
+# have all failed still ends the job. What this removes is the outer counter, which on a long
+# legitimate build was firing before the work was done.
+_UNLIMITED_ROUNDS = (os.getenv("CODEXA_ROUND_BUDGET", "").strip().lower() in ("0", "unlimited", "none"))
 _STALL_NUDGE_TEXT = (
     "[SYSTEM: the connection stalled mid-response (provider timeout). "
     "Continue exactly from where you left off — do not repeat any text "
@@ -1228,7 +1241,11 @@ class JobManager:
         # next one — redoing it would re-query the model with that round's messages already in
         # history (harmless but wastes a round of the _MAX_ROUNDS budget for nothing new).
         start_round = job.round + 1 if resuming else 0
-        for _round in range(start_round, job.round_budget):
+        rounds = (
+            itertools.count(start_round) if _UNLIMITED_ROUNDS
+            else range(start_round, job.round_budget)
+        )
+        for _round in rounds:
             if job.cancelled:
                 job.status = "done"
                 self._emit(job, {"done": True, "cancelled": True, "usage": {

@@ -449,7 +449,144 @@ def _renders_cleanly(ctx: _Ctx) -> tuple[bool, str]:
     return True, _trim(text.replace("\n", " | "))
 
 
+# Capabilities a brief can commit to, and how to tell a real implementation from the cheapest thing
+# that satisfies the same words.
+#
+# The failure this addresses is semantic substitution, not absence. A model asked for a "smooth
+# scroll experience" writes `scroll-behavior: smooth` and moves on; asked for a "shared-element
+# transition" it fades a modal in; asked for "immersive interaction" it adds `hover: scale(1.02)`.
+# Every one of those is a defensible reading of the words and none of them is the thing. The
+# artifact then passes every check that asks "is there interaction code here", because there is.
+#
+# So each capability is defined by its MECHANISM — the thing an implementation cannot do without —
+# and separately by the substitution that gets mistaken for it. Mechanisms are structural (does the
+# code read geometry and invert it? does a frame loop consume scroll position?) rather than
+# vocabulary, because vocabulary is exactly what the cheap version also has.
+#
+# Hard limits on what this can honestly claim: it detects the ABSENCE OF A MECHANISM. It cannot tell
+# a beautiful transition from an ugly one, and it does not try. Presence of the mechanism is
+# necessary, never sufficient — the browser and a human judge the rest.
+_CAPABILITY_MECHANISMS: dict[str, dict] = {
+    "scroll_linked_motion": {
+        "label": "scroll-linked motion",
+        # A frame loop or observer that actually consumes scroll position and drives a transform.
+        "mechanism": [
+            r"requestAnimationFrame[\s\S]{0,400}?(?:scrollY|pageYOffset|getBoundingClientRect)",
+            r"(?:scrollY|pageYOffset)[\s\S]{0,300}?(?:transform|translate|--\w+)",
+            r"IntersectionObserver[\s\S]{0,400}?(?:transform|translate|opacity)",
+        ],
+        "substitution": [r"scroll-behavior\s*:\s*smooth"],
+        "substitution_note": "`scroll-behavior: smooth` is native anchor scrolling, not "
+                             "scroll-driven motion — nothing is animated by scroll position",
+    },
+    "shared_element_transition": {
+        "label": "shared-element / FLIP transition",
+        # FLIP is unmistakable: measure geometry, then invert it with a transform.
+        "mechanism": [
+            r"getBoundingClientRect[\s\S]{0,600}?(?:translate|matrix|transform)",
+            r"\bFLIP\b[\s\S]{0,300}?(?:transform|translate)",
+            r"(?:startViewTransition|view-transition-name)",
+        ],
+        "substitution": [r"classList\.(?:add|toggle)\([^)]*(?:open|active|visible)[^)]*\)",
+                         r"opacity\s*:\s*[01]\b"],
+        "substitution_note": "opening a panel by toggling a class or fading opacity is a modal, "
+                             "not a shared element — nothing visually becomes anything else",
+    },
+    "filterable_collection": {
+        "label": "filtering or search that reorganises the collection",
+        "mechanism": [
+            r"addEventListener\s*\(\s*['\"](?:input|change|click)['\"][\s\S]{0,600}?"
+            r"(?:filter\(|querySelectorAll|\.hidden|dataset\.)",
+        ],
+        "substitution": [r"<input[^>]*(?:search|filter)"],
+        "substitution_note": "a search input that nothing listens to is decoration",
+    },
+    "detail_view": {
+        "label": "opening an object into a detail view",
+        "mechanism": [
+            r"addEventListener\s*\(\s*['\"]click['\"][\s\S]{0,600}?"
+            r"(?:innerHTML|textContent|dataset\.|showModal|\.hidden)",
+        ],
+        "substitution": [],
+        "substitution_note": "",
+    },
+    "responsive_recompose": {
+        "label": "a recomposed layout at small widths",
+        # Two or more breakpoints that change layout, not just type size.
+        "mechanism": [
+            r"@media[^{]*\((?:max|min)-width[^{]*\)\s*\{[\s\S]{0,800}?"
+            r"(?:grid-template|flex-direction|display\s*:|position\s*:)",
+        ],
+        "substitution": [r"@media[^{]*\((?:max|min)-width"],
+        "substitution_note": "breakpoints that only change font-size are a shrunk desktop, "
+                             "not a mobile design",
+    },
+    "reduced_motion": {
+        "label": "a reduced-motion path",
+        "mechanism": [r"prefers-reduced-motion"],
+        "substitution": [],
+        "substitution_note": "",
+    },
+}
+
+
+def _intent_fidelity(ctx: _Ctx) -> tuple[bool, str]:
+    """Did the implementation materially express what the brief committed to?
+
+    Distinct from `design_evidence`, which asks whether the artifact has interaction, motion and
+    states AT ALL. This asks the narrower and more useful question: for each capability this
+    particular brief committed to, is the mechanism that capability requires actually present — or
+    only the cheaper thing that satisfies the same sentence?
+
+    Reports the substitution it found where it can, because "no FLIP transition" is far less
+    actionable than "the record opens by toggling a class; nothing measures or inverts geometry".
+    """
+    intent = ctx.design or {}
+    committed = [c for c in intent.get("capabilities", []) if c in _CAPABILITY_MECHANISMS]
+    if not committed:
+        return True, "no capabilities were committed for this task"
+
+    paths = [p for p in ctx.task.expected_artifacts if p]
+    if not paths:
+        return True, "no artifact declared to inspect"
+    try:
+        root = repo_root(ctx.repository)
+    except Exception as exc:  # noqa: BLE001
+        return True, f"not checked: repository unavailable ({exc})"
+
+    text = ""
+    for rel in paths:
+        try:
+            target = (root / rel).resolve()
+            if root in target.parents and target.is_file():
+                text += target.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+    if not text:
+        return True, "not checked: no readable artifact"
+
+    missing, present = [], []
+    for key in committed:
+        spec = _CAPABILITY_MECHANISMS[key]
+        has_mechanism = any(re.search(p, text, re.IGNORECASE) for p in spec["mechanism"])
+        if has_mechanism:
+            present.append(spec["label"])
+            continue
+        found_substitute = any(re.search(p, text, re.IGNORECASE) for p in spec["substitution"])
+        note = f" — {spec['substitution_note']}" if (found_substitute and spec["substitution_note"]) else ""
+        missing.append(f"{spec['label']}{note}")
+
+    if missing:
+        return False, (
+            "committed but not implemented: " + "; ".join(missing) +
+            ". These were promised by the brief; the artifact does not contain the mechanism each "
+            "one requires. Implement the behaviour, then look at it in the browser."
+        )
+    return True, "committed capabilities present: " + "; ".join(present)
+
+
 _VALIDATORS: dict[str, Callable[[_Ctx], tuple[bool, str]]] = {
+    "intent_fidelity": _intent_fidelity,
     "renders_cleanly": _renders_cleanly,
     "design_evidence": _design_evidence,
     "artifacts_exist": _artifacts_exist,
@@ -586,5 +723,9 @@ def infer_validators(task: Task) -> list[str]:
     # intent, so it can never invent an opinion about work nobody asked to be designed.
     if renderable:
         inferred.append("design_evidence")
+        # Asks the narrower question design_evidence cannot: not "is there interaction here" but
+        # "is the capability this brief committed to actually implemented, or only the cheaper thing
+        # that satisfies the same words". No-ops when the task carries no committed capabilities.
+        inferred.append("intent_fidelity")
 
     return [name for name in inferred if name in _VALIDATORS]
