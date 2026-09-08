@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from backend.graph.events import GraphEventWriter
 from backend.graph.service import GraphService
+from backend.simulation.witness import hash_graph_state
 
 
 class SandboxRunStatus(StrEnum):
@@ -63,6 +64,17 @@ class SandboxExecutionService:
                 diff_hash = hashlib.sha256(request.diff_text.encode("utf-8")).hexdigest()
                 if scenario_node.properties.get("diff_hash") != diff_hash:
                     blocked_reasons.append("simulation_content_mismatch")
+                # Beyond the diff itself: re-hash the exact dependency subgraph the simulation's
+                # verdict was based on (backend/simulation/witness.py) and refuse to run if it
+                # drifted since — a dependency renamed, deleted, or rewired between simulate and
+                # execute would leave the diff hash untouched but silently invalidate the blast-radius
+                # conclusion PASSED was based on.
+                witness_ids = scenario_node.properties.get("witness_node_ids")
+                stored_state_hash = scenario_node.properties.get("graph_state_hash")
+                if witness_ids is not None and stored_state_hash is not None:
+                    current_state_hash = hash_graph_state({UUID(wid) for wid in witness_ids}, graph=self.graph)
+                    if current_state_hash != stored_state_hash:
+                        blocked_reasons.append("graph_state_changed")
 
         result = SandboxRunResult(
             run_id=uuid4(),

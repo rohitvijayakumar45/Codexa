@@ -25,6 +25,7 @@ class GraphNodeType(StrEnum):
     HEALTH_METRIC = "HealthMetric"
     PREVENTION_RULE = "PreventionRule"
     CONVENTION_PROFILE = "ConventionProfile"
+    QUORUM_DECISION = "QuorumDecision"
 
 
 class GraphEdgeType(StrEnum):
@@ -47,10 +48,22 @@ class GraphEdgeSourceType(StrEnum):
     HUMAN_ASSERTED = "human_asserted"
 
 
+class GraphNodeProvenance(StrEnum):
+    """Where a node's CONTENT originated — a taint label, separate from who is allowed to edit it.
+    Lets any downstream consumer (verification, explanation, an auditor) tell "this fact came from
+    static analysis of our own code" apart from "this fact came from text an external web page
+    wrote", without re-deriving it from node_type. Optional and unset on older nodes."""
+
+    TRUSTED_USER = "trusted_user"
+    INTERNAL_CODE = "internal_code"
+    EXTERNAL_UNTRUSTED = "external_untrusted"
+
+
 class GraphNodeCreate(BaseModel):
     node_type: GraphNodeType
     stable_id: str = Field(min_length=1, max_length=512)
     properties: dict[str, Any] = Field(default_factory=dict)
+    provenance: GraphNodeProvenance | None = None
 
 
 class GraphNode(GraphNodeCreate):

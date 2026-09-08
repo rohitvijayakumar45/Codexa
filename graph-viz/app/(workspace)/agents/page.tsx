@@ -1,12 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { api, type AgentNode } from "@/lib/api";
+import { Loader2, Play } from "lucide-react";
+import {
+  api,
+  type AgentNode,
+  type PlanResult,
+  type ProposeChangeResult,
+  type ResearchAskResult,
+} from "@/lib/api";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { CenteredError, CenteredLoading } from "@/components/shell/States";
 import { EASE_OUT } from "@/components/ui/primitives";
+import { useRepoStore } from "@/lib/repo-store";
+
+// Agents with a real, callable "run it now" action — the rest of the network is observability
+// only (attributed from events other services already emit), not something a user triggers here.
+const RUNNABLE_AGENTS = new Set(["planner", "coder", "research"]);
 
 const LAYERS = ["Perception", "Understanding", "Planning", "Simulation", "Execution", "Verification", "Learning"];
 const COL_W = 190;
@@ -14,6 +26,8 @@ const ROW_H = 104;
 const PAD = 70;
 
 export default function AgentsPage() {
+  const qc = useQueryClient();
+  const activeRepo = useRepoStore((s) => s.activeRepo);
   const q = useQuery({
     queryKey: ["agents"],
     queryFn: api.agents,
@@ -154,20 +168,35 @@ export default function AgentsPage() {
       </div>
 
       <AnimatePresence>
-        {selectedAgent && <AgentDetail agent={selectedAgent} onClose={() => setSelected(null)} />}
+        {selectedAgent && (
+          <AgentDetail
+            agent={selectedAgent}
+            repository={activeRepo}
+            onClose={() => setSelected(null)}
+            onRan={() => qc.invalidateQueries({ queryKey: ["agents"] })}
+          />
+        )}
       </AnimatePresence>
     </div>
   );
 }
 
-function AgentDetail({ agent, onClose }: { agent: AgentNode; onClose: () => void }) {
+function AgentDetail({
+  agent, repository, onClose, onRan,
+}: {
+  agent: AgentNode;
+  repository: string;
+  onClose: () => void;
+  onRan: () => void;
+}) {
+  const runnable = RUNNABLE_AGENTS.has(agent.id);
   return (
     <motion.aside
       initial={{ x: 24, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 24, opacity: 0 }}
       transition={{ duration: 0.28, ease: EASE_OUT }}
-      className="absolute right-4 top-20 z-20 w-80 rounded-xl border border-line bg-panel/95 p-4 shadow-lg backdrop-blur-sm"
+      className={`absolute right-4 top-20 z-20 max-h-[calc(100%-6rem)] overflow-y-auto rounded-xl border border-line bg-panel/95 p-4 shadow-lg backdrop-blur-sm ${runnable ? "w-[26rem]" : "w-80"}`}
     >
       <div className="flex items-start justify-between">
         <div>
@@ -186,10 +215,176 @@ function AgentDetail({ agent, onClose }: { agent: AgentNode; onClose: () => void
         <Row label="Now" value={agent.current_task ?? "Idle"} />
         <Row label="Upstream" value={agent.depends_on.length ? agent.depends_on.join(", ") : "root"} />
       </dl>
+
+      {runnable && (
+        <div className="mt-4 border-t border-line pt-3">
+          {agent.id === "planner" && <PlannerRunPanel repository={repository} onRan={onRan} />}
+          {agent.id === "coder" && <CoderRunPanel repository={repository} onRan={onRan} />}
+          {agent.id === "research" && <ResearchRunPanel repository={repository} onRan={onRan} />}
+        </div>
+      )}
+
       <button onClick={onClose} className="mt-4 text-xs text-signal hover:text-ink">
         Close
       </button>
     </motion.aside>
+  );
+}
+
+function RunButton({ pending, label = "Run" }: { pending: boolean; label?: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="flex items-center gap-1.5 rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-panel transition-colors hover:bg-ink-soft disabled:opacity-40"
+    >
+      {pending ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
+      {pending ? "Running…" : label}
+    </button>
+  );
+}
+
+const inputCls =
+  "w-full rounded-lg border border-line bg-paper-sunk px-2.5 py-2 text-xs text-ink outline-none placeholder:text-faint focus:border-line-strong";
+
+function PlannerRunPanel({ repository, onRan }: { repository: string; onRan: () => void }) {
+  const [goal, setGoal] = useState("");
+  const m = useMutation({
+    mutationFn: () => api.planGoal(repository, goal),
+    onSuccess: onRan,
+  });
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (goal.trim()) m.mutate();
+      }}
+    >
+      <p className="status-line">Run it — repository: {repository}</p>
+      <textarea
+        value={goal}
+        onChange={(e) => setGoal(e.target.value)}
+        placeholder="Goal, e.g. 'add rate limiting to the chat endpoint'"
+        rows={2}
+        className={inputCls}
+      />
+      <RunButton pending={m.isPending} label="Synthesize plan" />
+      {m.isError && <p className="text-xs text-warn">{(m.error as Error).message}</p>}
+      {m.data && <PlanOutput result={m.data} />}
+    </form>
+  );
+}
+
+function PlanOutput({ result }: { result: PlanResult }) {
+  return (
+    <div className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg border border-line bg-paper-sunk p-2.5 text-[11px] leading-relaxed text-ink-soft">
+      {result.plan}
+    </div>
+  );
+}
+
+function CoderRunPanel({ repository, onRan }: { repository: string; onRan: () => void }) {
+  const [objective, setObjective] = useState("");
+  const [filePaths, setFilePaths] = useState("");
+  const m = useMutation({
+    mutationFn: () =>
+      api.proposeChange(
+        repository,
+        objective,
+        filePaths.split(",").map((p) => p.trim()).filter(Boolean),
+      ),
+    onSuccess: onRan,
+  });
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (objective.trim()) m.mutate();
+      }}
+    >
+      <p className="status-line">Run it — repository: {repository}</p>
+      <textarea
+        value={objective}
+        onChange={(e) => setObjective(e.target.value)}
+        placeholder="Objective, e.g. 'add input validation to compute_shipping_cost'"
+        rows={2}
+        className={inputCls}
+      />
+      <input
+        value={filePaths}
+        onChange={(e) => setFilePaths(e.target.value)}
+        placeholder="File paths, comma-separated (e.g. calc.py, utils.py)"
+        className={inputCls}
+      />
+      <RunButton pending={m.isPending} label="Propose change" />
+      {m.isError && <p className="text-xs text-warn">{(m.error as Error).message}</p>}
+      {m.data && <ProposalOutput result={m.data} />}
+    </form>
+  );
+}
+
+function ProposalOutput({ result }: { result: ProposeChangeResult }) {
+  return (
+    <div className="mt-2 space-y-2">
+      <p className="text-[11px] text-ink-soft">{result.rationale}</p>
+      {result.changes.map((c) => (
+        <div key={c.path} className="rounded-lg border border-line bg-paper-sunk p-2">
+          <p className="num text-[10.5px] font-medium text-muted">{c.path}</p>
+          <pre className="num mt-1 max-h-40 overflow-auto whitespace-pre-wrap text-[10.5px] text-ink-soft">{c.diff}</pre>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ResearchRunPanel({ repository, onRan }: { repository: string; onRan: () => void }) {
+  const [query, setQuery] = useState("");
+  const m = useMutation({
+    mutationFn: () => api.askResearch(repository, query),
+    onSuccess: onRan,
+  });
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (query.trim()) m.mutate();
+      }}
+    >
+      <p className="status-line">Run it — repository: {repository}</p>
+      <textarea
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Question, e.g. 'what's the current best practice for X'"
+        rows={2}
+        className={inputCls}
+      />
+      <RunButton pending={m.isPending} label="Ask" />
+      {m.isError && <p className="text-xs text-warn">{(m.error as Error).message}</p>}
+      {m.data && <ResearchOutput result={m.data} />}
+    </form>
+  );
+}
+
+function ResearchOutput({ result }: { result: ResearchAskResult }) {
+  return (
+    <div className="mt-2 space-y-2">
+      <p className="text-[11px] text-ink-soft">{result.recommendation}</p>
+      <p className="text-[10.5px] text-faint">
+        Confidence {Math.round(result.confidence * 100)}% ·{" "}
+        {result.used_web_search ? "grounded in live web search" : "no web search configured"}
+      </p>
+      <ul className="space-y-1">
+        {result.citations.map((c) => (
+          <li key={c.url} className="rounded-lg border border-line bg-paper-sunk p-2 text-[10.5px]">
+            <p className="font-medium text-ink-soft">{c.title}</p>
+            <p className="text-faint">{c.summary}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

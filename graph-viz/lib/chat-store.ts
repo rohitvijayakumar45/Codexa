@@ -2,15 +2,36 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { ChatMessage, ImpactResult } from "@/lib/api";
+import type { ChatMessage, ImpactResult, PlanSnapshot, QuorumRunResult } from "@/lib/api";
 
 // A single message in a conversation. `analyzing` is transient and never persisted.
 export interface StoredTurn {
   role: "user" | "assistant";
   content?: string;
   thinking?: string;
+  // Latest human-readable status ("Writing app.py", "Running tests") from the backend's status
+  // events — shown in place of the generic "thinking" loader while streaming, since most models
+  // never emit reasoning_content at all and this is otherwise the only sign of real progress.
+  status?: string;
+  // A model/key rotation, kept as its own row in the transcript rather than as transient loader
+  // text. The loader label disappears the moment tokens start streaming, which is exactly when a
+  // switch matters least to see and most to remember — for debugging you need to look back and
+  // find which bucket was live when things slowed down or output changed character.
+  notice?: string;
+  // Latest snapshot of the backend's execution plan for this turn's job. Persisted like `status`
+  // rather than kept in transient state: the plan is what a long build's scrollback is actually
+  // about, and a reload mid-job (or a later visit to a finished one) should still show which tasks
+  // Codexa verified. Each plan event replaces this wholesale — it is a snapshot, never a patch.
+  plan?: PlanSnapshot;
   error?: boolean;
+  // Only meaningful alongside error: true. When set, this turn's agent job errored out solely
+  // from running out of tool-calling rounds and can be resumed (same job id, full history intact)
+  // via continueAgentJob instead of losing all progress to a fresh retry — see chat/page.tsx's
+  // continueJob(). jobId is the errored job to resume; continuable says whether that's possible.
+  continuable?: boolean;
+  jobId?: string;
   impact?: ImpactResult;
+  quorum?: QuorumRunResult;
   pending?: boolean;
   history?: ChatMessage[];
   tool?: { name: string; args: Record<string, unknown>; result?: string };
@@ -25,6 +46,10 @@ export interface Conversation {
   createdAt: number;
   updatedAt: number;
   totalTokens: number; // cumulative prompt+completion across every message sent in this conversation
+  // Backend agent job id for an in-flight response, if any. Survives tab switches, reloads, and
+  // backend restarts (checkpointed server-side) — set when a job starts, cleared once it's done,
+  // so reopening this conversation later can reattach to work that kept running unattended.
+  pendingJobId?: string | null;
 }
 
 interface ChatState {
@@ -38,6 +63,7 @@ interface ChatState {
   setModel: (id: string, modelId: string | null) => void;
   setTitle: (id: string, title: string) => void;
   addTokens: (id: string, count: number) => void;
+  setJobId: (id: string, jobId: string | null) => void;
   remove: (id: string) => void;
 }
 
@@ -106,6 +132,13 @@ export const useChatStore = create<ChatState>()(
           return {
             conversations: { ...s.conversations, [id]: { ...conv, totalTokens: (conv.totalTokens ?? 0) + count } },
           };
+        }),
+
+      setJobId: (id, jobId) =>
+        set((s) => {
+          const conv = s.conversations[id];
+          if (!conv) return s;
+          return { conversations: { ...s.conversations, [id]: { ...conv, pendingJobId: jobId } } };
         }),
 
       remove: (id) =>

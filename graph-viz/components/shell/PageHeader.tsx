@@ -16,7 +16,11 @@ export function PageHeader({
         <span className="status-line">{eyebrow}</span>
         <h1 className="display text-lg font-semibold leading-tight text-ink">{title}</h1>
       </div>
-      {children && <div className="flex items-center gap-6">{children}</div>}
+      {/* pr-28 reserves the footprint of WorkspaceShell's ThemeToggle — fixed at top-6 right-6,
+          ~100px wide, sitting outside <main>'s own 12px right margin — so a page's own right-side
+          header content (a button, a filter, a picker) never renders underneath that floating
+          pill instead of just next to it. */}
+      {children && <div className="flex items-center gap-6 pr-28">{children}</div>}
     </header>
   );
 }

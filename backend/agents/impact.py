@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from collections import deque
+from dataclasses import dataclass
 from uuid import UUID
 
 from fastapi import APIRouter
@@ -27,12 +28,34 @@ _DEP_EDGES = {"imports", "depends_on", "calls", "flows_into", "correlates_with"}
 class ImpactRequest(BaseModel):
     description: str = Field(min_length=1, max_length=2000)
     max_depth: int = Field(default=3, ge=1, le=6)
+    #: Which repository the change is actually being made to. Optional for backwards compatibility,
+    #: but omitting it is almost always a bug in the caller.
+    #
+    # The graph holds every loaded repository at once, including Codexa's own source. Without this
+    # filter the analysis matched a change description against ALL of them — a user who created a
+    # brand-new empty repository and asked for a single HTML file was shown a blast radius naming
+    # `backend/graph`, `Board` and `Header`: symbols from other projects entirely, none of which
+    # their change could possibly affect. A blast radius computed over the wrong repository is worse
+    # than none at all, because it looks authoritative.
+    repository: str | None = None
 
 
 class NodeRef(BaseModel):
     id: str
     label: str
     node_type: str
+
+
+class CouplingRisk(BaseModel):
+    """A file in this change's blast radius that is git-coupled (backend/repository/coupling.py's
+    CORRELATES_WITH edges) to a file with real incident history (backend/trust_safety/incident.py's
+    CausalEvent/PreventionRule nodes) — two structures that already existed independently in this
+    graph but were never queried together until now."""
+
+    file_label: str
+    root_cause_summary: str
+    incident_summary: str
+    prevention_rule: str | None
 
 
 class ImpactResult(BaseModel):
@@ -52,6 +75,7 @@ class ImpactResult(BaseModel):
     call_edges: int  # CALLS edges crossing the target/affected subgraph — function-call impact
     import_edges: int  # IMPORTS edges crossing the target/affected subgraph
     coupling_edges: int  # CORRELATES_WITH edges — hidden, git-mined coupling with no code reference
+    coupling_risks: list[CouplingRisk] = Field(default_factory=list)
 
 
 def _label(node: GraphNode) -> str:
@@ -122,12 +146,106 @@ def _grade(affected: int, confidence: float) -> tuple[str, float]:
     return level, score
 
 
+@dataclass
+class BlastRadius:
+    affected_ids: set[UUID]
+    parent: dict[UUID, UUID]
+    best_depth: dict[UUID, int]
+    path_confidence: dict[UUID, float]  # min edge-confidence along the path reaching each affected id
+
+
+def blast_radius_ids(target_ids: set[UUID], *, graph: GraphService, max_depth: int = 3) -> BlastRadius:
+    """The reverse-dependency BFS itself, factored out of the /agents/impact endpoint below so
+    other callers (backend/agents/jobs.py's context compaction) can reuse the exact same traversal
+    as a "what's currently relevant" oracle instead of duplicating it."""
+    dependents: dict[UUID, list[tuple[UUID, float]]] = {}
+    for edge in graph.list_edges_at():
+        if edge.edge_type in _DEP_EDGES:
+            dependents.setdefault(edge.to_node_id, []).append((edge.from_node_id, edge.confidence))
+
+    affected_ids: set[UUID] = set()
+    parent: dict[UUID, UUID] = {}
+    path_confidence: dict[UUID, float] = {}
+    queue: deque[tuple[UUID, int, float]] = deque((tid, 0, 1.0) for tid in target_ids)
+    best_depth: dict[UUID, int] = {tid: 0 for tid in target_ids}
+    while queue:
+        nid, depth, path_conf = queue.popleft()
+        if depth >= max_depth:
+            continue
+        for pred, conf in dependents.get(nid, []):
+            if pred in target_ids:
+                continue
+            next_conf = min(path_conf, conf)
+            if pred in best_depth and best_depth[pred] <= depth + 1:
+                continue
+            best_depth[pred] = depth + 1
+            parent[pred] = nid
+            affected_ids.add(pred)
+            path_confidence[pred] = next_conf
+            queue.append((pred, depth + 1, next_conf))
+    return BlastRadius(affected_ids=affected_ids, parent=parent, best_depth=best_depth, path_confidence=path_confidence)
+
+
+def _coupling_incident_risks(
+    nodes_by_id: dict[UUID, GraphNode], subgraph_ids: set[UUID], edges: list,
+) -> list[CouplingRisk]:
+    """Walks the File->CausalEvent CORRELATES_WITH edges that backend/trust_safety/incident.py now
+    records, for every file already in this change's blast-radius subgraph — surfacing "this file
+    you're touching has a real incident history" using two structures (coupling mining, incident
+    learning) that already existed independently and were never joined until now."""
+    risks: list[CouplingRisk] = []
+    seen: set[tuple[UUID, UUID]] = set()
+    for edge in edges:
+        if edge.edge_type != "correlates_with" or edge.from_node_id not in subgraph_ids:
+            continue
+        root_cause = nodes_by_id.get(edge.to_node_id)
+        if (
+            root_cause is None
+            or root_cause.node_type != "CausalEvent"
+            or root_cause.properties.get("event_kind") != "root_cause"
+        ):
+            continue
+        file_node = nodes_by_id.get(edge.from_node_id)
+        if file_node is None:
+            continue
+        key = (file_node.id, root_cause.id)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        incident_summary = ""
+        prevention_rule: str | None = None
+        for e2 in edges:
+            if e2.from_node_id == root_cause.id and e2.edge_type == "causes":
+                target = nodes_by_id.get(e2.to_node_id)
+                if target is not None and target.node_type == "CausalEvent":
+                    incident_summary = target.properties.get("summary", "")
+            if e2.to_node_id == root_cause.id and e2.edge_type == "mitigates":
+                source = nodes_by_id.get(e2.from_node_id)
+                if source is not None and source.node_type == "PreventionRule":
+                    prevention_rule = source.properties.get("summary")
+
+        risks.append(CouplingRisk(
+            file_label=_label(file_node),
+            root_cause_summary=root_cause.properties.get("summary", ""),
+            incident_summary=incident_summary,
+            prevention_rule=prevention_rule,
+        ))
+    return risks
+
+
 def create_impact_router(*, graph: GraphService, planner: PlannerService) -> APIRouter:
     router = APIRouter(prefix="/agents/impact", tags=["agents"])
 
     @router.post("", response_model=ImpactResult)
     def analyze(request: ImpactRequest) -> ImpactResult:
         nodes = graph.list_nodes()
+        if request.repository:
+            # Scope to the repository actually being changed. Nodes carry their origin in
+            # properties["repository"] (see InMemoryGraphRepository.remove_by_repository, which
+            # keys off the same field), so anything not tagged for this repository cannot be
+            # downstream of a change made inside it.
+            nodes = [n for n in nodes if n.properties.get("repository") == request.repository]
         by_id = {node.id: node for node in nodes}
         targets = _resolve_targets(request.description, nodes)
 
@@ -149,36 +267,13 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
                 call_edges=0,
                 import_edges=0,
                 coupling_edges=0,
+                coupling_risks=[],
             )
 
-        # Build reverse dependency adjacency: for edge A -> B (A depends on B), a change in B
-        # affects A, so B's dependents include A.
-        dependents: dict[UUID, list[tuple[UUID, float]]] = {}
-        for edge in graph.list_edges_at():
-            if edge.edge_type in _DEP_EDGES:
-                dependents.setdefault(edge.to_node_id, []).append((edge.from_node_id, edge.confidence))
-
         target_ids = {t.id for t in targets}
-        affected_ids: set[UUID] = set()
-        parent: dict[UUID, UUID] = {}
-        min_conf = 1.0
-        queue: deque[tuple[UUID, int, float]] = deque((t.id, 0, 1.0) for t in targets)
-        best_depth: dict[UUID, int] = {t.id: 0 for t in targets}
-        while queue:
-            nid, depth, path_conf = queue.popleft()
-            if depth >= request.max_depth:
-                continue
-            for pred, conf in dependents.get(nid, []):
-                if pred in target_ids:
-                    continue
-                next_conf = min(path_conf, conf)
-                if pred in best_depth and best_depth[pred] <= depth + 1:
-                    continue
-                best_depth[pred] = depth + 1
-                parent[pred] = nid
-                affected_ids.add(pred)
-                min_conf = min(min_conf, next_conf)
-                queue.append((pred, depth + 1, next_conf))
+        radius = blast_radius_ids(target_ids, graph=graph, max_depth=request.max_depth)
+        affected_ids, parent, best_depth = radius.affected_ids, radius.parent, radius.best_depth
+        min_conf = min(radius.path_confidence.values(), default=1.0)
 
         affected_nodes = [by_id[nid] for nid in affected_ids if nid in by_id]
         confidence = round(min_conf if affected_nodes else 1.0, 3)
@@ -224,10 +319,11 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
         # Function-call / import edges that cross the target+affected subgraph — how much of the
         # actual call graph and module wiring this change reaches, not just node count.
         subgraph_ids = target_ids | affected_ids
+        all_edges = list(graph.list_edges_at())
         call_edges = 0
         import_edges = 0
         coupling_edges = 0
-        for edge in graph.list_edges_at():
+        for edge in all_edges:
             if edge.from_node_id in subgraph_ids and edge.to_node_id in subgraph_ids:
                 if edge.edge_type == "calls":
                     call_edges += 1
@@ -235,6 +331,8 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
                     import_edges += 1
                 elif edge.edge_type == "correlates_with":
                     coupling_edges += 1
+
+        coupling_risks = _coupling_incident_risks(by_id, subgraph_ids, all_edges)
 
         max_depth_reached = max((best_depth[nid] for nid in affected_ids), default=0)
 
@@ -252,6 +350,11 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
             f"component{'s' if len(affected_nodes) != 1 else ''}{extra_str} within {request.max_depth} hops. "
             f"Risk: {level}."
         )
+        if coupling_risks:
+            summary += (
+                f" Warning: {len(coupling_risks)} file{'s' if len(coupling_risks) != 1 else ''} in this "
+                "blast radius has real incident history via git-coupling — see coupling_risks."
+            )
 
         return ImpactResult(
             resolved=True,
@@ -270,6 +373,7 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
             call_edges=call_edges,
             import_edges=import_edges,
             coupling_edges=coupling_edges,
+            coupling_risks=coupling_risks,
         )
 
     return router

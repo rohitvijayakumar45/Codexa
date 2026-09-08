@@ -1,13 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, Wrench, BrainCircuit, Copy, Check, RotateCcw } from "lucide-react";
-import { api, streamAgentChat, type ChatMessage, type ChatModel, type ImpactResult } from "@/lib/api";
+import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, Wrench, BrainCircuit, Copy, Check, RotateCcw, Users, ArrowLeftRight } from "lucide-react";
+import {
+  api,
+  cancelAgentJob,
+  continueAgentJob,
+  startAgentJob,
+  streamChat,
+  subscribeAgentJob,
+  type ChatMessage,
+  type ChatModel,
+  type ImpactResult,
+  type PlanSnapshot,
+  type QuorumRunResult,
+  type StreamHandlers,
+} from "@/lib/api";
 import { Mark } from "@/components/shell/Mark";
 import { EASE_OUT } from "@/components/ui/primitives";
 import { ImpactCard } from "@/components/chat/ImpactCard";
+import { TaskPlanCard } from "@/components/chat/TaskPlanCard";
 import { RepoDialog } from "@/components/chat/RepoDialog";
 import { DotsLoader } from "@/components/ui/DotsLoader";
 import { ThinkingLoader } from "@/components/ui/ThinkingLoader";
@@ -35,6 +49,45 @@ function formatTokenCount(n: number): string {
 // recommendation to start simple; the full untrimmed history still lives in the local store/UI,
 // this only bounds what's sent to the API.
 const MAX_HISTORY_MESSAGES = 20;
+
+// --- Smart routing: only true greetings/acks skip tools + repo context ---
+// Tool-calling patterns: file/code ops, project creation, debugging, web search, design work.
+// prettier-ignore
+const _TOOL_TRIGGERS = /\b(create|build|scaffold|generate|write|make|set.?up|implement|edit|modify|update|change|fix|refactor|rename|delete|remove|drop|replace|patch|migrate|read|open|show|list|find|search|grep|cat|deploy|run|execute|test|lint|npm|pip|yarn|pnpm|docker|debug|trace|investigate|profile|design|redesign|ui|ux|landing|page|component|layout|style|css|tailwind|animation|google|look.?up|tavily|project|app|website|tool|cli|api|server|endpoint|route|function|class|module|hook|util|tree|dependency|dependencies|import|depend|symbol|shell|bash|command|screenshot|browser|git|commit|branch|diff|status|patch|convention|metadata|outline|reference|hierarchy|accessibility|visual|consistency|token|server|dev.?server)\b/i;
+// Pure social/ack messages with no code-question intent — matched against the WHOLE trimmed
+// message (not just a prefix), so a real question that happens to start with "thanks" or "ok"
+// ("thanks, but why is the retry logic broken?") isn't misclassified as small talk.
+// prettier-ignore
+const _GREETING_ONLY = /^\s*(hi|hello|hey|yo|sup|thanks|thank.?you|ok|okay|yes|no|sure|cool|nice|bye|good.?bye|good\s+(morning|afternoon|evening)|got.?it|sounds.?good|perfect|great|awesome)[!.,\s]*$/i;
+
+/** True if the message needs tool-calling (file ops, code changes, project creation, etc.).
+ *
+ *  False only for pure greetings/acks and near-empty fragments — routed through /chat/stream to
+ *  avoid paying for tool schemas (~1.25K tokens) and repo context (~5K tokens). Everything else,
+ *  INCLUDING plain questions ("why does the login page look broken", "what does the auth
+ *  middleware do", "is there a bug in the retry logic"), defaults to tools now. The previous
+ *  version short-circuited to false for any message starting with a question word (what/how/why/
+ *  is there/...) before ever checking for a concrete trigger — which routed exactly the questions
+ *  that most need the model to go check the real code to the endpoint structurally incapable of
+ *  doing so. A false negative here (skipping tools when the answer needed the real code) is worse
+ *  than the extra tokens a generic question's unused tool schemas cost. */
+function needsTools(text: string, history: ChatMessage[]): boolean {
+  const trimmed = text.trim().toLowerCase();
+  // Any tool-relevant keyword anywhere in the message → tools. Checked first so a question that
+  // opens with why/what/how but names something concrete isn't short-circuited below before this
+  // ever runs.
+  if (_TOOL_TRIGGERS.test(trimmed)) return true;
+  // Pure greeting/ack (the whole message, not just a prefix) → no tools.
+  if (_GREETING_ONLY.test(trimmed)) return false;
+  // One or two content-free words with no trigger ("nope", "maybe later") → no tools.
+  if (trimmed.split(/\s+/).length <= 2) return false;
+  // Follow-up to a tool-using turn → tools, even if this message alone looks conversational.
+  const recentRoles = history.slice(-4).map((m) => m.role);
+  if (recentRoles.includes("assistant") && history.some((m) => m.role === "user" && _TOOL_TRIGGERS.test(m.content.toLowerCase()))) return true;
+  // Default: a substantive message that isn't a greeting — ground it in the real repo rather than
+  // let the model answer from assumption.
+  return true;
+}
 
 const DESIGN_TOOL_HINT =
   "Before writing or redesigning any frontend/UI code (HTML, CSS, React, Tailwind), call the " +
@@ -95,12 +148,16 @@ export default function ChatPage() {
   const storeSetModel = useChatStore((s) => s.setModel);
   const storeSetTitle = useChatStore((s) => s.setTitle);
   const storeAddTokens = useChatStore((s) => s.addTokens);
+  const storeSetJobId = useChatStore((s) => s.setJobId);
+  const jobIdRef = useRef<string | null>(null);
 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [model, setModel] = useState<ChatModel | null>(null);
+  const [quorumMode, setQuorumMode] = useState(false);
+  const [liveImpact, setLiveImpact] = useState<ImpactResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -112,12 +169,56 @@ export default function ChatPage() {
     ensureActive();
   }, [ensureActive]);
 
+  // Live blast-radius preview: the existing /agents/impact check only ever ran after send, gated
+  // behind CHANGE_INTENT — the user found out how risky a change was only after already committing
+  // to sending it. Debounced so it doesn't fire on every keystroke; cleared whenever the draft no
+  // longer looks like a change request or drops below a length worth bothering the backend for.
+  useEffect(() => {
+    const text = input.trim();
+    if (!text || text.length < 12 || !CHANGE_INTENT.test(text)) {
+      setLiveImpact(null);
+      return;
+    }
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      try {
+        const res = await api.impact(text, activeRepo);
+        // Same rule as the send-time gate below: show the live preview only when there is a real
+        // consequence to preview. "0 downstream affected" is not information worth a banner.
+        if (!cancelled) setLiveImpact(res.resolved && res.affected_count > 0 ? res : null);
+      } catch {
+        if (!cancelled) setLiveImpact(null);
+      }
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [input, activeRepo]);
+
   // Load a conversation's turns when it becomes active.
   useEffect(() => {
     if (!activeId) return;
     const conv = useChatStore.getState().conversations[activeId];
     skipSaveRef.current = true;
     setTurns((conv?.turns as Turn[]) ?? []);
+  }, [activeId]);
+
+  // Reattach to an agent job that was left running when this conversation was last visited — the
+  // job keeps working on the backend regardless of tab switches, navigation, or even a backend
+  // restart (checkpointed to disk), so reopening the conversation should catch up on it rather than
+  // silently showing a stale, incomplete response.
+  useEffect(() => {
+    if (!activeId || streaming) return;
+    const jobId = useChatStore.getState().conversations[activeId]?.pendingJobId;
+    if (!jobId) return;
+    // Own controller per effect run (not the shared abortRef) so React StrictMode's dev-mode
+    // double-invoke of this effect can't open two concurrent subscriptions to the same job: the
+    // first run's cleanup aborts its controller before the second run starts its own.
+    const controller = new AbortController();
+    attachToJob(jobId, controller);
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
   // Persist turns when idle (not mid-stream), skipping the write right after hydration.
@@ -132,8 +233,20 @@ export default function ChatPage() {
 
   // Persist on unmount (tab switch), even mid-stream. Never overwrite with empty — that would
   // clobber the stored conversation during React StrictMode's dev mount/unmount/remount.
+  //
+  // Also abort the local subscription reader here. Without this, navigating to a different
+  // top-level page (Knowledge graph, Usage, ...) unmounts ChatPage but the in-flight
+  // subscribeAgentJob/streamChat call keeps running as a "zombie" — its onDelta/onDone callbacks
+  // still fire, but they update an unmounted component's dead state, so nothing ever gets
+  // persisted, AND once it reaches onDone it clears the conversation's pendingJobId (thinking the
+  // UI legitimately saw the result). That erases the exact signal the reattachment effect needs to
+  // know there's a finished response to catch up on. Aborting here instead makes the backend job
+  // (which is unaffected — it's detached, per jobs.py) the sole source of truth: pendingJobId stays
+  // set until a live subscription actually finishes attached to a mounted component, and returning
+  // to the conversation replays the full event log fresh via attachToJob.
   useEffect(
     () => () => {
+      abortRef.current?.abort();
       const id = useChatStore.getState().activeId;
       if (id && turnsRef.current.length > 0) {
         useChatStore.getState().setTurns(id, turnsRef.current as StoredTurn[]);
@@ -178,6 +291,10 @@ export default function ChatPage() {
   function abortActiveStream() {
     abortRef.current?.abort();
     abortRef.current = null;
+    // Deliberately NOT cancelling the backend job here — it's left running detached so it can be
+    // reattached later via pendingJobId. Just stop tracking it locally so a subsequent Stop press
+    // (now on a different, job-less conversation) can't reach back and cancel someone else's job.
+    jobIdRef.current = null;
     setStreaming(false);
   }
 
@@ -214,85 +331,78 @@ export default function ChatPage() {
     return [...prior, { role: "user", content: outgoing }];
   }
 
-  async function runCompletion(history: ChatMessage[], systemNote?: string) {
-    setTurns((prev) => [...prev, { role: "assistant", content: "" }]);
-    setStreaming(true);
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const lastUserText = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
-    const repoContext = await buildRepoContext(lastUserText);
-    const systemParts = [DESIGN_TOOL_HINT, repoContext, systemNote].filter(Boolean) as string[];
-    const messages: ChatMessage[] = systemParts.length
-      ? [{ role: "system", content: systemParts.join("\n\n") }, ...history]
-      : history;
+  // Real jobs.py behavior: hitting the round budget emits an "error" event, then (usually within
+  // microseconds, same background thread) auto-continues right past it — the SSE relay used to cut
+  // the stream at that first "error" event regardless, which is the bug this whole feature fixes.
+  // Now that continuation events DO reach the frontend, they must never get spliced/appended into
+  // the stale error turn that onError already wrote (that turn's `content` is the error blurb, not
+  // real output — mutating it would glue continued output onto the end of that message). Any
+  // handler about to touch "the current turn" calls this first: if the trailing turn is an error,
+  // it's stale — start a fresh one instead of resuscitating it.
+  function startFreshIfErrored(prev: StoredTurn[]): StoredTurn[] {
+    const next = [...prev];
+    if (next.length && next[next.length - 1].error) next.push({ role: "assistant" });
+    return next;
+  }
 
-    if (controller.signal.aborted) return;
-
-    await streamAgentChat(messages, model?.id ?? null, activeRepo, {
+  // Shared stream handlers (both /chat/stream and /chat/agent use the base set; the agent path
+  // adds tool/repo/model-switch handlers on top). Factored out so a reattached subscription (job
+  // kept running on the backend while this page was elsewhere) can reuse exactly the same wiring
+  // a fresh send uses.
+  function baseHandlers(controller: AbortController): StreamHandlers {
+    return {
       signal: controller.signal,
-      // Tool trace rows are inserted before the streaming text turn (kept last). Every updater
-      // bails on `prev` unchanged if this stream was aborted — closes the race where a chunk was
-      // already in flight the instant `abortActiveStream()` fired (the fetch abort itself is
-      // handled below the closures, but a chunk mid-delivery can still land one tick later).
-      onRepoSwitched: (repository) => {
-        if (!controller.signal.aborted) switchRepo(repository);
-      },
-      onModelSwitched: (modelId) => {
-        // The requested model hit a rate limit and the server fell back to the next one in its
-        // tier — follow along so the NEXT message in this conversation uses the working model
-        // instead of immediately re-hitting the same limit.
-        if (controller.signal.aborted) return;
-        const next = modelsQuery.data?.find((m) => m.id === modelId);
-        if (next) handleModel(next);
-      },
-      onToolCall: ({ name, args }) =>
+      onThinking: (chunk: string) =>
         setTurns((prev) => {
           if (controller.signal.aborted) return prev;
-          const next = [...prev];
-          next.splice(next.length - 1, 0, { role: "assistant", tool: { name, args } });
+          const next = startFreshIfErrored(prev);
+          const last = next[next.length - 1];
+          // Clear a stale error flag from an earlier failed attempt on this same turn (e.g. a
+          // reattach whose first race lost to a transient error) — real data arriving means this
+          // subscription is the one that matters now.
+          next[next.length - 1] = { ...last, role: "assistant", error: false, thinking: (last.thinking ?? "") + chunk };
           return next;
         }),
-      onToolResult: ({ name, result }) =>
+      onStatus: (text: string) =>
         setTurns((prev) => {
           if (controller.signal.aborted) return prev;
-          const next = [...prev];
-          for (let i = next.length - 2; i >= 0; i--) {
-            if (next[i].tool?.name === name && next[i].tool && !next[i].tool!.result) {
-              next[i] = { ...next[i], tool: { ...next[i].tool!, result } };
-              break;
-            }
+          const next = startFreshIfErrored(prev);
+          // A rotation is a durable fact about the run, not a transient progress label: it must
+          // survive into the transcript so you can scroll back and see which model/key was live at
+          // any point. Everything else stays as the ephemeral loader caption it should be.
+          if (text.startsWith("Switched to")) {
+            next.splice(next.length - 1, 0, { role: "assistant", notice: text });
+            return next;
           }
+          const last = next[next.length - 1];
+          next[next.length - 1] = { ...last, role: "assistant", error: false, status: text };
           return next;
         }),
-      onThinking: (chunk) =>
+      onDelta: (delta: string) =>
         setTurns((prev) => {
           if (controller.signal.aborted) return prev;
-          const next = [...prev];
+          const next = startFreshIfErrored(prev);
           const last = next[next.length - 1];
-          next[next.length - 1] = { ...last, role: "assistant", thinking: (last.thinking ?? "") + chunk };
+          next[next.length - 1] = { ...last, role: "assistant", error: false, content: (last.content ?? "") + delta };
           return next;
         }),
-      onDelta: (delta) =>
+      onError: (message: string, continuable?: boolean) =>
         setTurns((prev) => {
           if (controller.signal.aborted) return prev;
-          const next = [...prev];
-          const last = next[next.length - 1];
-          next[next.length - 1] = { ...last, role: "assistant", content: (last.content ?? "") + delta };
-          return next;
-        }),
-      onError: (message) =>
-        setTurns((prev) => {
           const next = [...prev];
           next[next.length - 1] = {
             role: "assistant",
             error: true,
-            content:
-              `The model endpoint didn't respond. ${message}\n\n` +
-              `Chat routes to \`${model?.id ?? "?"}\` via the ${model?.provider ?? "local"} provider.`,
+            continuable,
+            jobId: jobIdRef.current ?? undefined,
+            content: continuable
+              ? `${message} It's still got everything it figured out so far — Continue picks up right where it left off instead of starting over.`
+              : `The model endpoint didn't respond. ${message}\n\n` +
+                `Chat routes to \`${model?.id ?? "?"}\` via the ${model?.provider ?? "local"} provider.`,
           };
           return next;
         }),
-      onDone: (usage) => {
+      onDone: (usage: { prompt_tokens: number; completion_tokens: number } | null) => {
         if (!usage) return;
         const total = usage.prompt_tokens + usage.completion_tokens;
         if (activeId) storeAddTokens(activeId, total);
@@ -304,10 +414,135 @@ export default function ChatPage() {
           return next;
         });
       },
-    });
+    };
+  }
 
+  function agentHandlers(controller: AbortController): StreamHandlers {
+    return {
+      ...baseHandlers(controller),
+      onRepoSwitched: (repository: string) => {
+        if (!controller.signal.aborted) switchRepo(repository);
+      },
+      onModelSwitched: (modelId: string) => {
+        if (controller.signal.aborted) return;
+        const next = modelsQuery.data?.find((m) => m.id === modelId);
+        if (next) handleModel(next);
+      },
+      // Execution-plan snapshot. Stored on the turn exactly like `status` — each event is complete
+      // in itself and simply replaces the last, so there is nothing to merge.
+      onPlan: (plan: PlanSnapshot) =>
+        setTurns((prev) => {
+          if (controller.signal.aborted) return prev;
+          const next = startFreshIfErrored(prev);
+          const last = next[next.length - 1];
+          next[next.length - 1] = { ...last, role: "assistant", error: false, plan };
+          return next;
+        }),
+      onToolCall: ({ name, args }: { name: string; args: Record<string, unknown> }) =>
+        setTurns((prev) => {
+          if (controller.signal.aborted) return prev;
+          const next = startFreshIfErrored(prev);
+          next.splice(next.length - 1, 0, { role: "assistant", tool: { name, args } });
+          return next;
+        }),
+      onToolResult: ({ name, result }: { name: string; result: string }) =>
+        setTurns((prev) => {
+          if (controller.signal.aborted) return prev;
+          const next = [...prev];
+          for (let i = next.length - 2; i >= 0; i--) {
+            if (next[i].tool?.name === name && next[i].tool && !next[i].tool!.result) {
+              next[i] = { ...next[i], tool: { ...next[i].tool!, result } };
+              break;
+            }
+          }
+          return next;
+        }),
+    };
+  }
+
+  // Reattaches to a job that's still running (or finished) on the backend, from a fresh
+  // subscription — used both right after starting a new job and when returning to a conversation
+  // whose job kept working while this page was elsewhere (different tab, reload, backend restart).
+  // Trims any partial turns left over from a previous, now-stale local view of that same response
+  // before rebuilding it purely from the job's replayed event log, so nothing gets duplicated.
+  async function attachToJob(jobId: string, controller: AbortController) {
+    setTurns((prev) => {
+      let lastUserIdx = -1;
+      prev.forEach((t, i) => {
+        if (t.role === "user") lastUserIdx = i;
+      });
+      return [...prev.slice(0, lastUserIdx + 1), { role: "assistant", content: "" }];
+    });
+    setStreaming(true);
+    abortRef.current = controller;
+    jobIdRef.current = jobId;
+
+    await subscribeAgentJob(jobId, agentHandlers(controller));
+
+    if (!controller.signal.aborted && activeId) storeSetJobId(activeId, null);
+    if (!controller.signal.aborted) {
+      setStreaming(false);
+      abortRef.current = null;
+      jobIdRef.current = null;
+    }
+  }
+
+  async function runCompletion(history: ChatMessage[], systemNote?: string) {
+    setTurns((prev) => [...prev, { role: "assistant", content: "" }]);
+    setStreaming(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const lastUserText = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+
+    // --- route: simple → /chat/stream (no tools), complex → /chat/agent (full tools) ---
+    const useAgent = needsTools(lastUserText, history);
+
+    if (!useAgent) {
+      // Simple message: skip repo context + DESIGN_TOOL_HINT → saves ~6K tokens.
+      const systemParts = [systemNote].filter(Boolean) as string[];
+      const messages: ChatMessage[] = systemParts.length
+        ? [{ role: "system", content: systemParts.join("\n\n") }, ...history]
+        : history;
+
+      if (controller.signal.aborted) return;
+
+      await streamChat(messages, model?.id ?? null, baseHandlers(controller));
+      setStreaming(false);
+      abortRef.current = null;
+      return;
+    }
+
+    // Complex message: full agent flow with tools + repo context. The job starts detached on the
+    // backend — it keeps running even if this subscription gets aborted (new chat, switch
+    // conversation, tab close), so the store's pendingJobId is what lets a later visit reattach.
+    const repoContext = await buildRepoContext(lastUserText);
+    const systemParts = [DESIGN_TOOL_HINT, repoContext, systemNote].filter(Boolean) as string[];
+    const messages: ChatMessage[] = systemParts.length
+      ? [{ role: "system", content: systemParts.join("\n\n") }, ...history]
+      : history;
+
+    if (controller.signal.aborted) return;
+
+    let jobId: string;
+    try {
+      jobId = await startAgentJob(messages, model?.id ?? null, activeRepo);
+    } catch (err) {
+      baseHandlers(controller).onError(err instanceof Error ? err.message : String(err));
+      setStreaming(false);
+      abortRef.current = null;
+      return;
+    }
+    if (activeId) storeSetJobId(activeId, jobId);
+    jobIdRef.current = jobId;
+
+    if (controller.signal.aborted) return;
+
+    await subscribeAgentJob(jobId, agentHandlers(controller));
+
+    if (!controller.signal.aborted && activeId) storeSetJobId(activeId, null);
     setStreaming(false);
     abortRef.current = null;
+    jobIdRef.current = null;
   }
 
   // Every change request runs the blast radius FIRST, then waits for the user to approve.
@@ -329,12 +564,46 @@ export default function ChatPage() {
     setInput("");
     setAttachments([]);
 
+    if (quorumMode) {
+      setTurns((prev) => [...prev, { role: "assistant", analyzing: true }]);
+      setStreaming(true);
+      try {
+        const result = await api.runQuorum(activeRepo, text);
+        setTurns((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = { role: "assistant", quorum: result };
+          return next;
+        });
+      } catch {
+        setTurns((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = {
+            role: "assistant", error: true,
+            content: "Quorum run failed — couldn't reach the backend or the panel errored out.",
+          };
+          return next;
+        });
+      } finally {
+        setStreaming(false);
+      }
+      return;
+    }
+
     if (CHANGE_INTENT.test(text)) {
       setTurns((prev) => [...prev, { role: "assistant", analyzing: true }]);
       let res: ImpactResult | null = null;
       try {
-        res = await api.impact(text);
+        res = await api.impact(text, activeRepo);
       } catch {
+        res = null;
+      }
+      // A blast radius of nothing is not a decision worth stopping someone for. Asking a brand-new
+      // repository to "build an index.html" produced a full go/no-go card reading "0 downstream
+      // affected — None risk", which the user has to read and approve before any work can begin:
+      // pure ceremony in front of a change that cannot break anything, on a project with nothing
+      // to break. Gate on there being an actual consequence to weigh, and otherwise just build.
+      if (res && (!res.resolved || res.affected_count === 0)) {
+        setTurns((prev) => prev.slice(0, -1)); // drop the "analyzing" placeholder
         res = null;
       }
       if (res) {
@@ -361,6 +630,45 @@ export default function ChatPage() {
       .slice(-MAX_HISTORY_MESSAGES);
     setTurns(trimmed);
     await runCompletion(history);
+  }
+
+  // Resumes a job that ran out of tool-calling rounds — same job id, full message/tool-call
+  // history intact server-side, just a bigger round budget. Unlike retryFrom, this does NOT
+  // rebuild history from a condensed text summary, so none of the reasoning or tool calls already
+  // done gets thrown away.
+  async function continueJob(index: number) {
+    if (streaming) return;
+    const turn = turns[index];
+    if (!turn?.jobId) return;
+    const jobId = turn.jobId;
+
+    setTurns((prev) => {
+      const next = [...prev];
+      next[index] = { role: "assistant", content: "", thinking: turn.thinking };
+      return next;
+    });
+    setStreaming(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    jobIdRef.current = jobId;
+
+    try {
+      await continueAgentJob(jobId);
+    } catch (err) {
+      baseHandlers(controller).onError(err instanceof Error ? err.message : String(err));
+      setStreaming(false);
+      abortRef.current = null;
+      jobIdRef.current = null;
+      return;
+    }
+    if (activeId) storeSetJobId(activeId, jobId);
+
+    await subscribeAgentJob(jobId, agentHandlers(controller));
+
+    if (!controller.signal.aborted && activeId) storeSetJobId(activeId, null);
+    setStreaming(false);
+    abortRef.current = null;
+    jobIdRef.current = null;
   }
 
   async function proceedImpact(index: number) {
@@ -393,6 +701,7 @@ export default function ChatPage() {
   }
 
   function stop() {
+    if (jobIdRef.current) cancelAgentJob(jobIdRef.current);
     abortRef.current?.abort();
     setStreaming(false);
   }
@@ -425,6 +734,9 @@ export default function ChatPage() {
       usedTokens={usedTokens}
       contextWindow={contextWindow}
       usedPct={usedPct}
+      quorumMode={quorumMode}
+      onToggleQuorum={() => setQuorumMode((v) => !v)}
+      liveImpact={liveImpact}
     />
   );
 
@@ -442,17 +754,31 @@ export default function ChatPage() {
         // Home: greeting and composer sit centered in the viewport, activity below.
         <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: EASE_OUT }}
+            initial="hidden"
+            animate="show"
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
             className="w-full max-w-2xl px-6 py-10"
           >
-            <div className="mb-8 text-center">
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+              transition={{ duration: 0.45, ease: EASE_OUT }}
+              className="mb-8 text-center"
+            >
               <h1 className="display text-4xl font-semibold tracking-tight text-ink">{greeting()}</h1>
               <p className="mt-3 text-sm text-muted">Ask the engineering brain anything about your codebase.</p>
-            </div>
-            {composer}
-            <RecentActivity events={activityQuery.data ?? []} />
+            </motion.div>
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+              transition={{ duration: 0.45, ease: EASE_OUT }}
+            >
+              {composer}
+            </motion.div>
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+              transition={{ duration: 0.45, ease: EASE_OUT }}
+            >
+              <RecentActivity events={activityQuery.data ?? []} />
+            </motion.div>
           </motion.div>
         </div>
       ) : (
@@ -468,17 +794,24 @@ export default function ChatPage() {
                     onProceed={() => proceedImpact(i)}
                     onCancel={() => cancelImpact(i)}
                   />
+                ) : turn.quorum ? (
+                  <QuorumCard key={i} quorum={turn.quorum} />
                 ) : turn.analyzing ? (
                   <AnalyzingRow key={i} />
+                ) : turn.notice ? (
+                  <ModelSwitchNotice key={i} text={turn.notice} />
                 ) : turn.tool ? (
                   <ToolTrace key={i} tool={turn.tool} />
                 ) : (
-                  <Bubble
-                    key={i}
-                    turn={turn}
-                    streaming={streaming && i === turns.length - 1}
-                    onRetry={() => retryFrom(i)}
-                  />
+                  <Fragment key={i}>
+                    {turn.plan ? <TaskPlanCard plan={turn.plan} /> : null}
+                    <Bubble
+                      turn={turn}
+                      streaming={streaming && i === turns.length - 1}
+                      onRetry={() => retryFrom(i)}
+                      onContinue={() => continueJob(i)}
+                    />
+                  </Fragment>
                 ),
               )}
             </div>
@@ -599,7 +932,11 @@ function RecentActivity({ events }: { events: { id: string; summary: string; occ
   );
 }
 
-function Bubble({ turn, streaming, onRetry }: { turn: Turn; streaming: boolean; onRetry: () => void }) {
+function Bubble({
+  turn, streaming, onRetry, onContinue,
+}: {
+  turn: Turn; streaming: boolean; onRetry: () => void; onContinue: () => void;
+}) {
   if (turn.role === "user") {
     return (
       <motion.div
@@ -635,18 +972,31 @@ function Bubble({ turn, streaming, onRetry }: { turn: Turn; streaming: boolean; 
         ) : null}
         {streaming && !turn.content && !turn.thinking ? (
           <div className="py-1">
-            <ThinkingLoader />
+            <ThinkingLoader label={turn.status} />
           </div>
         ) : turn.error ? (
           <>
             {turn.content}
-            <button
-              onClick={onRetry}
-              className="mt-2 flex items-center gap-1.5 rounded-md border border-warn/30 px-2 py-1 text-xs font-medium text-warn transition-colors hover:bg-warn/10"
-            >
-              <RotateCcw size={12} />
-              Retry
-            </button>
+            <div className="mt-2 flex items-center gap-2">
+              {turn.continuable && (
+                <button
+                  onClick={onContinue}
+                  className="flex items-center gap-1.5 rounded-md border border-signal/30 bg-signal/10 px-2 py-1 text-xs font-medium text-signal transition-colors hover:bg-signal/20"
+                  title="Resume this exact response with more rounds — keeps everything it already figured out"
+                >
+                  <RotateCcw size={12} />
+                  Continue
+                </button>
+              )}
+              <button
+                onClick={onRetry}
+                className="flex items-center gap-1.5 rounded-md border border-warn/30 px-2 py-1 text-xs font-medium text-warn transition-colors hover:bg-warn/10"
+                title={turn.continuable ? "Start over from scratch instead" : undefined}
+              >
+                <RotateCcw size={12} />
+                Retry
+              </button>
+            </div>
           </>
         ) : turn.content ? (
           <>
@@ -728,6 +1078,22 @@ function ThinkingPanel({ text, live }: { text: string; live: boolean }) {
   );
 }
 
+/** A model/key rotation, marked inline in the transcript. Deliberately quiet — this is diagnostic
+ *  provenance ("which of the eight buckets produced the next stretch of work"), not an alert, so it
+ *  reads as a hairline divider rather than competing with the actual output around it. */
+function ModelSwitchNotice({ text }: { text: string }) {
+  return (
+    <div className="mb-3 ml-9 flex items-center gap-2" role="status">
+      <span className="h-px flex-1 bg-line" />
+      <span className="num flex items-center gap-1.5 whitespace-nowrap text-[10px] uppercase tracking-[0.12em] text-faint">
+        <ArrowLeftRight size={10} />
+        {text}
+      </span>
+      <span className="h-px flex-1 bg-line" />
+    </div>
+  );
+}
+
 function ToolTrace({ tool }: { tool: { name: string; args: Record<string, unknown>; result?: string } }) {
   const [open, setOpen] = useState(false);
   const arg = tool.args.path ?? tool.args.query ?? tool.args.code ?? "";
@@ -747,6 +1113,65 @@ function ToolTrace({ tool }: { tool: { name: string; args: Record<string, unknow
         <pre className="num mt-1 max-h-56 max-w-2xl overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-panel-2 p-2.5 text-[11px] text-ink-soft">
           {tool.result}
         </pre>
+      )}
+    </div>
+  );
+}
+
+function QuorumCard({ quorum }: { quorum: QuorumRunResult }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-6 ml-9 max-w-2xl">
+      <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted">
+        <Users size={13} className="text-signal" />
+        <span>Quorum</span>
+        <span className="rounded-full border border-line px-2 py-0.5 text-[10px] text-faint">
+          {quorum.cards.length} agents{quorum.debated ? " · debated" : ""}
+        </span>
+      </div>
+
+      {quorum.resolved ? (
+        <MarkdownView markdown={quorum.winning_answer ?? ""} />
+      ) : (
+        <div className="rounded-lg border border-line-strong bg-panel-2 p-3 text-sm text-ink-soft">
+          Panel couldn't reach a graph-grounded consensus — surfacing every surviving answer instead
+          of guessing at one:
+          <ul className="mt-2 space-y-2">
+            {quorum.cards.map((c) => (
+              <li key={c.model} className="rounded-md border border-line bg-panel p-2 text-xs">
+                <span className="num text-faint">{c.model}</span> — {c.answer}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="mt-2 flex items-center gap-1.5 text-[11px] text-faint transition-colors hover:text-ink"
+      >
+        {open ? "Hide" : "Show"} panel breakdown
+        <ChevronDown size={11} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <ul className="mt-2 space-y-1.5">
+          {quorum.cards.map((c) => (
+            <li key={c.model} className="rounded-md border border-line bg-panel-2 p-2 text-[11px]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="num font-medium text-ink-soft">{c.model}</span>
+                <span className="num text-faint">
+                  conf {c.confidence.toFixed(2)}
+                  {c.calibration < 1 ? ` (×${c.calibration.toFixed(2)} track record)` : ""} ·{" "}
+                  {c.verified_count} verified / {c.failed_count} failed
+                  {c.round > 1 ? " · revised" : ""}
+                </span>
+              </div>
+              {c.failed_reasons.length > 0 && (
+                <p className="mt-1 text-faint">{c.failed_reasons.join("; ")}</p>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -787,12 +1212,53 @@ function Composer(props: {
   usedTokens: number;
   contextWindow: number;
   usedPct: number;
+  quorumMode: boolean;
+  onToggleQuorum: () => void;
+  liveImpact: ImpactResult | null;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Fresh chat centers the composer mid-viewport (see the `!started` branch above) — there isn't
+  // always 320px (max-h-80) of room above the model button for the dropdown to open upward into,
+  // which clipped the topmost model(s) against the scroll container's own top edge. Measure real
+  // space above vs below the button each time it opens and flip direction instead of always
+  // assuming "upward" (only true once the composer is docked at the bottom of an active thread).
+  const [dropUp, setDropUp] = useState(true);
+  const pickerBtnRef = useRef<HTMLButtonElement>(null);
   const canSend = props.input.trim().length > 0 && !props.streaming;
 
+  function togglePicker() {
+    if (!pickerOpen) {
+      const rect = pickerBtnRef.current?.getBoundingClientRect();
+      if (rect) setDropUp(rect.top > window.innerHeight - rect.bottom);
+    }
+    setPickerOpen((v) => !v);
+  }
+
   return (
-    <div className="rounded-2xl border border-line-strong bg-panel shadow-md transition-colors focus-within:border-ink/30">
+    <div className="rounded-2xl border border-line-strong bg-panel shadow-md transition-all duration-300 focus-within:border-signal/40 focus-within:shadow-[0_0_0_4px_var(--color-signal-wash)]">
+      {props.liveImpact && (
+        <div className="flex items-center gap-1.5 px-3 pt-3 text-[11px] text-muted">
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{
+              background:
+                props.liveImpact.risk_level === "Critical" || props.liveImpact.risk_level === "High"
+                  ? "var(--color-danger)"
+                  : props.liveImpact.risk_level === "Medium"
+                    ? "var(--color-gold)"
+                    : "var(--color-signal)",
+            }}
+          />
+          <span className="num">{props.liveImpact.affected_count} downstream</span>
+          <span>· {props.liveImpact.risk_level} risk</span>
+          {props.liveImpact.coupling_risks.length > 0 && (
+            <span className="text-[var(--color-warn)]">
+              · {props.liveImpact.coupling_risks.length} historically risky
+            </span>
+          )}
+        </div>
+      )}
+
       {props.attachments.length > 0 && (
         <div className="flex flex-wrap gap-1.5 px-3 pt-3">
           {props.attachments.map((a) => (
@@ -840,6 +1306,19 @@ function Composer(props: {
             <GitBranch size={15} />
             <span className="num max-w-[120px] truncate">{props.activeRepo}</span>
           </button>
+          <button
+            onClick={props.onToggleQuorum}
+            aria-pressed={props.quorumMode}
+            title="Quorum: answer with a panel of agents that cross-check each other against the real codebase before responding"
+            className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
+              props.quorumMode
+                ? "bg-signal/15 text-signal"
+                : "text-muted hover:bg-paper-sunk hover:text-ink"
+            }`}
+          >
+            <Users size={15} />
+            Quorum
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -847,7 +1326,8 @@ function Composer(props: {
 
           <div className="relative">
             <button
-              onClick={() => setPickerOpen((v) => !v)}
+              ref={pickerBtnRef}
+              onClick={togglePicker}
               className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:bg-paper-sunk"
             >
               {props.model?.label ?? "Model"}
@@ -856,11 +1336,11 @@ function Composer(props: {
             <AnimatePresence>
               {pickerOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: dropUp ? 6 : -6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
+                  exit={{ opacity: 0, y: dropUp ? 6 : -6 }}
                   transition={{ duration: 0.16, ease: EASE_OUT }}
-                  className="absolute bottom-11 right-0 z-30 max-h-80 w-60 overflow-y-auto rounded-xl border border-line bg-panel p-1 shadow-lg"
+                  className={`absolute right-0 z-30 max-h-80 w-60 overflow-y-auto rounded-xl border border-line bg-panel p-1 shadow-lg ${dropUp ? "bottom-11" : "top-11"}`}
                 >
                   {props.models.length === 0 && (
                     <p className="px-3 py-2 text-xs text-muted">No models configured.</p>

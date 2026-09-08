@@ -22,6 +22,10 @@ class IncidentLearningRequest(BaseModel):
     regression_test: str = Field(min_length=1, max_length=1024)
     prevention_rule: str = Field(min_length=1, max_length=1024)
     confidence: float = Field(ge=0, le=1)
+    # Which File graph nodes this incident actually implicated — optional, but without it an
+    # incident is only ever reachable by its own source_artifact_id, invisible to anything walking
+    # the code graph (blast radius, coupling analysis) from a file the user is about to touch.
+    affected_file_ids: list[UUID] = Field(default_factory=list)
 
 
 class IncidentLearningResult(BaseModel):
@@ -59,6 +63,14 @@ class IncidentLearningService:
             self._edge(regression_test.id, incident.id, GraphEdgeType.MITIGATES, request),
             self._edge(prevention_rule.id, root_cause.id, GraphEdgeType.MITIGATES, request),
         ]
+        # Link the actual files this incident implicated to its root cause — the join that lets
+        # blast-radius/coupling analysis (backend/agents/impact.py) discover "a file you're about to
+        # touch has a real incident history" instead of incidents living only in their own isolated
+        # subgraph, reachable solely by source_artifact_id.
+        edges.extend(
+            self._edge(file_id, root_cause.id, GraphEdgeType.CORRELATES_WITH, request)
+            for file_id in request.affected_file_ids
+        )
         return IncidentLearningResult(
             incident_node_id=incident.id,
             root_cause_node_id=root_cause.id,

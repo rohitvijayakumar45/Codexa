@@ -6,6 +6,55 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "graph-viz", "run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "orbit",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", ".codexa/repos/orbit", "run", "dev"],
+      "port": 5180
+    },
+    {
+      "name": "pomodoro-timer",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m", "http.server", "8731",
+        "--directory", ".codexa/repos/pomodoro-timer"
+      ],
+      "port": 8731
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m", "uvicorn", "backend.main:app", "--port", "8090"
+      ],
+      "port": 8090
+    },
+    {
+      "_comment": [
+        "--reload was removed from 'backend' deliberately. This platform's whole purpose is",
+        "long-running background jobs that survive disconnects, and uvicorn's reloader tears the",
+        "process down on ANY .py save — killing whatever job is in flight. That destroyed real",
+        "in-progress work three separate times in one session, and worse, the shutdown blocks on",
+        "open SSE streams ('Waiting for connections to close'), leaving the server wedged rather",
+        "than cleanly restarted. Jobs checkpoint to disk and resume, so nothing is lost forever,",
+        "but a dev convenience that routinely interrupts the product's core capability is a bad",
+        "trade. Use 'backend-reload' below when iterating on backend code with no job running.",
+        "See jobs.py resume() for how an interrupted job is picked back up."
+      ],
+      "name": "backend-reload",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m", "uvicorn", "backend.main:app", "--port", "8090", "--reload",
+        "--reload-dir", "backend"
+      ],
+      "port": 8090
+    },
+    {
+      "name": "frontend-test",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", ".codexa/repos/frontend-test", "run", "dev", "--", "--port", "5190"],
+      "port": 5190
     }
   ]
 }

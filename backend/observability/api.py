@@ -85,6 +85,12 @@ def _summary(event_type: str, payload: dict[str, Any]) -> str:
         return f"Ingested {payload.get('kind', 'artifact')} ({payload.get('trust_level', 'unknown')})"
     if event_type == "planner.blast_radius.computed":
         return "Blast radius computed"
+    if event_type == "planner.plan.created":
+        return f"Plan synthesized: {str(payload.get('goal', ''))[:48]}"
+    if event_type == "coder.change_proposal.created":
+        return f"Proposed change: {str(payload.get('objective', ''))[:48]}"
+    if event_type == "retrieval.context.assembled":
+        return f"Context assembled ({payload.get('estimated_tokens', 0)} tok)"
     if event_type == "repository.ingested":
         return f"Ingested {payload.get('repository', 'repository')} ({payload.get('files', 0)} files)"
     return event_type
@@ -94,8 +100,12 @@ def _attribute(event_type: str, payload: dict[str, Any]) -> str:
     """Which agent produced this event."""
     if event_type == "artifact.ingested":
         return "perception"
-    if event_type == "planner.blast_radius.computed":
+    if event_type == "planner.blast_radius.computed" or event_type == "planner.plan.created":
         return "planner"
+    if event_type == "coder.change_proposal.created":
+        return "coder"
+    if event_type == "retrieval.context.assembled":
+        return "retrieval"
     if event_type == "graph.node.created":
         node_type = payload.get("node_type")
         props = payload.get("properties", {}) or {}

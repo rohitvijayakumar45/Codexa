@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck, AlertTriangle } from "lucide-react";
 import type { ImpactResult } from "@/lib/api";
 import { Button, EASE_OUT } from "@/components/ui/primitives";
 
@@ -119,6 +119,27 @@ export function ImpactCard({
                       <span className="num text-ink-soft">{label}</span>
                     </span>
                   ))}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {impact.coupling_risks.length > 0 && (
+          <div className="mt-4 rounded-lg border border-line-strong bg-[#f7ece2] p-3">
+            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-warn)]">
+              <AlertTriangle size={12} />
+              Historically risky — coupled with a real incident
+            </p>
+            <ul className="space-y-2">
+              {impact.coupling_risks.map((r, i) => (
+                <li key={i} className="text-[11px] text-ink-soft">
+                  <span className="num font-medium">{r.file_label}</span> is git-coupled to a file
+                  whose root cause was &ldquo;{r.root_cause_summary}&rdquo;
+                  {r.incident_summary ? ` — incident: ${r.incident_summary}` : ""}
+                  {r.prevention_rule ? (
+                    <span className="block text-faint">Prevention rule: {r.prevention_rule}</span>
+                  ) : null}
                 </li>
               ))}
             </ul>
