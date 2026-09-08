@@ -41,13 +41,10 @@ class InMemoryGraphRepository:
         existing_id = self.node_ids_by_stable_id.get(node.stable_id)
         if existing_id is not None:
             existing = self.nodes[existing_id]
-            updated = GraphNode(
-                id=existing.id,
-                created_at=existing.created_at,
-                node_type=node.node_type,
-                stable_id=node.stable_id,
-                properties=node.properties,
-            )
+            # Rebuild from the incoming node's own fields (not a hand-picked subset) so a field
+            # added later — e.g. provenance — isn't silently dropped on every reindex update just
+            # because this branch predates it.
+            updated = GraphNode(**{**node.model_dump(), "id": existing.id, "created_at": existing.created_at})
             self.nodes[existing_id] = updated
             return updated
 

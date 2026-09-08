@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import APIRouter, status
 
+from backend.graph.service import GraphService
 from backend.trust_safety.confidence import (
     ConfidenceCalibrationRequest,
     ConfidenceCalibrationResult,
     ConfidenceCalibrationService,
 )
+from backend.trust_safety.explain import Explanation, explain_incident
 from backend.trust_safety.economics import (
     EngineeringEconomicsRequest,
     EngineeringEconomicsResult,
@@ -38,6 +42,7 @@ def create_trust_safety_router(
     economics: EngineeringEconomicsService,
     health: RepositoryHealthService,
     incidents: IncidentLearningService,
+    graph: GraphService,
 ) -> APIRouter:
     router = APIRouter(prefix="/trust-safety", tags=["trust-safety"])
 
@@ -99,5 +104,12 @@ def create_trust_safety_router(
     )
     def record_incident_learning(request: IncidentLearningRequest) -> IncidentLearningResult:
         return incidents.record(request)
+
+    @router.get("/incidents/{source_artifact_id}/explain", response_model=Explanation)
+    def explain_incident_learning(source_artifact_id: UUID) -> Explanation:
+        """Plain-language explanation of an incident's causal chain, generated ONLY by templating
+        over the graph's CausalEvent/PreventionRule nodes and CAUSES/MITIGATES edges — no LLM call,
+        so it cannot state anything that isn't actually backed by a recorded edge."""
+        return explain_incident(source_artifact_id, graph=graph)
 
     return router

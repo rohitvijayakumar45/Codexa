@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from backend.agents.planner import BlastRadiusRequest, PlannerService
 from backend.graph.schemas import GraphNodeCreate, GraphNodeType
 from backend.graph.service import GraphService
+from backend.simulation.witness import hash_graph_state
 
 
 class SimulationStatus(StrEnum):
@@ -85,6 +86,12 @@ class EngineeringSimulationEngine:
         
         diff_hash = hashlib.sha256(request.diff_text.encode("utf-8")).hexdigest()
 
+        # The witnessed subgraph: the changed nodes plus everything the blast radius found
+        # downstream of them — i.e. every node this simulation's PASSED/BLOCKED verdict actually
+        # depended on. Hashed now so sandbox.py can refuse to run if any of it moved since.
+        witness_node_ids = set(request.changed_node_ids) | set(blast_radius.affected_node_ids)
+        graph_state_hash = hash_graph_state(witness_node_ids, graph=self.graph)
+
         scenario_node = self.graph.add_node(
             GraphNodeCreate(
                 node_type=GraphNodeType.SIMULATION_SCENARIO,
@@ -92,6 +99,8 @@ class EngineeringSimulationEngine:
                 properties={
                     "proposal_id": str(request.proposal_id),
                     "diff_hash": diff_hash,
+                    "graph_state_hash": graph_state_hash,
+                    "witness_node_ids": [str(nid) for nid in witness_node_ids],
                     "status": status,
                     "affected_count": affected_count,
                     "predicted_failures": predicted_failures,

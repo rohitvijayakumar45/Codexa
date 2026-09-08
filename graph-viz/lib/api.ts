@@ -120,11 +120,42 @@ export interface ChatUsage {
   model: string;
 }
 
+// --- Execution plan ---------------------------------------------------------
+// Mirrors summarize_for_event() in backend/agents/plan.py exactly. Emitted when the plan is created
+// and again on every task transition; each event is a full SNAPSHOT that replaces the last, not a
+// patch. Carries no reasoning of any kind, by design — the plan UI shows execution state only.
+export type PlanTaskStatus = "PENDING" | "IN_PROGRESS" | "BLOCKED" | "COMPLETED" | "FAILED";
+export type PlanValidationState = "UNVALIDATED" | "PASSED" | "FAILED";
+export interface PlanTask {
+  id: string;
+  objective: string;
+  status: PlanTaskStatus;
+  /** Rejected completion claims so far — 1 means Codexa refused a "done" once and is retrying. */
+  attempts: number;
+  validation_state: PlanValidationState;
+  validation_detail: string;
+  expected_artifacts: string[];
+  last_progress: string;
+}
+export interface PlanSnapshot {
+  objective: string;
+  current_task_id: string | null;
+  tasks: PlanTask[];
+  completed: number;
+  total: number;
+}
+
 // --- Impact / blast radius --------------------------------------------------
 export interface NodeRef {
   id: string;
   label: string;
   node_type: string;
+}
+export interface CouplingRisk {
+  file_label: string;
+  root_cause_summary: string;
+  incident_summary: string;
+  prevention_rule: string | null;
 }
 export interface ImpactResult {
   resolved: boolean;
@@ -143,6 +174,7 @@ export interface ImpactResult {
   call_edges: number;
   import_edges: number;
   coupling_edges: number;
+  coupling_risks: CouplingRisk[];
 }
 
 // --- Observability ----------------------------------------------------------
@@ -170,6 +202,63 @@ export interface AgentNode {
   last_active: string | null;
   current_task: string | null;
   depends_on: string[];
+}
+export interface PlanResult {
+  plan_id: string;
+  repository: string;
+  goal: string;
+  plan: string;
+}
+export interface ProposedFileChange {
+  path: string;
+  diff: string;
+}
+export interface ProposeChangeResult {
+  proposal_id: string;
+  status: string;
+  objective: string;
+  changed_paths: string[];
+  changes: ProposedFileChange[];
+  rationale: string;
+}
+export interface ResearchCitation {
+  url: string;
+  title: string;
+  summary: string;
+}
+export interface BeliefCardClaim {
+  type: string;
+  target: string;
+  assertion: string;
+}
+export interface BeliefCard {
+  model: string;
+  answer: string;
+  confidence: number;
+  claims: BeliefCardClaim[];
+  verified_count: number;
+  failed_count: number;
+  failed_reasons: string[];
+  round: number;
+  calibration: number;
+}
+export interface QuorumRunResult {
+  quorum_id: string;
+  query: string;
+  winning_answer: string | null;
+  winning_confidence: number | null;
+  resolved: boolean;
+  cards: BeliefCard[];
+  debated: boolean;
+  decision_node_id: string;
+}
+export interface ResearchAskResult {
+  recommendation_node_id: string;
+  query: string;
+  recommendation: string;
+  confidence: number;
+  citations: ResearchCitation[];
+  used_web_search: boolean;
 }
 export interface UsageBucket {
   prompt_tokens: number;
@@ -320,8 +409,17 @@ async function del<T>(path: string): Promise<T> {
 export interface StreamHandlers {
   onDelta: (text: string) => void;
   onDone: (usage: ChatUsage | null) => void;
-  onError: (message: string) => void;
+  // continuable is true only for an agent job that errored out solely from running out of
+  // tool-calling rounds (backend/agents/jobs.py's round_budget) — that specific case can be
+  // resumed with the SAME message/tool-call history via continueAgentJob, instead of losing
+  // everything to a fresh retry. Undefined/false for every other error.
+  onError: (message: string, continuable?: boolean) => void;
   onThinking?: (text: string) => void;
+  // Human-readable status ("Writing app.py", "Running tests") filling the gap between rounds/tool
+  // calls that "thinking" alone leaves silent on models that never emit reasoning_content.
+  onStatus?: (text: string) => void;
+  // Full snapshot of the job's execution plan — later ones replace earlier ones wholesale.
+  onPlan?: (plan: PlanSnapshot) => void;
   onToolCall?: (call: { name: string; args: Record<string, unknown> }) => void;
   onToolResult?: (result: { name: string; result: string }) => void;
   onRepoSwitched?: (repository: string) => void;
@@ -329,21 +427,54 @@ export interface StreamHandlers {
   signal?: AbortSignal;
 }
 
-/** Tool-calling agent chat: the model may read/search/write files, search the web, run code. */
-export async function streamAgentChat(
+/** Starts the tool-calling agent loop as a background job on the backend and returns its id.
+ *  The job runs detached from this request — it survives the browser tab losing focus, the page
+ *  navigating away, or even a backend restart (it checkpoints to disk and auto-resumes). Pair with
+ *  `subscribeAgentJob` to watch it, from this page load or a later one. */
+export async function startAgentJob(
   messages: ChatMessage[],
   model: string | null,
   repository: string,
-  handlers: StreamHandlers,
-): Promise<void> {
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/chat/agent`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ messages, model, repository }),
+  });
+  if (!res.ok) throw new ApiError(`Backend responded ${res.status} starting the agent job.`, res.status);
+  const data = (await res.json()) as { job_id: string };
+  return data.job_id;
+}
+
+/** Tells the backend to stop a running agent job after its current round finishes. Best-effort —
+ *  swallow failures, the caller is already tearing down its own local stream reader regardless. */
+export async function cancelAgentJob(jobId: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/chat/agent/job/${jobId}/cancel`, { method: "POST" });
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Resumes a job that errored out ONLY from running out of tool-calling rounds — grants it a
+ *  bigger round budget and re-runs it with its full existing message/tool-call history intact.
+ *  Pair with subscribeAgentJob(jobId, ...) afterward to watch it continue. Throws if the job isn't
+ *  in that specific continuable state (see the "continuable" flag on StreamHandlers.onError). */
+export async function continueAgentJob(jobId: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/chat/agent/job/${jobId}/continue`, { method: "POST" });
+  if (!res.ok) throw new ApiError(`Backend responded ${res.status} continuing the job.`, res.status);
+  const data = (await res.json()) as { job_id: string };
+  return data.job_id;
+}
+
+/** Subscribes to an agent job's event log over SSE: replays everything emitted so far (so
+ *  reattaching after a dropped connection catches up on what was missed) then tails new events
+ *  live until the job finishes. Safe to call more than once for the same job_id — each call is an
+ *  independent replay-from-start subscription. */
+export async function subscribeAgentJob(jobId: string, handlers: StreamHandlers): Promise<void> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/chat/agent`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ messages, model, repository }),
-      signal: handlers.signal,
-    });
+    res = await fetch(`${API_BASE}/chat/agent/stream/${jobId}`, { signal: handlers.signal });
   } catch {
     handlers.onError(`Can't reach the Codexa backend at ${API_BASE}.`);
     return;
@@ -367,10 +498,12 @@ export async function streamAgentChat(
         if (!line.startsWith("data:")) continue;
         try {
           const evt = JSON.parse(line.slice(5).trim());
-          if (evt.error) handlers.onError(evt.error);
+          if (evt.error) handlers.onError(evt.error, evt.continuable === true);
           else if (evt.done) handlers.onDone(evt.usage ?? null);
           else if (evt.thinking) handlers.onThinking?.(evt.thinking);
+          else if (evt.status) handlers.onStatus?.(evt.status);
           else if (evt.delta) handlers.onDelta(evt.delta);
+          else if (evt.plan) handlers.onPlan?.(evt.plan as PlanSnapshot);
           else if (evt.tool_call) handlers.onToolCall?.(evt.tool_call);
           else if (evt.tool_result) handlers.onToolResult?.(evt.tool_result);
           else if (evt.repo_switched) handlers.onRepoSwitched?.(evt.repo_switched);
@@ -381,8 +514,8 @@ export async function streamAgentChat(
       }
     }
   } catch (err) {
-    // A cancelled stream rejects reader.read() with an AbortError — expected when the user
-    // navigates away mid-response, not a real failure. Anything else is a genuine drop.
+    // Only this SUBSCRIPTION dies on abort/disconnect — the job itself keeps running on the
+    // backend regardless, so this is never a real failure worth surfacing.
     if (!(err instanceof DOMException && err.name === "AbortError")) {
       handlers.onError(err instanceof Error ? err.message : String(err));
     }
@@ -426,7 +559,7 @@ export async function streamChat(
         if (!line.startsWith("data:")) continue;
         try {
           const evt = JSON.parse(line.slice(5).trim());
-          if (evt.error) handlers.onError(evt.error);
+          if (evt.error) handlers.onError(evt.error, false);
           else if (evt.done) handlers.onDone(evt.usage ?? null);
           else if (evt.thinking) handlers.onThinking?.(evt.thinking);
           else if (evt.delta) handlers.onDelta(evt.delta);
@@ -459,8 +592,11 @@ export const api = {
   causalOverview: () =>
     get<{ event_node_ids: string[]; causal_edge_ids: string[] }>("/graph/causal/overview"),
   chatModels: () => get<ChatModel[]>("/chat/models"),
-  impact: (description: string, maxDepth = 3) =>
-    post<ImpactResult>("/agents/impact", { description, max_depth: maxDepth }),
+  // `repository` scopes the blast radius to the project actually being changed. Without it the
+  // backend matched the description against every loaded repository at once, including Codexa's
+  // own source — a new empty repo returned a blast radius naming `backend/graph` and `Board`.
+  impact: (description: string, repository?: string, maxDepth = 3) =>
+    post<ImpactResult>("/agents/impact", { description, repository, max_depth: maxDepth }),
   memoryRecords: (repository?: string, memoryType?: MemoryType) => {
     const p = new URLSearchParams();
     if (repository) p.set("repository", repository);
@@ -496,6 +632,16 @@ export const api = {
   events: (limit = 120) => get<EventRecord[]>(`/observability/events?limit=${limit}`),
   snapshots: () => get<SnapshotMarker[]>("/observability/snapshots"),
   agents: () => get<{ agents: AgentNode[] }>("/observability/agents"),
+  planGoal: (repository: string, goal: string, model?: string | null) =>
+    post<PlanResult>("/agents/planner/plan", { repository, goal, model: model ?? null }),
+  proposeChange: (repository: string, objective: string, filePaths: string[], model?: string | null) =>
+    post<ProposeChangeResult>("/agents/coder/propose", {
+      repository, objective, file_paths: filePaths, model: model ?? null,
+    }),
+  askResearch: (repository: string, query: string, model?: string | null) =>
+    post<ResearchAskResult>("/agents/research/ask", { repository, query, model: model ?? null }),
+  runQuorum: (repository: string, query: string) =>
+    post<QuorumRunResult>("/agents/quorum/run", { repository, query }),
   usageSummary: (days?: number) =>
     get<UsageSummary>(`/observability/usage${days ? `?days=${days}` : ""}`),
   usageRecords: (limit = 100, days?: number) =>

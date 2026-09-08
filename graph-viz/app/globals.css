@@ -35,6 +35,13 @@
   --color-warn: #b0571f;
   --color-danger: #a92a30;
 
+  /* Tracing-paper grid — the workspace's page ground. Warm graph-paper tan with a fine ruled
+     grid, matched 1:1 to the illoca.unseen.co reference (sampled: base/line colors + 10.667px
+     cell). Panels sit on top of this, never blend into it. */
+  --color-grid-base: #eadfc9;
+  --color-grid-line-v: #d3c9b5;
+  --color-grid-line-h: #e3d9c3;
+
   --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
@@ -47,6 +54,10 @@
   --shadow-sm: 0 1px 2px rgba(26, 26, 24, 0.05), 0 1px 1px rgba(26, 26, 24, 0.03);
   --shadow-md: 0 10px 30px -12px rgba(26, 26, 24, 0.16);
   --shadow-lg: 0 28px 60px -20px rgba(26, 26, 24, 0.22);
+
+  /* Bulged-card bevel — a light top highlight + a faint bottom tint, themed per instrument. */
+  --panel-highlight: rgba(255, 255, 255, 0.8);
+  --panel-shadow-tint: rgba(26, 26, 24, 0.03);
 }
 
 :root {
@@ -54,6 +65,54 @@
   --dur-1: 0.16s;
   --dur-2: 0.28s;
   --dur-3: 0.5s;
+}
+
+/*
+  Aurora — the second, hot-swappable workspace theme. Same components, same markup, entirely
+  different instrument: near-black graphite instead of tracing paper, one live amber signal instead
+  of teal, a fine dot-field instead of ruled lines. Scoped to a `data-theme="aurora"` attribute on
+  the workspace root so it never touches the default theme's tokens — toggle it, nothing else in
+  the app has to know.
+*/
+[data-theme="aurora"] {
+  color-scheme: dark;
+
+  --color-paper: #0c0c0e;
+  --color-paper-sunk: #16171a;
+  --color-panel: #1a1b1f;
+  --color-panel-2: #212227;
+
+  --color-ink: #f5f3ec;
+  --color-ink-soft: #d9d6cc;
+  --color-muted: #9d9a8f;
+  --color-faint: #7c7969;
+  --color-line: #2a2b30;
+  --color-line-strong: #35363c;
+
+  --color-signal: #ff7a3d;
+  --color-signal-live: #ff9a5c;
+  --color-signal-wash: #2e2015;
+
+  --color-gold: #8a97a6;
+  --color-gold-wash: #1b2024;
+
+  --color-warn: #e7b532;
+  --color-danger: #ef5350;
+
+  --color-grid-base: #0c0c0e;
+  --color-grid-line-v: #0c0c0e;
+  --color-grid-line-h: #0c0c0e;
+
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jbmono), ui-monospace, "SFMono-Regular", monospace;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, 0.75);
+
+  --panel-highlight: rgba(255, 255, 255, 0.07);
+  --panel-shadow-tint: rgba(0, 0, 0, 0.5);
 }
 
 html,
@@ -217,31 +276,60 @@ body {
   user-select: none;
 }
 
-/* Glassmorphism — the workspace chrome (rail, headers, floating panels) reads as frosted glass:
-   translucent, blurred, with a soft inner highlight and a hairline edge instead of a flat border.
-   Only visible where there's something with variation behind it to blur — pair with
-   .workspace-ambient on the page background, never place over a flat single color. */
+/* Bulged card chrome — the workspace rail/panels read as a raised card resting on the grid, not a
+   glass pane: mostly-opaque paper, a soft light bevel along the top edge, a deep tinted shadow
+   underneath. Replaces the old glassmorphism treatment (blobs are gone, so there's nothing colorful
+   left to blur). */
 .glass-panel {
-  background: color-mix(in srgb, var(--color-panel) 58%, transparent);
-  backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid color-mix(in srgb, var(--color-line-strong) 55%, transparent);
+  background: color-mix(in srgb, var(--color-panel) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-line-strong) 70%, transparent);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 8px 32px -14px rgba(26, 26, 24, 0.14);
+    inset 0 1.5px 0 var(--panel-highlight),
+    inset 0 -1px 0 var(--panel-shadow-tint),
+    var(--shadow-lg);
 }
 
-/* Soft ambient light behind the glass chrome — teal signal + muted gold, strong enough to actually
-   tint through a translucent panel (the first version of this was ~0.07 peak opacity, which reads
-   as nothing through 72%-opacity glass — glass needs real color behind it to look like glass, a
-   flat near-white-on-white blur is invisible). One blob sits directly behind the rail's column so
-   the glass panel visibly picks up color, not just a shadow. */
+/* Tracing-paper grid ground — fine ruled grid over warm tan, 1:1 matched to the illoca.unseen.co
+   reference. Fixed, not scrolled: the workspace shell itself doesn't scroll, only its panes do. */
 .workspace-ambient {
-  background:
-    radial-gradient(50% 65% at 3% 35%, rgba(15, 125, 113, 0.30) 0%, transparent 68%),
-    radial-gradient(42% 55% at 8% 82%, rgba(156, 125, 51, 0.24) 0%, transparent 65%),
-    radial-gradient(55% 50% at 92% 6%, rgba(15, 125, 113, 0.16) 0%, transparent 62%),
-    radial-gradient(60% 55% at 55% 102%, rgba(26, 26, 24, 0.07) 0%, transparent 70%),
-    var(--color-paper);
+  background-color: var(--color-grid-base);
+  background-image:
+    linear-gradient(90deg, var(--color-grid-line-v) 1px, transparent 0),
+    linear-gradient(var(--color-grid-line-h) 1px, transparent 0);
+  background-size: 10.6667px 10.6667px;
+}
+
+/* Aurora ground — a fine dot-field standing in for the ruled grid, plus one warm signal glow
+   anchored behind the rail (the instrument's light source). Replaces the linear-gradient ruling
+   entirely rather than reusing the paper theme's grid-line vars, since lines-on-black read as a
+   spreadsheet, not an instrument. */
+[data-theme="aurora"] .workspace-ambient {
+  background-color: var(--color-grid-base);
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    radial-gradient(60% 50% at 6% 12%, rgba(255, 122, 61, 0.16) 0%, transparent 70%);
+  background-size: 22px 22px, 100% 100%;
+  background-position: 0 0, 0 0;
+}
+
+/* Paper grain — a faint fractal-noise texture over the whole workspace, the same trick the
+   reference site uses to keep a flat tan grid from looking digitally flat. Fixed + pointer-events:
+   none so it never scrolls or intercepts input; kept off scrolling containers entirely (repainting
+   a grain filter under scroll tanks mobile FPS). */
+.workspace-ambient::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+[data-theme="aurora"] .workspace-ambient::after {
+  opacity: 0.12;
+  mix-blend-mode: soft-light;
 }
 
 /* Markdown inside a chat bubble: no leading gap, tighter than doc pages. */

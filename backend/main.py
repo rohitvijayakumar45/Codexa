@@ -1,12 +1,29 @@
+import logging
 import os
 
-from fastapi import FastAPI
+from dotenv import load_dotenv
+
+# Root cause of a real bug: nothing in this codebase ever loaded .env into the process — every
+# key (GEMINI_API_KEY_2 included) sitting in .env was invisible to os.getenv() unless a real shell
+# session happened to export it separately. That's why the Gemini key-failover mechanism in
+# backend/agents/llm.py (correct on its own) silently never fired: LLMClient.__init__ only sees a
+# second key when len(keys) > 1, and os.getenv("GEMINI_API_KEY_2") was returning None at runtime.
+# MUST run before any backend import below - several modules (llm.py's LLMClient, in particular)
+# read env vars at import/construction time, not lazily.
+load_dotenv()
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = logging.getLogger(__name__)
 
 from backend.agents.api import create_agents_router
 from backend.agents.coder import CoderService
 from backend.agents.llm import LLMClient
 from backend.agents.planner import PlannerService
+from backend.agents.quorum import QuorumService
 from backend.agents.research import ResearchAgentService
 from backend.agents.retrieval import ContextAssemblyService
 from backend.agents.impact import create_impact_router
@@ -53,20 +70,55 @@ from backend.understanding.architecture_evolution import ArchitectureEvolutionSe
 from backend.understanding.nightly_review import NightlyArchitectureReviewService
 
 
+_DEV_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+
+class _CatchUnhandledMiddleware(BaseHTTPMiddleware):
+    """Turns an unhandled exception into a clean JSON 500 instead of an opaque connection drop.
+
+    This has to be a real ASGI middleware (added to the stack via app.add_middleware), not an
+    `@app.exception_handler(Exception)` — Starlette special-cases a handler registered for the bare
+    `Exception`/500 key by handing it to ServerErrorMiddleware, which sits OUTSIDE CORSMiddleware.
+    ServerErrorMiddleware sends that handler's response over the raw, pre-CORS `send` it was given
+    (CORSMiddleware never gets a chance to wrap it, since the exception propagated up past
+    CORSMiddleware without it ever sending anything), so an exception_handler-based response reaches
+    the browser with no Access-Control-Allow-Origin header — the browser reports it as a
+    network-level "Failed to fetch", masking every backend error as "server unreachable" (confirmed
+    via TestClient vs real uvicorn — same code, header present in-process, missing over real HTTP).
+    A BaseHTTPMiddleware, registered BEFORE CORSMiddleware (so CORSMiddleware ends up wrapping it,
+    per Starlette's add_middleware inserting each new one at the front of the stack), instead runs
+    INSIDE CORSMiddleware — its response passes through CORSMiddleware's normal per-request header
+    injection exactly like a real 200 OK would, and CORSMiddleware handles the origin-matching
+    itself instead of this needing to reimplement it.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as exc:  # noqa: BLE001 - last-resort handler, must not itself raise
+            logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+            return JSONResponse(status_code=500, content={"detail": f"{type(exc).__name__}: {exc}"})
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Codexa OS", version="0.1.0")
+    # Order matters: add_middleware inserts each new middleware at the front of the stack, so
+    # adding the catch-all BEFORE CORSMiddleware makes CORSMiddleware end up outermost — meaning it
+    # wraps (and applies its header logic to) the catch-all's responses. See the class docstring.
+    app.add_middleware(_CatchUnhandledMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-        ],
+        allow_origins=_DEV_ORIGINS,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
     database_url = os.getenv("CODEXA_DATABASE_URL") or os.getenv("DATABASE_URL")
     if database_url:
         artifact_repository = PostgresArtifactRepository(database_url)
@@ -85,6 +137,7 @@ def create_app() -> FastAPI:
     planner_service = PlannerService(repository=graph_repository, event_writer=event_writer, llm=llm_client)
     coder_service = CoderService(event_writer=event_writer, llm=llm_client)
     research_service = ResearchAgentService(graph=graph_service, llm=llm_client)
+    quorum_service = QuorumService(llm=llm_client, graph=graph_service)
     retrieval_service = ContextAssemblyService(
         repository=graph_repository,
         event_writer=event_writer,
@@ -134,6 +187,7 @@ def create_app() -> FastAPI:
             coder=coder_service,
             research=research_service,
             retrieval=retrieval_service,
+            quorum=quorum_service,
         )
     )
     app.include_router(
@@ -147,6 +201,7 @@ def create_app() -> FastAPI:
             economics=economics_service,
             health=health_service,
             incidents=incident_learning_service,
+            graph=graph_service,
         )
     )
     app.include_router(create_execution_router(sandbox=sandbox_execution_service))
@@ -172,15 +227,17 @@ def create_app() -> FastAPI:
     app.include_router(create_memory_store_router(store=memory_store))
     app.include_router(create_context_router(store=memory_store, graph=graph_service))
     app.include_router(create_repository_router(store=memory_store, graph=graph_service, llm=llm_client))
-    rehydrate_repositories(store=memory_store, graph=graph_service)
-    app.include_router(create_files_router())
-    app.include_router(create_chat_router(llm=llm_client, graph=graph_service, store=memory_store))
-    app.include_router(create_observability_router(event_writer=event_writer, llm=llm_client))
-    app.include_router(create_docs_router(llm=llm_client))
 
-    # Development seed: with no database configured, the store boots empty. When CODEXA_SEED is
-    # enabled we populate the in-memory graph with real, self-referential data so the frontend
-    # reads a live backend instead of fabricating mock data.
+    # Development seed: with no database configured, the in-memory graph boots empty. When
+    # CODEXA_SEED is enabled we populate it with real, self-referential "codexa-os" data so the
+    # frontend reads a live backend instead of fabricating mock data. seed_graph no-ops as soon as
+    # ANY node already exists (graph.list_nodes() is non-empty) — it MUST run before
+    # rehydrate_repositories below, not after. rehydrate_repositories re-ingests every real repo
+    # previously loaded from `.codexa/repos/*` on disk (the in-memory graph itself doesn't survive
+    # a restart, but those clones do), and on any machine with real repos already loaded, that
+    # happens on every single boot — permanently starving the seed check of the "still empty" state
+    # it needs, so codexa-os's own graph/architecture tabs read empty forever even with
+    # CODEXA_SEED=1 set. Order here is load-bearing.
     if not database_url and os.getenv("CODEXA_SEED", "").strip().lower() in {"1", "true", "yes", "on"}:
         from backend.seed import seed_graph
 
@@ -190,6 +247,19 @@ def create_app() -> FastAPI:
             architecture=architecture_evolution_service,
             health=health_service,
         )
+
+    # Rebuilding every previously-loaded repo's graph is right for a real server boot and wrong for
+    # anything constructing an app to inspect it: it walks `.codexa/repos/*` on the host's actual
+    # disk, so create_app() quietly inherits whatever that developer happens to have loaded. Under
+    # pytest that meant ~1600 real graph events landing in tests asserting a pristine event log —
+    # eight failures that looked like unrelated product bugs and were really one environment leak.
+    # Defaults to on, so production behaviour is unchanged; the test suite opts out (tests/conftest.py).
+    if os.getenv("CODEXA_REHYDRATE", "1").strip().lower() not in {"0", "false", "no", "off"}:
+        rehydrate_repositories(store=memory_store, graph=graph_service)
+    app.include_router(create_files_router())
+    app.include_router(create_chat_router(llm=llm_client, graph=graph_service, store=memory_store))
+    app.include_router(create_observability_router(event_writer=event_writer, llm=llm_client))
+    app.include_router(create_docs_router(llm=llm_client))
 
     return app
 

@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Iterator
 
 import litellm
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.agents.llm import LLMClient
-from backend.agents.tools import TOOL_SCHEMAS, execute_tool, parse_args
+from backend.agents.jobs import JobManager
+from backend.agents.phased_build import PhasedBuildManager
+from backend.agents.task import build_task_prompt, generate_contract, resolve_contract_source
 from backend.graph.service import GraphService
 from backend.memory.store import MemoryStore
 
@@ -22,56 +25,6 @@ def _approx_tokens(text: str) -> int:
 
 def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
-
-
-_COMPACTED_MARK = "[compacted"
-# How many rounds a bulky payload stays in full before being collapsed. Deliberately generous (not
-# 1) so the model still has it available if it circles back to reference it a round or two later —
-# this trades a small amount of extra tokens for zero risk of the model losing information it still
-# needs, per the "zero impact on output" requirement this was built under.
-_STALE_AFTER_ROUNDS = 3
-
-
-def _compact_stale_payloads(messages: list[dict], message_rounds: list[int], current_round: int) -> None:
-    """Collapses old, already-acted-upon bulky tool payloads in place so a long multi-round
-    tool-calling task doesn't keep re-sending the same huge blobs on every subsequent round.
-
-    Targets only content that (a) the model has already had multiple rounds to act on, and (b) is
-    reconstructable/irrelevant to future reasoning even once removed: get_design_guidance's dumped
-    style-guide text (the model already used it to decide what to write; it can call the tool again
-    if it genuinely needs it later), and write_file/edit_file's file content (the file is on disk —
-    that's the source of truth, not the chat transcript; edit_file's old_text match happens against
-    the live file too, not history). Nothing else is touched, so ordinary conversation, tool_call_id
-    pairing, and every other message stay exactly as the model produced them.
-    """
-    for i, msg in enumerate(messages):
-        if current_round - message_rounds[i] < _STALE_AFTER_ROUNDS:
-            continue
-        if msg.get("role") == "tool" and msg.get("name") == "get_design_guidance":
-            content = msg.get("content", "")
-            if isinstance(content, str) and not content.startswith(_COMPACTED_MARK):
-                msg["content"] = (
-                    f"{_COMPACTED_MARK} — this design guidance ({len(content)} chars) was loaded "
-                    "earlier in this conversation and already used. Call get_design_guidance again "
-                    "if you need to re-check its rules.]"
-                )
-        elif msg.get("role") == "assistant" and msg.get("tool_calls"):
-            for tc in msg["tool_calls"]:
-                fn = tc.get("function", {})
-                if fn.get("name") not in ("write_file", "edit_file"):
-                    continue
-                try:
-                    args = json.loads(fn.get("arguments") or "{}")
-                except (json.JSONDecodeError, TypeError):
-                    continue
-                changed = False
-                for key in ("content", "new_text", "old_text"):
-                    val = args.get(key)
-                    if isinstance(val, str) and len(val) > 200 and not val.startswith(_COMPACTED_MARK):
-                        args[key] = f"{_COMPACTED_MARK} — {len(val)} chars, already written to disk.]"
-                        changed = True
-                if changed:
-                    fn["arguments"] = json.dumps(args)
 
 
 class ChatMessage(BaseModel):
@@ -88,6 +41,12 @@ class AgentChatRequest(ChatRequest):
     repository: str = "codexa-os"
 
 
+class PhasedBuildRequest(BaseModel):
+    spec: str
+    repository: str = "codexa-os"
+    model: str | None = None
+
+
 class ModelInfo(BaseModel):
     id: str
     label: str
@@ -99,6 +58,9 @@ class ModelInfo(BaseModel):
 
 def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, store: MemoryStore | None = None) -> APIRouter:
     router = APIRouter(prefix="/chat", tags=["chat"])
+    job_manager = JobManager(llm=llm, graph=graph, store=store)
+    job_manager.load_interrupted_ids()
+    phased_build_manager = PhasedBuildManager(llm=llm, job_manager=job_manager)
 
     @router.get("/models", response_model=list[ModelInfo])
     def list_models() -> list[ModelInfo]:
@@ -107,12 +69,14 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
     @router.post("/stream")
     def stream(request: ChatRequest) -> StreamingResponse:
         model = request.model if (request.model in llm.available) else llm.default_model
-        prompt_tokens = sum(_approx_tokens(m.content) for m in request.messages)
+        prompt_tokens_approx = sum(_approx_tokens(m.content) for m in request.messages)
 
         def event_stream() -> Iterator[str]:
             content = ""
+            chunks = []
             try:
                 for chunk in llm.stream(model, [m.model_dump() for m in request.messages], timeout=180):
+                    chunks.append(chunk)
                     delta = chunk.choices[0].delta
                     thinking = getattr(delta, "reasoning_content", None)
                     if thinking:
@@ -124,9 +88,18 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
             except Exception as exc:  # noqa: BLE001 - surface provider failures to the client
                 yield f"data: {json.dumps({'error': f'{type(exc).__name__}: {exc}'})}\n\n"
                 return
+            # Record real provider-reported usage (not the length//4 heuristic).
+            real_usage: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
+            if chunks:
+                try:
+                    final = litellm.stream_chunk_builder(chunks, messages=[m.model_dump() for m in request.messages])
+                    if final:
+                        real_usage = llm.record_usage("chat", model, final)
+                except Exception:  # noqa: BLE001
+                    pass
             usage = {
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": _approx_tokens(content),
+                "prompt_tokens": real_usage.get("prompt_tokens") or prompt_tokens_approx,
+                "completion_tokens": real_usage.get("completion_tokens") or _approx_tokens(content),
                 "context_window": llm.context_window(model),
                 "model": model,
             }
@@ -135,183 +108,154 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
         return StreamingResponse(event_stream(), media_type="text/event-stream")
 
     @router.post("/agent")
-    def agent(request: AgentChatRequest) -> StreamingResponse:
-        """Tool-calling loop: the model may read/search/write files, search the web, or run code —
-        or just answer. Streams tool-call traces then the final text."""
+    def agent(request: AgentChatRequest) -> dict:
+        """Starts the tool-calling loop as a detached background job and returns its id
+        immediately. The job keeps running on its own thread regardless of whether the client
+        stays connected — a dropped connection (tab switch, network blip, backend restart) no
+        longer cancels in-progress work. Subscribe to /agent/stream/{job_id} to watch it."""
         model = request.model if (request.model in llm.available) else llm.default_model
         repo = request.repository or "codexa-os"
         messages = [m.model_dump() for m in request.messages]
-        # Parallel array (same length/order as `messages`) tracking which round each entry was
-        # appended at, so _compact_stale_payloads knows how old something is. Pre-existing messages
-        # get a sentinel far in the past — harmless, since compaction only ever touches messages that
-        # structurally match a tool result/tool call, which none of the original request messages are.
-        message_rounds = [-100] * len(messages)
-        prompt_tokens = sum(_approx_tokens(m.content) for m in request.messages)
+        # Annotate the system message for prompt caching. Providers that support prefix caching
+        # (OpenAI, Anthropic, Gemini) will cache system + tools as a stable prefix across rounds,
+        # turning re-sent context from billed tokens to near-free cache hits. litellm's
+        # drop_params strips cache_control for providers that don't support it.
+        if messages and messages[0].get("role") == "system":
+            content = messages[0]["content"]
+            if isinstance(content, str):
+                messages[0]["content"] = [
+                    {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}},
+                ]
 
-        def _stream_round(*, with_tools: bool):
-            """Streams one model turn live (reasoning_content as 'thinking' deltas, content as
-            'delta' events) and returns the reassembled message + usage once the round ends.
+        _last_user = ""
+        for m in reversed(request.messages):
+            if m.role == "user":
+                _last_user = m.content
+                break
 
-            `timeout` is httpx's read timeout — the max gap between two received chunks, not a cap
-            on the whole round (it resets every time a chunk arrives). 180s because some providers
-            (observed on zai/GLM) go silent for well over a minute mid-generation on large/complex
-            completions (e.g. a single big HTML+CSS+JS file in one write_file call) without erroring
-            — that's real in-progress work stalling, not a hang, and a short timeout kills it."""
-            kwargs = {"tools": TOOL_SCHEMAS, "tool_choice": "auto"} if with_tools else {}
-            chunks = []
-            for chunk in llm.stream(model, messages, timeout=240, **kwargs):
-                chunks.append(chunk)
-                delta = chunk.choices[0].delta
-                thinking = getattr(delta, "reasoning_content", None)
-                if thinking:
-                    yield ("thinking", thinking)
-                if delta.content:
-                    yield ("delta", delta.content)
-            final = litellm.stream_chunk_builder(chunks, messages=messages)
-            usage = llm.record_usage("chat", model, final) if final else {"prompt_tokens": 0, "completion_tokens": 0}
-            yield ("final", (final.choices[0].message if final else None, usage))
+        # See resolve_contract_source's docstring: a bare nudge ("continue", "hi") mid-task must
+        # contract against the last substantive message, not itself — otherwise this system-prompt
+        # injection tells the model "TASK MODE: CONVERSATION" (no required tools) for the exact turn
+        # where a stalled/incomplete CREATE/MODIFY task still needs enforcing.
+        _contract_source = resolve_contract_source(_last_user, messages[:-1] if messages else [])
+        _task_prompt = build_task_prompt(generate_contract(_contract_source))
+        if _task_prompt and messages and messages[0].get("role") == "system":
+            existing = messages[0]["content"]
+            if isinstance(existing, str):
+                messages[0]["content"] = existing + "\n\n" + _task_prompt
+            elif isinstance(existing, list):
+                for block in existing:
+                    if block.get("type") == "text":
+                        block["text"] += "\n\n" + _task_prompt
+                        break
 
-        def _run_round(*, with_tools: bool):
-            """Wraps _stream_round with retries for failures that happen before any output exists
-            yet — safe to retry since nothing shown to the user needs to be undone. A rate-limit
-            error (litellm.RateLimitError) switches to the next available model in the same tier
-            instead of just retrying the same one — Groq's TPM rejections fire before a single token
-            streams, on the pre-flight size check, so this never risks duplicating output. Any other
-            failure gets one retry against the same model. Once any chunk has been emitted for this
-            round, nothing here is safely retryable and the failure is raised as before."""
-            nonlocal model
-            tried = {model}
-            for attempt in range(1, 6):
-                emitted = False
-                try:
-                    for kind, payload in _stream_round(with_tools=with_tools):
-                        if kind != "final":
-                            emitted = True
-                        yield (kind, payload)
+        job = job_manager.create(repository=repo, model=model, messages=messages)
+        job_manager.start(job, last_user_text=_last_user)
+        return {"job_id": job.id}
+
+    @router.post("/agent/job/{job_id}/cancel")
+    def agent_job_cancel(job_id: str) -> dict:
+        found = job_manager.cancel(job_id)
+        if not found:
+            raise HTTPException(status_code=404, detail="No such job.")
+        return {"cancelled": True}
+
+    @router.get("/agent/job/{job_id}")
+    def agent_job_status(job_id: str) -> dict:
+        job = job_manager.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="No such job.")
+        return {
+            "job_id": job.id, "status": job.status, "round": job.round,
+            "continuable": job.status == "error" and job.error_reason in ("max_rounds", "stall_exhausted"),
+        }
+
+    @router.post("/agent/job/{job_id}/continue")
+    def agent_job_continue(job_id: str) -> dict:
+        """"Continue" — for a job that errored out from one of the two mechanically-recoverable
+        reasons: ran out of tool-calling rounds, or exhausted its stall-recovery retries on a flaky
+        provider connection. Re-runs the same job (same id, full message/tool-call history intact)
+        with a fresh budget for whichever ran out, instead of the frontend's old fallback of
+        starting a brand-new job from a condensed text summary, which threw away every tool call
+        and all reasoning already done."""
+        if job_manager.get(job_id) is None:
+            raise HTTPException(status_code=404, detail="No such job.")
+        job = job_manager.continue_job(job_id)
+        if job is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Job isn't in a continuable state (must have errored out from running "
+                       "out of rounds or exhausting stall-recovery retries, not any other failure).",
+            )
+        return {"job_id": job.id}
+
+    @router.get("/agent/stream/{job_id}")
+    def agent_stream(job_id: str) -> StreamingResponse:
+        """Subscribes to a job's event log: replays everything emitted so far (so a reconnecting
+        client catches up on whatever it missed) then tails new events as they arrive. If the job
+        isn't in the live registry — the backend restarted after it checkpointed mid-flight — this
+        transparently resumes it from the last completed round instead of failing."""
+        job = job_manager.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="No such job.")
+        if job.status in ("interrupted",):
+            job = job_manager.resume(job_id)
+
+        async def event_stream():
+            index = 0
+            while True:
+                events = job.events
+                if index < len(events):
+                    evt = events[index]
+                    index += 1
+                    yield _sse(evt)
+                    # "done" always means the job is actually finished - safe to stop right away.
+                    # "error" is NOT necessarily terminal: backend/agents/jobs.py's _run auto-
+                    # continues a "max_rounds"/"stall_exhausted" error right after emitting it, in
+                    # the same background thread, often within microseconds - returning here on
+                    # sight of the event used to end the SSE relay before that continuation's own
+                    # events (the _auto_continue tool_call, the next round's thinking/tool_call/...)
+                    # ever got a chance to be appended, so the frontend showed a dead Continue/Retry
+                    # card for a job that was already running again server-side. Fall through to the
+                    # catch-up check below instead, which re-reads job.status once there are no
+                    # more buffered events left - by then the auto-continue (if any) has already
+                    # happened, so it correctly distinguishes "still running" from "truly stopped".
+                    if "done" in evt:
+                        return
+                elif job.status in ("done", "error"):
                     return
-                except Exception as exc:
-                    if emitted:
-                        raise
-                    if isinstance(exc, litellm.RateLimitError):
-                        tier = llm.tier_of(model)
-                        next_model = next(
-                            (m for m in llm.models_for_tier(tier) if m not in tried), None,
-                        ) if tier else None
-                        if next_model:
-                            model = next_model
-                            tried.add(model)
-                            yield ("model_switched", model)
-                            continue
-                    if attempt >= 2:
-                        raise
+                else:
+                    await asyncio.sleep(0.05)
 
-        def gen():
-            content = ""
-            real_prompt_tokens = 0
-            real_completion_tokens = 0
-            # Reassigned if create_project succeeds mid-loop, so a "build a new project" request can
-            # scaffold it in the same turn instead of needing the user to switch repos and ask again.
-            working_repo = repo
-            # A stall that happens AFTER a round has already streamed some thinking/content can't be
-            # silently retried by _run_round (the partial output is already on screen) — it used to
-            # just surface as an error, mirroring exactly what large single-shot generations (e.g. one
-            # huge write_file call) kept hitting in practice. Give those a bounded number of automatic
-            # "continue where you left off" recoveries instead of failing outright — the same thing a
-            # user manually retyping "CONTINUE" was doing by hand.
-            stall_recoveries = 0
-            max_stall_recoveries = 2
-            try:
-                # Was 6 — raised because stall recoveries now also consume a round, and a multi-step
-                # scaffold (create_project + design guidance + several directories/files) can
-                # legitimately need more than 6 tool rounds on its own.
-                for _round in range(10):
-                    _compact_stale_payloads(messages, message_rounds, _round)
-                    msg = None
-                    usage = {"prompt_tokens": 0, "completion_tokens": 0}
-                    saw_any_chunk = False
-                    partial_content = ""
-                    try:
-                        for kind, payload in _run_round(with_tools=True):
-                            if kind == "final":
-                                msg, usage = payload
-                            elif kind == "model_switched":
-                                # Not real model output — a rate-limited model was swapped for the
-                                # next one in its tier before anything streamed, so this must NOT
-                                # mark saw_any_chunk (that would wrongly block the no-tools fallback
-                                # path below on a genuine tool-support failure).
-                                yield _sse({kind: payload})
-                            else:
-                                saw_any_chunk = True
-                                if kind == "delta":
-                                    partial_content += payload
-                                yield _sse({kind: payload})
-                    except Exception:
-                        if saw_any_chunk:
-                            if stall_recoveries >= max_stall_recoveries:
-                                raise
-                            stall_recoveries += 1
-                            if partial_content:
-                                messages.append({"role": "assistant", "content": partial_content})
-                                message_rounds.append(_round)
-                            messages.append({
-                                "role": "user",
-                                "content": (
-                                    "[SYSTEM: the connection stalled mid-response (provider timeout). "
-                                    "Continue exactly from where you left off — do not repeat any text "
-                                    "already written above. If you were in the middle of a tool call "
-                                    "such as write_file, redo that call from scratch with the complete "
-                                    "content, since a partial/interrupted tool call was not saved.]"
-                                ),
-                            })
-                            message_rounds.append(_round)
-                            continue
-                        # model may not support tools — fall back to plain streaming
-                        for kind, payload in _run_round(with_tools=False):
-                            if kind == "final":
-                                msg, usage = payload
-                            else:
-                                yield _sse({kind: payload})
-                    real_prompt_tokens += usage["prompt_tokens"]
-                    real_completion_tokens += usage["completion_tokens"]
-                    tool_calls = getattr(msg, "tool_calls", None) or [] if msg else []
-                    if tool_calls:
-                        messages.append({
-                            "role": "assistant",
-                            "content": msg.content or "",
-                            "tool_calls": [
-                                {"id": tc.id, "type": "function",
-                                 "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-                                for tc in tool_calls
-                            ],
-                        })
-                        message_rounds.append(_round)
-                        for tc in tool_calls:
-                            name = tc.function.name
-                            args = parse_args(tc.function.arguments)
-                            yield _sse({"tool_call": {"name": name, "args": args}})
-                            tool_ctx: dict = {}
-                            result = execute_tool(name, args, working_repo, graph=graph, store=store, context=tool_ctx, llm=llm)
-                            if tool_ctx.get("new_repository"):
-                                working_repo = tool_ctx["new_repository"]
-                                yield _sse({"repo_switched": working_repo})
-                            yield _sse({"tool_result": {"name": name, "result": result[:600]}})
-                            messages.append({"role": "tool", "tool_call_id": tc.id, "name": name, "content": result})
-                            message_rounds.append(_round)
-                        continue
-                    content = msg.content or "" if msg else ""
-                    break
-            except Exception as exc:  # noqa: BLE001
-                yield _sse({"error": f"{type(exc).__name__}: {exc}"})
-                return
-            yield _sse({"done": True, "usage": {
-                # Real provider-reported counts (from complete_message's usage), not the length//4
-                # heuristic — falls back to the approximation only if a provider reported nothing.
-                "prompt_tokens": real_prompt_tokens or prompt_tokens,
-                "completion_tokens": real_completion_tokens or _approx_tokens(content),
-                "context_window": llm.context_window(model),
-                "model": model,
-            }})
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-        return StreamingResponse(gen(), media_type="text/event-stream")
+    @router.post("/agent/phased")
+    def start_phased_build(request: PhasedBuildRequest) -> dict:
+        """Splits a large spec into an ordered chain of smaller, independently-completable jobs
+        instead of one continuous run — real evidence: two full-stack builds each pushed past
+        100-300+ rounds in a single job before finishing, accumulating enough history along the way
+        to correlate with real corruption and connection instability. Returns the full phase
+        breakdown immediately (before any phase has even started) so the plan is visible up front,
+        not discovered after the fact."""
+        build = phased_build_manager.start(request.spec, request.repository, model=request.model)
+        return {
+            "phased_build_id": build.id,
+            "phases": [{"title": p.title, "prompt": p.prompt} for p in build.phases],
+        }
+
+    @router.get("/agent/phased/{build_id}")
+    def phased_build_status(build_id: str) -> dict:
+        build = phased_build_manager.get(build_id)
+        if build is None:
+            raise HTTPException(status_code=404, detail="No such phased build.")
+        return {
+            "phased_build_id": build.id,
+            "status": build.status,
+            "current_phase": build.current_phase,
+            "phases": [
+                {"title": p.title, "job_id": p.job_id, "status": p.status, "detail": p.detail}
+                for p in build.phases
+            ],
+        }
 
     return router

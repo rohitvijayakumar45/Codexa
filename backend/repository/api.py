@@ -24,6 +24,7 @@ from backend.graph.schemas import (
     GraphEdgeSourceType,
     GraphEdgeType,
     GraphNodeCreate,
+    GraphNodeProvenance,
     GraphNodeType,
 )
 from backend.graph.service import GraphService
@@ -435,12 +436,14 @@ def _ingest(
         node_type=GraphNodeType.REPOSITORY, stable_id=f"repo://{name}",
         properties={"name": display, "url": url, "primary_language": primary,
                     "file_count": d["file_count"], "repository": name},
+        provenance=GraphNodeProvenance.INTERNAL_CODE,
     ))
     file_nodes = {}
     for rel in code.files[:180]:
         file_nodes[rel] = graph.add_node(GraphNodeCreate(
             node_type=GraphNodeType.FILE, stable_id=f"file://{name}/{rel}",
             properties={"path": rel, "repository": name},
+            provenance=GraphNodeProvenance.INTERNAL_CODE,
         ))
     for a, b in code.imports:
         if a in file_nodes and b in file_nodes:
@@ -455,6 +458,7 @@ def _ingest(
         sym_nodes[key] = graph.add_node(GraphNodeCreate(
             node_type=GraphNodeType.CODE_SYMBOL, stable_id=f"symbol://{name}/{key}",
             properties={"name": s.name, "kind": s.kind, "file": s.file, "line": s.line, "repository": name},
+            provenance=GraphNodeProvenance.INTERNAL_CODE,
         ))
     for a, b in code.calls:
         if a in sym_nodes and b in sym_nodes:
@@ -537,6 +541,36 @@ def rehydrate_repositories(*, store: MemoryStore, graph: GraphService) -> int:
         except Exception:  # noqa: BLE001 - one bad repo shouldn't block startup
             continue
     return rebuilt
+
+
+def reindex_repository(name: str, *, store: MemoryStore, graph: GraphService) -> RepositoryInfo | None:
+    """Re-parses a repository from disk and rebuilds its graph/memory footprint.
+
+    Before this, the graph was only ever built once, at initial load (`_ingest`, above) or an
+    explicit `/reload` — a chat-agent edit via write_file/edit_file/delete_file never touched it, so
+    lookup_symbol/get_dependencies/find_references kept returning pre-edit results indefinitely
+    after any agent-driven change. Called from the agent job loop (backend/agents/jobs.py) once a
+    turn that mutated files finishes.
+
+    Clears the repository's existing graph nodes/edges first (`remove_repository`) rather than
+    relying on `_ingest`'s per-node upsert-by-stable_id alone — that leaves deleted files' and
+    symbols' nodes as zombies forever, since nothing ever removes a stable_id that stopped
+    reappearing. A full clear-then-rebuild is more expensive than a true incremental single-file
+    reindex would be, but reuses the exact tested ingestion path instead of a second, divergent
+    graph-building implementation, and repos edited through chat are typically small.
+    """
+    if name == "codexa-os":
+        return None  # the platform's own graph is seeded once (backend/seed.py), not a repo clone
+    dest = (DATA_DIR / "repos" / name).resolve()
+    meta_path = dest / ".codexa-repo.json"
+    if not dest.exists() or not meta_path.exists():
+        return None
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        meta = {}
+    graph.remove_repository(name)
+    return _ingest(name, meta.get("url", ""), dest, True, store=store, graph=graph, invalidate_docs=True)
 
 
 def _load_persisted_docs(store: MemoryStore, repository: str) -> RepoDocs | None:

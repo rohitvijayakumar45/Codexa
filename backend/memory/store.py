@@ -19,6 +19,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from backend.memory.conflict import resolve_conflict
+
 MEMORY_TYPES = ("semantic", "episodic", "procedural", "organizational")
 
 DATA_DIR = Path(os.getenv("CODEXA_DATA_DIR", ".codexa"))
@@ -32,6 +34,13 @@ class MemoryRecord(BaseModel):
     content: str
     created_at: datetime
     metadata: dict[str, Any] = Field(default_factory=dict)
+    # Deterministic conflict-resolution bookkeeping (backend/memory/conflict.py) — trust/
+    # corroboration_count feed the resolution formula; invalid_at is a soft-delete (never physically
+    # removed) set when this record was superseded or arrived already contradicted by a
+    # higher-scoring existing record, so the history stays inspectable rather than being erased.
+    trust: float = 1.0
+    corroboration_count: int = 1
+    invalid_at: datetime | None = None
 
 
 class RepositorySummary(BaseModel):
@@ -71,19 +80,63 @@ class MemoryStore:
         title: str,
         content: str,
         metadata: dict[str, Any] | None = None,
+        trust: float = 1.0,
     ) -> MemoryRecord:
+        """Adds a record. If an active record already exists for this exact (repository,
+        memory_type, title) — the key every real write site in this codebase already treats as
+        identifying "the same fact" (e.g. "What X is", "Stack & conventions") — the new content is
+        run through the deterministic conflict resolver (backend/memory/conflict.py) instead of
+        just being appended as an unreconciled duplicate. Existing call sites that always `remove()`
+        before re-adding (the repo-load path) never hit an existing record here, so this is a pure
+        addition for any caller that adds without first clearing — it was previously a silent gap
+        where two same-titled records could coexist with no record of which was current."""
         if memory_type not in MEMORY_TYPES:
             raise ValueError(f"unknown memory_type: {memory_type}")
-        record = MemoryRecord(
-            id=str(uuid4()),
-            repository=repository,
-            memory_type=memory_type,
-            title=title,
-            content=content,
-            created_at=datetime.now(UTC),
-            metadata=metadata or {},
-        )
+        metadata = dict(metadata or {})
+
         with self._lock:
+            existing = next(
+                (r for r in self._records
+                 if r.repository == repository and r.memory_type == memory_type
+                 and r.title == title and r.invalid_at is None),
+                None,
+            )
+            if existing is not None:
+                resolution = resolve_conflict(
+                    existing_content=existing.content, existing_trust=existing.trust,
+                    existing_corroboration_count=existing.corroboration_count,
+                    new_content=content, new_trust=trust,
+                )
+                if resolution.action == "corroborate":
+                    existing.corroboration_count += 1
+                    existing.trust = min(1.0, existing.trust + 0.05)
+                    existing.metadata["last_corroborated_reason"] = resolution.reason
+                    self._save()
+                    return existing
+                if resolution.action == "supersede":
+                    existing.invalid_at = datetime.now(UTC)
+                    existing.metadata["superseded_reason"] = resolution.reason
+                else:  # reject — the new record is stored, but already invalidated
+                    record = MemoryRecord(
+                        id=str(uuid4()), repository=repository, memory_type=memory_type,
+                        title=title, content=content, created_at=datetime.now(UTC),
+                        metadata={**metadata, "rejected_reason": resolution.reason, "conflicts_with": existing.id},
+                        trust=trust, invalid_at=datetime.now(UTC),
+                    )
+                    self._records.append(record)
+                    self._save()
+                    return record
+
+            record = MemoryRecord(
+                id=str(uuid4()),
+                repository=repository,
+                memory_type=memory_type,
+                title=title,
+                content=content,
+                created_at=datetime.now(UTC),
+                metadata=metadata,
+                trust=trust,
+            )
             self._records.append(record)
             self._save()
         return record
@@ -102,12 +155,19 @@ class MemoryStore:
                 self._save()
             return removed
 
-    def list(self, repository: str | None = None, memory_type: str | None = None) -> list[MemoryRecord]:
+    def list(
+        self, repository: str | None = None, memory_type: str | None = None, *, include_invalid: bool = False,
+    ) -> list[MemoryRecord]:
+        """By default excludes soft-invalidated records (superseded or rejected — see `add()`'s
+        conflict resolution) — ordinary retrieval should only ever see the currently-active fact.
+        Pass include_invalid=True for audit/history views that want the full record, contradictions
+        included."""
         return [
             r
             for r in self._records
             if (repository is None or r.repository == repository)
             and (memory_type is None or r.memory_type == memory_type)
+            and (include_invalid or r.invalid_at is None)
         ]
 
     def has_repository(self, repository: str) -> bool:
@@ -116,6 +176,8 @@ class MemoryStore:
     def repositories(self) -> list[RepositorySummary]:
         summaries: dict[str, RepositorySummary] = {}
         for record in self._records:
+            if record.invalid_at is not None:
+                continue  # superseded/rejected records aren't "active" memory — don't count them
             summary = summaries.get(record.repository)
             if summary is None:
                 summary = RepositorySummary(

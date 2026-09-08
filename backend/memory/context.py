@@ -23,16 +23,64 @@ from backend.memory.store import MemoryStore
 _TARGETABLE = {"File", "CodeSymbol"}
 _DEP_EDGES = {"imports", "calls", "depends_on", "flows_into"}
 _MAX_MATCHES = 5
-_MAX_NEIGHBORS_PER_MATCH = 6
-_MAX_ITEMS = 16
+_MAX_NEIGHBORS_PER_MATCH = 4
+_MAX_ITEMS = 8
 # Digest records (project structure, function listings) can be several KB uncapped — this is what
 # was quietly padding every chat request's prompt regardless of relevance. See
 # docs/token_usage_investigation.md.
-_MAX_CONTENT_CHARS = 1200
+_MAX_CONTENT_CHARS = 800
+# When no symbols match, inject at most this many digest records (ranked by relevance).
+_MAX_BASELINE_RECORDS = 4
 
 
 def _truncate(text: str, limit: int = _MAX_CONTENT_CHARS) -> str:
     return text if len(text) <= limit else text[:limit] + f"… [truncated, {len(text)} chars total]"
+
+
+# Query phrasing that indicates which memory type the question is really asking about — used to
+# weight ranking, not to filter, so a record of the "wrong" type can still surface on strong keyword
+# overlap alone. Without this, "how do I run this" and "what tech stack does this use" score purely
+# on keyword overlap and can lose to an unrelated but keyword-heavier record of a different type,
+# even though the type itself is a near-perfect signal for which record actually answers the
+# question — semantic/episodic/procedural/organizational otherwise sit in one undifferentiated pool.
+_TYPE_SIGNALS: dict[str, re.Pattern[str]] = {
+    "procedural": re.compile(
+        r"\b(how (do|to|can) (i|you)|run|build|start|install|setup|set up|deploy|command|script|npm|yarn|pnpm)\b",
+        re.IGNORECASE,
+    ),
+    "organizational": re.compile(
+        r"\b(stack|tech stack|convention|framework|language|architecture|health|score|"
+        r"dependency|dependencies|structure|conventions)\b",
+        re.IGNORECASE,
+    ),
+    "episodic": re.compile(
+        r"\b(when (was|did)|history|changelog|loaded|created|cloned|timeline|recently|last (loaded|updated))\b",
+        re.IGNORECASE,
+    ),
+    "semantic": re.compile(
+        r"\b(what is|what does|what are|explain|describe|purpose|function|component|class|"
+        r"symbol|method)\b",
+        re.IGNORECASE,
+    ),
+}
+# Additive, not multiplicative — a type match nudges ranking (enough to beat a same-score record of
+# the wrong type) without fully overriding genuine keyword relevance from a strong text match.
+_TYPE_MATCH_BONUS = 0.35
+
+
+def _relevance_score(query: str, title: str, content: str, memory_type: str | None = None) -> float:
+    """Keyword-overlap score (0.0-1.0+, title matches count 2x) plus a bonus when the query's
+    phrasing signals the record's own memory_type is the one that actually answers it."""
+    query_tokens = [w for w in re.split(r"\W+", query.lower()) if len(w) >= 3]
+    if not query_tokens:
+        return 0.0
+    text = f"{title.lower()} {title.lower()} {content.lower()}"  # title weighted 2x
+    hits = sum(1 for t in query_tokens if t in text)
+    score = hits / len(query_tokens)
+    signal = _TYPE_SIGNALS.get(memory_type or "")
+    if signal and signal.search(query):
+        score += _TYPE_MATCH_BONUS
+    return score
 
 
 class ContextItem(BaseModel):
@@ -134,9 +182,19 @@ def create_context_router(*, store: MemoryStore, graph: GraphService) -> APIRout
             if r.metadata.get("source") not in ("docs_cache", "symbol_annotations")
         ]
         if matched:
-            baseline = [r for r in digest_records if r.title.startswith("What")][:2]
+            # Symbols matched → add up to 2 baseline facts for broader context.
+            baseline = sorted(
+                digest_records,
+                key=lambda r: _relevance_score(text, r.title, r.content, r.memory_type),
+                reverse=True,
+            )[:2]
         else:
-            baseline = digest_records[:12]
+            # No symbols matched → rank ALL digest records by relevance, take top-k.
+            baseline = sorted(
+                digest_records,
+                key=lambda r: _relevance_score(text, r.title, r.content, r.memory_type),
+                reverse=True,
+            )[:_MAX_BASELINE_RECORDS]
         for r in baseline:
             if len(items) >= _MAX_ITEMS:
                 break
