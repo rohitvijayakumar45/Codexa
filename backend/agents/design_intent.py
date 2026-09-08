@@ -93,6 +93,11 @@ class DesignIntent:
     #: Capabilities the finished artifact must demonstrably have. Checked as facts about the file,
     #: never as an aesthetic score.
     quality_checks: list[str] = field(default_factory=list)
+    #: What this specific brief committed to, by name — resolved against
+    #: validators._CAPABILITY_MECHANISMS. These are the promises the artifact is held to, and the
+    #: ones a cheap substitution silently drops: "smooth scroll experience" answered with
+    #: `scroll-behavior: smooth`, "shared-element transition" answered with a fading modal.
+    capabilities: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -266,6 +271,45 @@ _ANTI_PATTERNS = [
 ]
 
 
+# What a brief is asking for, in terms a validator can hold the artifact to. Matched against the
+# AFFIRMATIVE text only (see _strip_negations) so "not a landing page" cannot commit the build to
+# being one.
+_CAPABILITY_SIGNALS: list[tuple[str, "re.Pattern[str]"]] = [
+    ("scroll_linked_motion", re.compile(
+        r"\b(scroll[- ](?:driven|linked)|parallax|smooth scroll|scroll(?:ing)? (?:should|as|is)|"
+        r"choreograph\w*|as the user (?:scrolls|moves)|scroll-linked reveals?)", re.I)),
+    ("shared_element_transition", re.compile(
+        r"\b(shared[- ]element|expands? into|transitions? into|flip\b|morph\w*|"
+        r"transforms? into|becomes? (?:a|the)|panel expansion|signature (?:interaction|transition))",
+        re.I)),
+    ("filterable_collection", re.compile(
+        r"\b(filter\w*|search\w*|sort\w*|browse the|explore (?:the )?(?:collection|archive))", re.I)),
+    ("detail_view", re.compile(
+        r"\b(detail(?:ed)? (?:view|record|panel|records)|open (?:an?|the) \w+ into|drawer|modal|"
+        r"inspect metadata|reading surface|detailed object views?)", re.I)),
+    ("responsive_recompose", re.compile(
+        r"\b(responsive|recompose|mobile|small(?:er)? (?:screens?|widths?)|breakpoints?)", re.I)),
+    ("reduced_motion", re.compile(r"prefers-reduced-motion|reduced[- ]motion", re.I)),
+]
+
+
+def _committed_capabilities(text: str, depth: str, motion: str) -> list[str]:
+    """The promises this brief actually made, plus the ones its depth implies.
+
+    A capability listed here becomes something the artifact is checked against. Under-listing is the
+    safe direction — a capability nobody asked for would fail a build for not having it — so this
+    only claims what the brief says, or what "product" depth plainly entails.
+    """
+    found = [name for name, pattern in _CAPABILITY_SIGNALS if pattern.search(text or "")]
+    if depth == "product":
+        for implied in ("detail_view", "filterable_collection"):
+            if implied not in found:
+                found.append(implied)
+    if motion == "choreographed" and "scroll_linked_motion" not in found:
+        found.append("scroll_linked_motion")
+    return found
+
+
 def derive(request: str, contract: TaskContract) -> DesignIntent | None:
     """Build the design intent for a frontend task, or None when the task is not one.
 
@@ -311,6 +355,7 @@ def derive(request: str, contract: TaskContract) -> DesignIntent | None:
     checks.append("accessibility")
 
     return DesignIntent(
+        capabilities=_committed_capabilities(positive, depth, motion),
         character=character,
         interaction_depth=depth,
         motion=motion,

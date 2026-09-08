@@ -340,7 +340,8 @@ class TestTheDeterministicPlan:
         request = "Build a dashboard page"
         plan = fallback_plan(request, generate_contract(request))
         known = {"artifacts_exist", "tools_called", "command_succeeded", "no_build_errors",
-                 "screenshot_taken", "files_changed", "design_evidence", "renders_cleanly"}
+                 "screenshot_taken", "files_changed", "design_evidence", "renders_cleanly",
+                 "intent_fidelity"}
         for task in plan.tasks:
             assert set(task.validators) <= known, task.validators
         assert any(t.validators for t in plan.tasks)
@@ -621,7 +622,8 @@ class TestInferringValidators:
 
     def test_it_never_invents_a_validator_name(self):
         known = {"artifacts_exist", "tools_called", "command_succeeded", "no_build_errors",
-                 "screenshot_taken", "files_changed", "design_evidence", "renders_cleanly"}
+                 "screenshot_taken", "files_changed", "design_evidence", "renders_cleanly",
+                 "intent_fidelity"}
         task = _task(expected_artifacts=["a.html"], required_tools=["screenshot", "write_file"])
         assert set(infer_validators(task)) <= known
 
