@@ -386,3 +386,41 @@ class TestTheDirectiveTextItself:
         assert "commit_direction" in text
         assert "cheap" in text or "writes nothing to disk" in text
         assert "decide now" in text or "whatever you have" in text
+
+
+class TestTheBudgetFollowsWhatTheTaskMustProduce:
+    """`_EXECUTION_CHARS` was 18,000 on the theory that a committed direction means the thinking is
+    done. That theory is wrong for the task that matters most: a round whose job is to produce a
+    1,000-line document legitimately deliberates about its content before emitting the first token
+    of the tool argument.
+
+    Measured on a real run — three consecutive rounds cut at 18,004 / 18,007 / 18,004 characters,
+    the same "regenerate and discard" signature as the original 40k deadlock, at a lower threshold,
+    with no artifact produced. The budget now follows what the task must PRODUCE rather than which
+    phase it is in.
+    """
+
+    def test_an_authoring_task_gets_the_full_allowance(self):
+        from backend.agents.jobs import _AUTHORING_CHARS, _PLANNING_CHARS
+        assert _AUTHORING_CHARS >= _PLANNING_CHARS, (
+            "composing the artifact IS the deliberation for that task")
+
+    def test_a_non_authoring_task_still_gets_the_short_leash(self):
+        # The original reasoning does hold where a round only has to run or verify something.
+        from backend.agents.jobs import _AUTHORING_CHARS, _EXECUTION_CHARS
+        assert _EXECUTION_CHARS < _AUTHORING_CHARS
+
+    def test_the_wall_clock_still_bounds_both(self):
+        # Whatever the character budget, the guard that does not depend on classifying output stays.
+        from backend.agents.jobs import _MAX_ROUND_SECONDS
+        assert 60 <= _MAX_ROUND_SECONDS <= 30 * 60
+
+
+class TestTheDebugOverrideNeverLeaksIntoTests:
+    def test_the_round_cap_is_active_under_test(self):
+        """CODEXA_ROUND_BUDGET=0 is a legitimate debugging switch set in .env, which
+        backend/main.py loads at import. Several tests drive _loop with a model that never completes
+        and rely on the round cap to terminate — with the cap gone they run forever, and the suite
+        stopped finishing at all. A suite must never inherit a debugging switch from its machine."""
+        from backend.agents.jobs import _UNLIMITED_ROUNDS
+        assert _UNLIMITED_ROUNDS is False
