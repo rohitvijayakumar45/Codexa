@@ -77,6 +77,18 @@ MAX_REASONING_CHARS_PER_TASK = 120_000
 # tool calls is not going to comply on the fourth, and the useful move is a different task.
 MAX_INTERVENTIONS_PER_TASK = 3
 
+# Validators that cost real wall-clock: a browser launch, a type-check subprocess. Safe to run when
+# a completion is being claimed; far too expensive to poll after every tool round.
+_EXPENSIVE_VALIDATORS = frozenset({"renders_cleanly", "no_build_errors"})
+
+# Read-only tools whose answer does not change by asking again. Forcing one of these a second time
+# inside the same task cannot advance it — the repository listing that came back empty comes back
+# empty. Excluded from re-forcing after they have run once in a task.
+_NON_ADVANCING_WHEN_REPEATED = frozenset({
+    "list_directory", "tree", "git_status", "get_project_metadata", "detect_conventions",
+    "get_design_guidance", "search_code",
+})
+
 
 class InterventionReason(str):
     """Why the controller is stepping in. Carried into events and logs so an unproductive stretch is
@@ -138,6 +150,8 @@ class ExecutionController:
         self.plan.begin(task)
         self.job.task_tool_offsets.setdefault(task.id, len(self.job.tools_called))
         self.job.task_exit_offsets.setdefault(task.id, len(self.job.exit_code_log))
+        # A finished task's quiet rounds must not be evidence against the task that follows it.
+        self._recent.clear()
         if not task.validators:
             # A model-proposed task usually arrives without validators; a plan whose tasks cannot be
             # checked is a checklist, which is exactly what this system is not.
@@ -239,6 +253,16 @@ class ExecutionController:
         for name in task.required_tools:
             if name not in called and name in available_tool_names:
                 return name
+
+        # Nothing outstanding by name. Before falling through, refuse to demand a tool this task has
+        # ALREADY run without advancing — repeating it is not progress, it is the thrash itself.
+        #
+        # Observed exactly: a task whose required tool was list_directory, on an EMPTY repository.
+        # The listing returned nothing both times, so the task could never satisfy itself, and the
+        # intervention forced the same call three times, failed the task, created a recovery task,
+        # and forced it three more times. Eleven list_directory calls, two failed tasks, nothing
+        # learned after the first one. A tool that has already answered has nothing left to say.
+        exhausted = {t for t in called if t in _NON_ADVANCING_WHEN_REPEATED}
         # Every named tool has been called at least once, yet the task is not finished and nothing is
         # moving. If an artifact is still missing or unusable, the outstanding action is unambiguous
         # — but WHICH action depends on whether anything is there yet.
@@ -261,7 +285,17 @@ class ExecutionController:
                     return "edit_file"
                 if "write_file" in available_tool_names:
                     return "write_file"
-        return next((n for n in task.required_tools if n in available_tool_names), None)
+        # Last resort: a required tool that is still worth calling. Anything read-only that already
+        # answered in this task is skipped — see _NON_ADVANCING_WHEN_REPEATED. If that leaves
+        # nothing, prefer the action that actually produces something over another look around.
+        remaining = [n for n in task.required_tools
+                     if n in available_tool_names and n not in exhausted]
+        if remaining:
+            return remaining[0]
+        for fallback in ("write_file", "edit_file"):
+            if fallback in available_tool_names and task.expected_artifacts:
+                return fallback
+        return None
 
     def _artifact_partially_written(self, task: Task) -> bool:
         """True when at least one expected artifact is already on disk with real content in it.
@@ -327,6 +361,12 @@ class ExecutionController:
         task.rounds_without_progress = 0
         task.reasoning_chars = 0
         task.rounds_spent = 0
+        # `intervention_reason` also consults is_thrashing(self._recent), and that window still held
+        # the same quiet rounds this intervention was the response to — so if the forced tool was
+        # read-only and already in the window's vocabulary, thrashing stayed true and fired again on
+        # the very next round, failing a task in three consecutive rounds. The intervention IS the
+        # response to that history; clearing it is what makes the next round a fresh judgement.
+        self._recent.clear()
         if task.interventions >= MAX_INTERVENTIONS_PER_TASK:
             # Forcing has stopped working. Abandoning the task here — rather than forcing a fourth,
             # fifth, hundredth time — is what guarantees the job terminates: without it, a model
@@ -351,6 +391,56 @@ class ExecutionController:
             # what it was supposed to BE and not only against what exists.
             design=getattr(self.job, "design", None),
         )
+
+    def try_advance(self, task: Task) -> bool:
+        """Complete a task the moment its checks actually pass, without waiting to be told.
+
+        Completion used to be evaluated in one place only: a round where the model returned NO tool
+        calls, read as a claim of "finished". That quietly made the model the trigger. A task whose
+        validators had already passed stayed IN_PROGRESS for as long as the model kept calling
+        tools — and a model with no remaining useful action does not fall silent, it invents one.
+
+        Observed exactly that: task one was "inspect the repository and establish the conventions",
+        its check was "list_directory was called", and that passed on round one. Fifteen rounds
+        later it was still the active task, with nine list_directory calls out of nineteen tools,
+        a screenshot of a repository containing no page, and an intervention — all of it work the
+        model manufactured because nothing had told it the task was over.
+
+        Codexa owns when a task is complete. Owning that means noticing, not waiting to be asked.
+
+        Only ever advances a task that has genuinely made progress and genuinely passes; a task with
+        no mechanical check is left alone, because "nothing to verify" must not become "complete the
+        instant it starts".
+        """
+        if task.status is not TaskStatus.IN_PROGRESS or not task.validators:
+            return False
+        if not task.progress_notes and not self.tools_in_task(task):
+            return False
+        # Cheap checks only. This runs after EVERY tool round, and the full set includes
+        # `renders_cleanly` (launches Chromium, loads the page, scrolls it, waits for motion to
+        # settle) and `no_build_errors` (spawns `npx tsc --noEmit`, up to 30s). A twelve-round task
+        # was paying twelve browser launches, most of them against a half-written file — slow, and
+        # actively wrong, because a render that legitimately fails mid-build would fail the check on
+        # work still in progress.
+        #
+        # An expensive check belongs where a completion is actually being CLAIMED, not on a
+        # speculative poll. So advancement here requires the cheap checks to pass; anything with an
+        # expensive validator is left for on_completion_claim to settle.
+        if set(task.validators) & _EXPENSIVE_VALIDATORS:
+            return False
+        result = self.validate_current(task)
+        if not result.passed:
+            return False
+        self.plan.record_validation(task, True, result.detail)
+        logger.info("job %s: task %s satisfied its checks — advancing without waiting for a claim",
+                    self.job.id, task.id)
+        self._emit({"tool_call": {"name": "_task_validation", "args": {
+            "task": task.objective, "status": "passed", "detail": result.detail,
+            "checked": result.checked, "advanced": "automatically",
+        }}})
+        self._emit({"status": f"Done: {task.objective}"})
+        self.sync()
+        return True
 
     def on_completion_claim(
         self,
@@ -411,6 +501,13 @@ class ExecutionController:
         """
         if task.is_recovery:
             logger.info("job %s: task %s is already a recovery — not recovering again", self.job.id, task.id)
+            return False
+        repair_objective = f"Recover: {task.objective}"
+        if any(t.objective == repair_objective for t in self.plan.tasks):
+            # One failure can reach `recover` twice in a single round — once from `intervene`
+            # exhausting the intervention budget, once from `on_completion_claim` seeing the task it
+            # just failed. That inserted two identical repair tasks and spent two of the five plan
+            # revisions on one failure, leaving nothing for a genuine second problem.
             return False
         if not self.plan.can_revise():
             logger.warning("job %s: no revision budget left to recover task %s", self.job.id, task.id)
