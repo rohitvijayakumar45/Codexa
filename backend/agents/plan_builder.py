@@ -486,7 +486,19 @@ def _create_specs(request: str, contract: TaskContract) -> list[dict[str, Any]]:
             # minute round was three product designs in a row; a task whose entire deliverable is
             # one committed direction makes that divergence finish instead of recur, and everything
             # after it is execution against a decision already made.
+            # required_tools is what gives this task a mechanical completion criterion, and without
+            # one it could not end on the round that finished it. `try_advance` refuses to complete
+            # a task with no validators — deliberately, so "nothing to verify" cannot mean "complete
+            # the instant it starts" — so a criterion-less task could only finish via a round with
+            # NO tool calls. That forced the model to keep generating prose in order to end the
+            # task, and it filled that prose with the design of every LATER task.
+            #
+            # Measured on two real runs: the task above, which advances on its tool round, spent 69
+            # reasoning characters. This one, with no criterion, spent 2,002 and 5,806 across two
+            # rounds — and a third run reached roughly 18,000, all of it designing work that
+            # belonged to tasks three through nine. The leak was structural, not a lapse of focus.
             "objective": "Commit to one direction and state it in a few sentences",
+            "required_tools": ["commit_direction"],
             "completion_criteria": [
                 "One concept, stated once, in no more than a few sentences",
                 "No alternatives evaluated — a better idea goes in a comment, not into a rethink",
@@ -723,6 +735,10 @@ def _fullstack_specs(request: str, contract: TaskContract) -> list[dict[str, Any
         },
         {
             "objective": "Commit to one architecture and state it in a few sentences",
+            # See the note on the single-file plan's commit task: a task with no mechanical
+            # criterion can only end on a round with no tool calls, which is what turned "commit a
+            # direction" into "design the whole application in prose".
+            "required_tools": ["commit_direction"],
             "completion_criteria": ["A single direction is chosen and not revisited"],
         },
         {
