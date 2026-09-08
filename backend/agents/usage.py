@@ -36,6 +36,12 @@ class UsageRecord:
     completion_tokens: int
     reasoning_tokens: int
     total_tokens: int
+    # Which task-contract intent (backend/agents/task.py: CREATE_ARTIFACT, EXPLAIN_CONCEPT, ...) this
+    # call was made under, when known — lets predict_token_budget (backend/agents/token_budget.py)
+    # learn "how many tokens does this KIND of task actually cost" instead of only "how many tokens
+    # does the chat agent cost overall," which is all `agent` alone distinguishes today. Optional and
+    # additive: existing records/callers with no intent keep working exactly as before.
+    task_intent: str | None = None
 
 
 def _bucket() -> dict[str, int]:
@@ -73,7 +79,7 @@ class UsageTracker:
                     at=datetime.fromisoformat(d["at"]), agent=d["agent"], model=d["model"],
                     provider=d["provider"], prompt_tokens=d["prompt_tokens"],
                     completion_tokens=d["completion_tokens"], reasoning_tokens=d.get("reasoning_tokens", 0),
-                    total_tokens=d["total_tokens"],
+                    total_tokens=d["total_tokens"], task_intent=d.get("task_intent"),
                 ))
             except (json.JSONDecodeError, KeyError, ValueError):
                 continue
@@ -84,6 +90,7 @@ class UsageTracker:
             "at": r.at.isoformat(), "agent": r.agent, "model": r.model, "provider": r.provider,
             "prompt_tokens": r.prompt_tokens, "completion_tokens": r.completion_tokens,
             "reasoning_tokens": r.reasoning_tokens, "total_tokens": r.total_tokens,
+            "task_intent": r.task_intent,
         })
         with self.path.open("a", encoding="utf-8") as f:
             f.write(line + "\n")
@@ -91,6 +98,7 @@ class UsageTracker:
     def record(
         self, *, agent: str, model: str, provider: str,
         prompt_tokens: int, completion_tokens: int, reasoning_tokens: int = 0,
+        task_intent: str | None = None,
     ) -> None:
         if prompt_tokens <= 0 and completion_tokens <= 0:
             return
@@ -98,6 +106,7 @@ class UsageTracker:
             at=datetime.now(UTC), agent=agent or "unknown", model=model, provider=provider,
             prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
             reasoning_tokens=reasoning_tokens, total_tokens=prompt_tokens + completion_tokens,
+            task_intent=task_intent,
         )
         with self._lock:
             self._records.append(rec)
@@ -124,6 +133,9 @@ class UsageTracker:
             _add(by_model.setdefault(r.model, _bucket()), r)
             _add(totals, r)
         return {"totals": totals, "by_agent": by_agent, "by_model": by_model}
+
+    def records_for_intent(self, task_intent: str, *, days: int | None = None) -> list[UsageRecord]:
+        return [r for r in self._since(days) if r.task_intent == task_intent]
 
     def daily(self, days: int = 30) -> list[dict]:
         """One bucket per calendar day (UTC), zero-filled for continuity — for a usage chart."""

@@ -13,6 +13,20 @@ from backend.graph.schemas import GraphEdge
 from backend.agents.llm import LLMClient
 
 
+class PlanRequest(BaseModel):
+    repository: str = Field(min_length=1, max_length=100)
+    goal: str = Field(min_length=1, max_length=2000)
+    context: str = ""
+    model: str | None = None
+
+
+class PlanResult(BaseModel):
+    plan_id: UUID
+    repository: str
+    goal: str
+    plan: str
+
+
 class BlastRadiusRequest(BaseModel):
     changed_node_ids: list[UUID] = Field(min_length=1)
     max_depth: int = Field(default=3, ge=1, le=8)
@@ -50,6 +64,28 @@ class PlannerService:
 
     def synthesize_plan(self, prompt: str) -> str:
         return self.llm.generate("planner", prompt)
+
+    def plan(self, request: PlanRequest) -> PlanResult:
+        """The real, callable entry point `synthesize_plan` never got wired to — takes a goal in
+        plain language and produces an ordered, concrete implementation plan, recorded as a genuine
+        planner.* event so the agent-network dashboard can attribute real activity to this node."""
+        prompt = (
+            f"You are the planning agent for the repository '{request.repository}'. "
+            f"Goal: {request.goal}\n\n"
+            + (f"Context:\n{request.context}\n\n" if request.context else "")
+            + "Produce a concrete, ordered implementation plan: numbered steps, the files each step "
+            "touches if known, and a final verification step. Be specific — no filler, no hedging."
+        )
+        plan_text = self.llm.complete(
+            [{"role": "user", "content": prompt}], model=request.model, agent="planner",
+        )
+        result = PlanResult(plan_id=uuid4(), repository=request.repository, goal=request.goal, plan=plan_text)
+        self.event_writer.append(
+            event_type="planner.plan.created",
+            aggregate_id=result.plan_id,
+            payload=result.model_dump(mode="json"),
+        )
+        return result
 
     def compute_blast_radius(self, request: BlastRadiusRequest) -> BlastRadiusResult:
         active_edges = self.repository.list_edges_at(request.at_time)
