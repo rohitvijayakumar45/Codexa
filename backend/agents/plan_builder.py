@@ -525,12 +525,28 @@ def _create_specs(request: str, contract: TaskContract) -> list[dict[str, Any]]:
             ],
         },
         {
-            "objective": "Add interactions, transitions and the real states",
+            "objective": "Add the interaction states: hover, focus, active, loading, empty, error",
             "required_tools": ["edit_file"],
             "expected_artifacts": artifacts,
             "completion_criteria": [
                 "Loading, empty, error, selected and focused states exist",
                 "Interactions respond when used, not merely when described",
+            ],
+        },
+        {
+            # Motion gets its own milestone rather than a third of the task above. Folded in with
+            # interactions and states it was always the part that got dropped: observed output kept
+            # improving visually while its animation stayed generic, because "add interactions,
+            # transitions and states" is satisfied by doing the first two. A design commitment that
+            # is not executable work does not get executed.
+            "objective": "Build the motion system: one easing curve, one duration scale, applied "
+                         "everywhere",
+            "required_tools": ["edit_file"],
+            "expected_artifacts": artifacts,
+            "completion_criteria": [
+                "Motion tokens are defined once and every transition uses them",
+                "Only transform and opacity are animated",
+                "prefers-reduced-motion disables movement",
             ],
         },
     ]

@@ -191,10 +191,12 @@ def select_skills(text: str, character: str, motion: str, depth: str) -> list[st
     # Interaction feel is a different axis from visual style and cannot contradict it.
     if depth in ("explorable", "product"):
         chosen.append("emil_design_eng")
-    if motion == "choreographed":
-        chosen.append("animate")
-    elif motion == "considered" and "emil_design_eng" not in chosen:
-        chosen.append("emil_design_eng")
+    if motion in ("choreographed", "considered"):
+        # `animate` is the skill with actual implementation recipes rather than principles. It was
+        # loaded only for "choreographed", so an ordinary UI brief — which is most of them — never
+        # saw them, and its animation stayed generic while its visual design improved.
+        if "animate" not in chosen:
+            chosen.append("animate")
     if depth == "product" and "animate" not in chosen and len(chosen) < MAX_SKILLS:
         chosen.append("apple_design")
     return chosen[:MAX_SKILLS]
@@ -225,18 +227,45 @@ _PRINCIPLES_BY_DEPTH = {
 
 _PRINCIPLES_BY_MOTION = {
     "minimal": [],
+    # Abstract motion advice produces abstract motion. "Motion carries meaning" is true and
+    # unimplementable: a model reading it writes a default `transition: all .3s ease` and moves on,
+    # which is why observed output kept getting more polished visually while its animation stayed
+    # generic. What separates crafted motion from decorated motion is a small set of decisions made
+    # ONCE and applied everywhere — one curve, a duration scale, a stagger step, a rule about which
+    # properties may animate. Those are values, so they are given as values.
     "considered": [
-        "Motion carries meaning: it shows where something came from or what changed. Animate "
-        "transform and opacity; give everything one shared easing curve and a short duration scale.",
+        "MOTION TOKENS — define these once at :root and use only them; never write an ad-hoc "
+        "duration or easing anywhere else:\n"
+        "    --ease: cubic-bezier(0.16, 1, 0.3, 1);   one curve for everything\n"
+        "    --fast: 120ms   (hover, focus, press — anything under the pointer)\n"
+        "    --base: 240ms   (panels, reveals, state changes)\n"
+        "    --slow: 480ms   (anything that moves across the layout)\n"
+        "Different elements using different curves is the single clearest sign of uncrafted motion.",
+        "Animate only transform and opacity. Animating width, height, top, left or margin forces "
+        "layout on every frame and is what makes motion feel cheap and janky.",
+        "Every interactive element needs a hover AND a :focus-visible AND an :active state, and "
+        "they must use the same tokens. A control that animates on hover but snaps on focus reads "
+        "as unfinished.",
         "Honour prefers-reduced-motion by disabling movement, not by leaving it on.",
     ],
     "choreographed": [
-        "Scrolling is the primary experience. Use IntersectionObserver reveals that fire once, "
-        "stagger by index, and never re-animate on scroll-back.",
-        "Motion carries meaning: it shows where something came from or what changed. Animate "
-        "transform and opacity only, on one shared easing curve.",
-        "One signature transition should be the thing a person remembers — a layout morph, a "
-        "continuous transform, a scrubber that redraws as it moves.",
+        "MOTION TOKENS — define these once at :root and use only them; never write an ad-hoc "
+        "duration or easing anywhere else:\n"
+        "    --ease: cubic-bezier(0.16, 1, 0.3, 1);   one curve for everything\n"
+        "    --fast: 120ms   --base: 260ms   --slow: 560ms\n"
+        "    --stagger: 40ms  multiplied by index, for entering groups",
+        "Scroll reveals: IntersectionObserver, rise ~12px and fade, staggered by index, fired ONCE. "
+        "Never re-animate on scroll-back — repeating reveals is the most common way scroll motion "
+        "starts feeling cheap.",
+        "Animate only transform and opacity, on one curve. Animating layout properties per frame is "
+        "what makes motion feel janky rather than expensive.",
+        "Build ONE signature transition the page is remembered for — a layout morph, a shared "
+        "element that travels from its source into its detail view, a scrubber that redraws as it "
+        "moves. Measure the source and target with getBoundingClientRect and animate the difference; "
+        "a fade between two states is not a transition, it is a swap.",
+        "Every interactive element needs hover, :focus-visible and :active using the same tokens. "
+        "Motion that exists on hover but not on focus is decoration, not a system.",
+        "Stillness is part of the design. If everything moves, nothing reads as important.",
         "Honour prefers-reduced-motion by disabling movement, not by leaving it on.",
     ],
 }

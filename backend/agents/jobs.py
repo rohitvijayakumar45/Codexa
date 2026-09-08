@@ -288,6 +288,21 @@ _AUTHORING_CHARS = _PLANNING_CHARS
 # cutting real output would be far worse than the hang this prevents.
 _MAX_ROUND_SECONDS = 9 * 60.0
 
+# Debug escape hatch, same shape as CODEXA_ROUND_BUDGET: CODEXA_ROUND_SECONDS=0 removes the
+# wall-clock ceiling.
+#
+# Worth stating why it needs one. This ceiling was chosen precisely because it does NOT depend on
+# classifying what the model is emitting — that independence is what let it catch a deadlock the two
+# character budgets were blind to. But it is the same independence that makes it unable to tell
+# "thinking in circles for nine minutes" from "streaming a 500-line document for nine minutes", and
+# on a slow free-tier provider the second is ordinary. Observed cutting a write at 14,596 characters
+# — far under the authoring budget — purely on elapsed time, leaving "..." on disk.
+#
+# With this off, the character budgets and the per-task budgets still bound the job; what is lost is
+# the backstop against a round that emits through a channel nothing counts.
+if os.getenv("CODEXA_ROUND_SECONDS", "").strip().lower() in ("0", "unlimited", "none"):
+    _MAX_ROUND_SECONDS = float("inf")
+
 
 # Back-compat alias: the exception was named for the reasoning channel before it learned to
 # count both. Kept so existing imports resolve to the same class rather than silently catching

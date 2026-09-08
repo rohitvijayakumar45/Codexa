@@ -46,6 +46,9 @@ os.environ["CODEXA_MAX_AUTO_CONTINUES"] = "20"
 # override an already-set variable, but popping this would let .env repopulate it on the next
 # import. A test suite must never inherit a debugging switch from the machine it runs on.
 os.environ["CODEXA_ROUND_BUDGET"] = ""
+# Same reasoning: a wall-clock override in the developer's .env would make the tests that prove
+# the backstop works assert against a ceiling that is no longer there.
+os.environ["CODEXA_ROUND_SECONDS"] = ""
 
 
 # Third source of the same leak, and the one that writes rather than reads. JobManager checkpoints
