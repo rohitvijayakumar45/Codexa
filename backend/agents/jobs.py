@@ -266,10 +266,21 @@ class _GenerationBudgetExceeded(Exception):
 # eventually be wrong about it — so this counts every character the model generates that is not a
 # tool-call argument, and the wall-clock ceiling below backs it up regardless of classification.
 _PLANNING_CHARS = 40_000
-# Once a direction is committed, thinking has already happened and been recorded. A round whose job
-# is to emit one write_file does not need another forty thousand characters to decide what to write,
-# and letting it have them is how "deep task" turns back into "deep round".
+# Deliberation allowed in a round once a direction is committed.
+#
+# This was 18,000, on the theory that a committed direction means the thinking is done. That theory
+# is wrong for precisely the task that matters most: a round whose job is to produce a 1,000-line
+# document legitimately deliberates about its content before emitting the first token of the tool
+# argument. Measured on a real run, three consecutive rounds were cut at 18,004 / 18,007 / 18,004
+# characters — the same "regenerate and discard" signature as the original 40k deadlock, at a lower
+# threshold, with no artifact produced.
+#
+# So the budget follows what the task must PRODUCE, not what phase it is in. A task expecting an
+# artifact gets the full planning allowance, because composing that artifact is the deliberation. A
+# task that only has to run or verify something gets the short leash, which is where the original
+# reasoning does hold.
 _EXECUTION_CHARS = 18_000
+_AUTHORING_CHARS = _PLANNING_CHARS
 
 # The backstop. Independent of channel, of token counting, and of anything the provider chooses to
 # call its output — the one guard that cannot be evaded by emitting through an unexpected field.
@@ -1134,8 +1145,14 @@ class JobManager:
             started_at = time.time()
             # Once a direction is committed the thinking has been done and recorded, so a round
             # whose job is to emit one call gets a much shorter leash than one still deciding.
-            limit = _EXECUTION_CHARS if job.commitment else _PLANNING_CHARS
-            phase = "execution" if job.commitment else "planning"
+            authoring = bool(active_task is not None and active_task.expected_artifacts)
+            if not job.commitment:
+                limit, phase = _PLANNING_CHARS, "planning"
+            elif authoring:
+                # Producing the artifact IS the deliberation for this task.
+                limit, phase = _AUTHORING_CHARS, "authoring"
+            else:
+                limit, phase = _EXECUTION_CHARS, "execution"
             for chunk in _stream_with_watchdog(llm.stream(model, messages, timeout=240, **kwargs)):
                 if job.cancelled:
                     break

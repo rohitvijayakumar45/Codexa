@@ -36,6 +36,17 @@ os.environ["CODEXA_REHYDRATE"] = "0"
 # past 400s with no output.
 os.environ["CODEXA_MAX_AUTO_CONTINUES"] = "20"
 
+# Fourth source of the same leak, and the one that hangs rather than misleads. CODEXA_ROUND_BUDGET=0
+# removes the outer round cap — a legitimate debugging override, set in the developer's .env, which
+# backend/main.py loads at import. Several tests drive _loop with a model that never completes and
+# rely on the round cap to terminate; with the cap gone they run forever, and the suite went from
+# 34 seconds to not finishing.
+#
+# Pinned rather than deleted, for the same reason as CODEXA_SEED above: load_dotenv() does not
+# override an already-set variable, but popping this would let .env repopulate it on the next
+# import. A test suite must never inherit a debugging switch from the machine it runs on.
+os.environ["CODEXA_ROUND_BUDGET"] = ""
+
 
 # Third source of the same leak, and the one that writes rather than reads. JobManager checkpoints
 # every job to backend/data/jobs/<id>.json, and tests drive real JobManager loops — so a test run
