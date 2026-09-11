@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import type { GraphEdge, GraphNode } from "@/lib/api";
-import { EDGE_LABEL, NODE_STYLE, SOURCE_LABEL, nodeLabel } from "@/lib/graph-visual";
+import { EDGE_LABEL, NODE_STYLE, SOURCE_LABEL, nodeLabel, typeColorCss } from "@/lib/graph-visual";
 
 interface Props {
   node: GraphNode | null;
@@ -29,7 +29,7 @@ export function Inspector({ node, edges, nodesById, onClose }: Props) {
               <div className="flex items-center gap-2">
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: NODE_STYLE[node.node_type].color }}
+                  style={{ background: typeColorCss(node.node_type) }}
                   aria-hidden
                 />
                 <span className="text-[11px] font-medium uppercase tracking-wide text-muted">

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import type { GraphNode } from "@/lib/api";
-import { NODE_STYLE, nodeLabel } from "@/lib/graph-visual";
+import { NODE_STYLE, nodeLabel, typeColorCss } from "@/lib/graph-visual";
 
 // Search the graph by function / file / node name. Selecting a result focuses that node (the scene
 // eases the camera to it). Press "/" anywhere to focus the box.
@@ -85,7 +85,7 @@ export function GraphSearch({
               >
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: NODE_STYLE[n.node_type].color }}
+                  style={{ background: typeColorCss(n.node_type) }}
                 />
                 <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{label}</span>
                 <span className="status-line shrink-0">{NODE_STYLE[n.node_type].label}</span>

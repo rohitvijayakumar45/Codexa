@@ -147,7 +147,10 @@ function Tree({
               }`}
             >
               <FileCode size={14} className="shrink-0 text-faint" />
-              <span className="num truncate">{node.name}</span>
+              {/* Proportional, not mono: trees are scanned, not aligned, and Geist fits noticeably
+                  more of a long filename in the same rail. Mono stays where character alignment
+                  actually earns it — the path breadcrumb and the code itself. */}
+              <span className="truncate">{node.name}</span>
             </button>
           </li>
         ),

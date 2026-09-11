@@ -126,6 +126,13 @@ def _resolve_targets(description: str, nodes: list[GraphNode]) -> list[GraphNode
     return ordered[:6]
 
 
+def _edge_confidence(edge) -> float:
+    """How much an edge carries blast radius. A git co-change edge is a certain fact (confidence 1.0)
+    whose coupling STRENGTH lives in its properties — that strength is what propagates."""
+    strength = (edge.properties or {}).get("strength") if edge.edge_type == "correlates_with" else None
+    return float(strength) if isinstance(strength, (int, float)) else edge.confidence
+
+
 def _grade(affected: int, confidence: float) -> tuple[str, float]:
     if affected == 0:
         return "None", 0.0
@@ -161,7 +168,7 @@ def blast_radius_ids(target_ids: set[UUID], *, graph: GraphService, max_depth: i
     dependents: dict[UUID, list[tuple[UUID, float]]] = {}
     for edge in graph.list_edges_at():
         if edge.edge_type in _DEP_EDGES:
-            dependents.setdefault(edge.to_node_id, []).append((edge.from_node_id, edge.confidence))
+            dependents.setdefault(edge.to_node_id, []).append((edge.from_node_id, _edge_confidence(edge)))
 
     affected_ids: set[UUID] = set()
     parent: dict[UUID, UUID] = {}

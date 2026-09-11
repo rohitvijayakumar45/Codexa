@@ -93,6 +93,13 @@ def _isolate_persistent_state():
         jobs.JOBS_DIR = root / "jobs"
         phased_build.PHASED_BUILDS_DIR = root / "phased_builds"
         usage.DATA_DIR = root / "usage"
+        # Fourth writer, same class of leak, found the moment it shipped: every test that drives a
+        # real _loop appends a row to the developer's `.codexa/round_telemetry.jsonl`. One full run
+        # put 2,283 synthetic rounds into it — including 424 budget cuts and 16 million reasoning
+        # characters from tests that deliberately simulate runaway generation. That file exists to
+        # answer a question about real jobs, and a dataset mixing real runs with fixtures designed
+        # to look pathological answers it wrongly.
+        os.environ["CODEXA_TELEMETRY_PATH"] = str(root / "round_telemetry.jsonl")
         for d in (jobs.JOBS_DIR, phased_build.PHASED_BUILDS_DIR, usage.DATA_DIR):
             d.mkdir(parents=True, exist_ok=True)
         try:
@@ -101,3 +108,4 @@ def _isolate_persistent_state():
             jobs.JOBS_DIR = originals["jobs"]
             phased_build.PHASED_BUILDS_DIR = originals["phased"]
             usage.DATA_DIR = originals["usage"]
+            os.environ.pop("CODEXA_TELEMETRY_PATH", None)

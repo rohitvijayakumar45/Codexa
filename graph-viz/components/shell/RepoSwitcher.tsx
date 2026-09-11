@@ -33,7 +33,7 @@ export function RepoSwitcher() {
       <button
         onClick={() => setOpen(true)}
         aria-label={`Switch repository (current: ${activeRepo})`}
-        className="group relative grid h-11 w-11 place-items-center rounded-xl text-muted transition-colors duration-200 ease-out hover:bg-paper-sunk hover:text-ink"
+        className="group relative grid h-11 w-11 place-items-center rounded-xl short:h-9 short:w-9 text-muted transition-colors duration-200 ease-out hover:bg-paper-sunk hover:text-ink"
       >
         <GitBranch size={19} strokeWidth={1.75} />
         <span className="pointer-events-none absolute left-[52px] z-30 flex translate-x-[-4px] items-center gap-2 whitespace-nowrap rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs font-medium text-ink opacity-0 shadow-md transition-all duration-200 ease-out group-hover:translate-x-0 group-hover:opacity-100">

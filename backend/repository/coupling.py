@@ -30,6 +30,12 @@ class CouplingEdge:
 
 
 def mine_change_coupling(dest: Path, known_files: set[str]) -> list[CouplingEdge]:
+    # A clone without its own .git would make `git log` walk up into the enclosing repository (every
+    # clone lives inside Codexa's own work tree) and mine Codexa's history as if it were this repo's.
+    from backend.repository.intent import owns_git
+
+    if not owns_git(dest):
+        return []
     try:
         proc = subprocess.run(
             ["git", "-C", str(dest), "log", f"-{_MAX_COMMITS}", "--name-only", "--pretty=format:__COMMIT__"],

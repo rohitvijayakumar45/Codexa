@@ -132,7 +132,7 @@ export default function ArchitecturePage() {
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[1fr_360px]">
         <div
           className="min-h-0 overflow-auto p-8"
-          style={{ background: "radial-gradient(circle at 1px 1px, rgba(26,26,24,0.03) 1px, transparent 0) 0 0 / 27px 27px, linear-gradient(#faf9f6, #f2f0eb)" }}
+          style={{ background: "radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--color-ink) 5%, transparent) 1px, transparent 0) 0 0 / 27px 27px, linear-gradient(var(--color-g-canvas), var(--color-paper))" }}
         >
           <div className="mx-auto max-w-3xl">
             <p className="display text-2xl font-semibold text-ink">Everything connects.</p>
@@ -143,7 +143,7 @@ export default function ArchitecturePage() {
             <svg viewBox={`0 0 ${VW} ${height}`} className="mt-6 w-full" style={{ minWidth: 640 }}>
               <defs>
                 <filter id="cardshadow" x="-20%" y="-20%" width="140%" height="160%">
-                  <feDropShadow dx="0" dy="6" stdDeviation="8" floodColor="#1a1a18" floodOpacity="0.08" />
+                  <feDropShadow dx="0" dy="6" stdDeviation="8" floodColor="#000000" floodOpacity="0.1" />
                 </filter>
               </defs>
 
@@ -174,7 +174,7 @@ export default function ArchitecturePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: i * 0.04, ease: EASE_OUT }}
                   >
-                    <rect x={c.x} y={c.y} width={CW} height={CH} rx={16} fill="#ffffff" stroke="var(--color-line)" strokeWidth={1} filter="url(#cardshadow)" />
+                    <rect x={c.x} y={c.y} width={CW} height={CH} rx={16} fill="var(--color-panel)" stroke="var(--color-line-strong)" strokeWidth={1} filter="url(#cardshadow)" />
                     <circle cx={c.x + 18} cy={c.y + 24} r={4} fill={dot} />
                     <text x={c.x + 32} y={c.y + 28} style={{ fontSize: 13, fontWeight: 600, fill: "var(--color-ink)" }}>
                       {title}

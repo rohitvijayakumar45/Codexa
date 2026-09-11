@@ -29,7 +29,7 @@ import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Sequence
 
 import litellm
 
@@ -40,6 +40,7 @@ from backend.agents.llm import LLMClient, is_rate_limit_error
 from backend.agents.plan import ExecutionPlan, TaskStatus, ValidationState, summarize_for_event
 from backend.agents.plan_builder import build_plan
 from backend.agents.receipts import ActionReceipt, already_performed, record_receipt
+from backend.agents import round_telemetry as telemetry
 from backend.agents.task import (
     TaskContract,
     TaskIntent,
@@ -88,6 +89,13 @@ _STALL_NUDGE_TEXT = (
     "as write_file, redo that call from scratch with the complete content, "
     "since a partial/interrupted tool call was not saved.]"
 )
+
+# Fires exactly once per streak (only when same_tool_signature_streak first EQUALS this, not >=),
+# so it can't spam — the streak either breaks (signature changes, resets to 1) or keeps climbing
+# silently past this point. Chosen to match cline's soft threshold (3) plus one, since a legitimate
+# read-verify-read pattern can plausibly repeat 2-3 times; four in a row with identical arguments is
+# past the point a human would call it deliberate.
+_REPEAT_TOOL_CALL_THRESHOLD = 4
 _TOOL_STATUS_LABELS = {
     "read_file": "Reading {path}",
     "write_file": "Writing {path}",
@@ -324,6 +332,30 @@ _COMMIT_FIRST_TEXT = (
     "reach.]"
 )
 
+# The decision/action split for authoring specifically. Measured cause: an authoring round given
+# no structure to follow reasons through the WHOLE artifact in its head — every section, every
+# interaction — before emitting a single character of the file, and that reasoning routinely runs
+# past the budget before the tool call ever arrives. One job cut on the exact same authoring task
+# twice in a row for this reason (rounds 4 and 5, ~80,000 characters combined, both discarded) and
+# only wrote the file on round 6, once forced. The fix already exists for the project-direction
+# decision (commit_direction, above) — this is that same mechanism, one level down: instead of
+# forcing the expensive write directly, force the cheap plan for THIS artifact first. A concrete
+# section list to implement is a much shorter horizon than "write the whole thing," and the
+# artifact tool that follows has something to execute rather than something to still work out.
+_STRUCTURE_FIRST_TEXT = (
+    "[SYSTEM: that round was stopped — it spent its whole budget reasoning through this artifact "
+    "in full before writing any of it, and none of that reasoning survived the cut.\n\n"
+    "Your next message must be a single commit_direction call, using the `structure` field only: "
+    "the sections and interactions this artifact needs, in order, one short phrase each. Do not "
+    "restate the project direction — that is already settled. This is only the plan for the file "
+    "you are about to write. The call after this one is the write itself, implementing exactly "
+    "this list.\n\n"
+    "Name WHAT each section is, never HOW it is built — 'filterable archive grid', not the actual "
+    "HTML for it. A phrase containing a tag, a selector or a line of code means the artifact is "
+    "leaking into the plan instead of the write, which is the exact failure this call exists to "
+    "avoid.]"
+)
+
 
 def _execution_directive(commitment: dict | None, forced_tool: str | None) -> str:
     """The message that opens an execution round: what was settled, and the one thing left to do.
@@ -477,6 +509,43 @@ def _stream_with_watchdog(source: Iterator[Any]) -> Iterator[Any]:
                 close()
             except Exception:  # noqa: BLE001 - best-effort; a failed close must not mask the real error
                 logger.debug("stream close on cancel failed", exc_info=True)
+
+
+def _mark_wait(job: "Job", state: str) -> None:
+    """Bracket-log a potentially-blocking wait boundary and refresh the job's progress clock.
+
+    Adopted from goose's WAITING_LLM_STREAM_START/END, WAITING_TOOL_START/END:name pattern (see
+    HARNESS_RESEARCH_FINDINGS.md problem 2). The point: when a job goes silent for a long time,
+    the last log line names exactly what it was waiting on — a stuck stream vs. a stuck tool vs.
+    genuinely idle between rounds — instead of the loop just going dark with nothing to grep for.
+
+    last_activity_ts is what a status poll reports as idle_seconds. It is refreshed here, at wait-
+    boundary transitions, not only once per completed round — a job stuck mid-round (blocked on a
+    single slow tool call, say) still shows a real, moving number instead of one that only updates
+    on round completion and would otherwise read as "idle" for however long that round takes.
+    """
+    job.current_wait_state = state
+    job.last_activity_ts = time.time()
+    logger.debug("job=%s wait_state=%s", job.id, state)
+
+
+def _tool_call_signature(name: str, args: dict) -> str:
+    """Canonical (order-independent) identity for one tool call, used to detect exact repeats.
+
+    A round can look completely healthy by every existing signal here — a tool ran, a result came
+    back, the round-counter advanced — while still being pure waste if it's the Nth identical
+    read_file("same/path") in a row. Nothing based on round completion can see that shape; this is
+    a second, independent detector (goose's tool_monitor.rs / cline's LoopDetectionTracker) keyed
+    on call identity instead. json.dumps(sort_keys=True) makes two calls with the same arguments in
+    a different key order compare equal, same as cline's canonical-JSON signature.
+    """
+    try:
+        canonical = json.dumps(args, sort_keys=True, default=str)
+    except TypeError:
+        canonical = str(args)
+    return f"{name}:{canonical}"
+
+
 # A plain assistant reply past this size is essentially never a normal chat answer — it's a code/
 # file dump narrated as text (e.g. a model that couldn't or didn't call write_file and pasted the
 # whole file inline instead). Left uncompacted, one such message gets re-sent in full on every
@@ -488,26 +557,41 @@ _LARGE_ASSISTANT_TEXT_CHARS = 4000
 def _compact_stale_payloads(
     messages: list[dict], message_rounds: list[int], current_round: int,
     *, graph: Any = None, repository: str | None = None,
+    task_start_rounds: dict[str, int] | None = None,
 ) -> None:
     """Collapse bulky tool payloads a few rounds after the model has already acted on them, so a
     long task doesn't keep re-sending the same huge blobs every round. When a graph is available,
     a write_file/edit_file payload for a file still within the current blast-radius neighborhood
     (backend/agents/context_window.py) gets extra rounds of grace before compaction — the model is
     more likely to still need it — while a payload for a file the task has clearly moved past
-    compacts on the normal, shorter schedule. get_design_guidance's staleness is unaffected (it isn't
-    tied to a specific file, so there's no graph node to anchor it to). A large plain-text assistant
-    reply (no tool_calls) compacts on the flat schedule too — a wall of narrated code/file content
-    that was never actually written via write_file otherwise sits in history at full size forever."""
+    compacts on the normal, shorter schedule. A large plain-text assistant reply (no tool_calls)
+    compacts on the flat schedule too — a wall of narrated code/file content that was never actually
+    written via write_file otherwise sits in history at full size forever.
+
+    get_design_guidance is pinned (SWE-agent's history_processors.py tag-based-pin pattern, see
+    HARNESS_RESEARCH_FINDINGS.md problem 3 — never elided, not even on the flat schedule) for as
+    long as it was fetched during the CURRENTLY active task. This is the direct fix for a real,
+    diagnosed bug: guidance loaded during planning was going stale by round 3, several rounds
+    before the authoring round that actually needed it, so the model authored generic output
+    having "forgotten" the very rules it fetched earlier in the same task. A call made during an
+    EARLIER task still compacts on the normal schedule — only the live task's guidance is exempt.
+    task_start_rounds tracks the round each task began; the highest value in it is the currently
+    active task's start round (tasks start in order, exactly one active at a time), used here as a
+    cheap proxy that needs no extra plumbing from the caller.
+    """
     protected_paths: set[str] | None = None
     if graph is not None and repository is not None:
         try:
             protected_paths = relevant_paths(messages, repository=repository, graph=graph)
         except Exception:  # noqa: BLE001 - a lookup failure should just fall back to the flat rule
             protected_paths = None
+    current_task_start = max(task_start_rounds.values()) if task_start_rounds else None
 
     for i, msg in enumerate(messages):
         age = current_round - message_rounds[i]
         if msg.get("role") == "tool" and msg.get("name") == "get_design_guidance":
+            if current_task_start is not None and message_rounds[i] >= current_task_start:
+                continue  # pinned: fetched during the task that's still in progress right now
             if age < _STALE_AFTER_ROUNDS:
                 continue
             content = msg.get("content", "")
@@ -668,6 +752,18 @@ class Job:
     exit_code_log: list[int] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
+    # --- wait-state / stall telemetry (see _mark_wait, _tool_call_signature) --------------------
+    # What the loop is blocked on right now: "idle" between rounds, "WAITING_LLM_STREAM", or
+    # "WAITING_TOOL:<name>". Paired with last_activity_ts so a status poll can report "stuck on
+    # WAITING_TOOL:run_command for 7123s" instead of a bare "running" that looks the same whether
+    # the job is one second or seven hours into a hang.
+    current_wait_state: str = "idle"
+    last_activity_ts: float = field(default_factory=time.time)
+    # Consecutive identical (tool_name, canonicalized-args) calls. Independent of round_budget,
+    # stall_recoveries and consecutive_cuts above — none of those can see a round that "succeeds"
+    # by every existing measure while just repeating the same no-op call. See _tool_call_signature.
+    last_tool_signature: str | None = None
+    same_tool_signature_streak: int = 0
 
     def to_disk(self) -> dict:
         d = asdict(self)
@@ -1130,6 +1226,16 @@ class JobManager:
         # This round's reasoning volume, read by the controller after the round so a task's total
         # deliberation can be bounded across rounds and not merely within one.
         round_reasoning_chars = 0
+        # Instrumentation. Replaced at the top of every round; marked from inside the stream so the
+        # timings are taken as close to the provider as possible rather than after the loop has
+        # already done its own work. See backend/agents/round_telemetry.py for why this exists.
+        round_timer = telemetry.RoundTimer()
+        round_record: telemetry.RoundRecord | None = None
+        round_written = False
+        # Round on which each task became active, so a round's context can be split into "produced
+        # while working on this task" and "inherited from earlier tasks". The controller tracks tool
+        # and exit-code offsets per task for validation; this is the same idea for the transcript.
+        task_start_rounds: dict[str, int] = {}
 
         def stream_round(*, with_tools: bool) -> Iterator[tuple[str, Any]]:
             nonlocal forced_tool, force_any_tool, round_reasoning_chars
@@ -1168,6 +1274,7 @@ class JobManager:
                 limit, phase = _AUTHORING_CHARS, "authoring"
             else:
                 limit, phase = _EXECUTION_CHARS, "execution"
+            _mark_wait(job, "WAITING_LLM_STREAM")
             for chunk in _stream_with_watchdog(llm.stream(model, messages, timeout=240, **kwargs)):
                 if job.cancelled:
                     break
@@ -1179,6 +1286,11 @@ class JobManager:
                 if elapsed > _MAX_ROUND_SECONDS:
                     raise _GenerationBudgetExceeded(spent, elapsed, "wall-clock")
                 chunks.append(chunk)
+                round_timer.mark_first_token()
+                # Refreshed on every chunk (not logged every time — that would be one debug line per
+                # token) so idle_seconds stays accurate through a long streaming round instead of
+                # only updating at the round boundary.
+                job.last_activity_ts = time.time()
                 delta = chunk.choices[0].delta
                 thinking = getattr(delta, "reasoning_content", None)
                 if thinking:
@@ -1193,12 +1305,51 @@ class JobManager:
                     if spent > limit:
                         raise _GenerationBudgetExceeded(spent, elapsed, phase)
                     yield ("delta", delta.content)
+            round_timer.mark_generation_done()
+            _mark_wait(job, "idle")
             final = litellm.stream_chunk_builder(chunks, messages=messages)
             usage = (
                 llm.record_usage("chat", model, final, task_intent=contract_dict.get("intent"))
                 if final else {"prompt_tokens": 0, "completion_tokens": 0}
             )
             yield ("final", (final.choices[0].message if final else None, usage))
+
+        def finish_round_telemetry(
+            outcome: str,
+            *,
+            tools: Sequence[str] = (),
+            progress: Any = None,
+            usage: dict | None = None,
+            visible: str = "",
+        ) -> None:
+            """Close out this round's record and append it.
+
+            Called from every exit a round has — normal, cut, stall, cancellation — because the cut
+            and stall paths are precisely the rounds worth measuring, and a record written only on
+            the happy path would leave exactly the pathology invisible. Idempotent per round:
+            whichever exit fires first writes, later calls are no-ops.
+            """
+            nonlocal round_written
+            if round_record is None or round_written or not telemetry.enabled():
+                return
+            round_written = True
+            round_record.outcome = outcome
+            round_record.reasoning_chars = round_reasoning_chars
+            round_record.visible_chars = len(visible)
+            round_record.tool_calls = list(tools)
+            if usage:
+                round_record.prompt_tokens = int(usage.get("prompt_tokens", 0))
+                round_record.completion_tokens = int(usage.get("completion_tokens", 0))
+            if progress is not None:
+                round_record.made_progress = bool(getattr(progress, "made_progress", False))
+                round_record.files_changed = (
+                    len(progress.created) + len(progress.modified) + len(progress.deleted)
+                )
+            round_record.first_token_ms = round_timer.first_token_ms
+            round_record.generation_ms = round_timer.generation_ms
+            round_record.total_round_ms = round_timer.total_ms
+            round_record.model = model
+            telemetry.write(round_record)
 
         def run_round(*, with_tools: bool) -> Iterator[tuple[str, Any]]:
             nonlocal model
@@ -1277,6 +1428,16 @@ class JobManager:
             itertools.count(start_round) if _UNLIMITED_ROUNDS
             else range(start_round, job.round_budget)
         )
+        # Whether any earlier round in this job already streamed visible text. Every round's
+        # narration lands in the SAME assistant message on the client ("I'll inspect the repo." then,
+        # three tool calls later, "Now I'll write the file."), and nothing separated them, so the UI
+        # rendered "the repo.Now I'll write the file" — dozens of rounds fused into one unreadable
+        # paragraph. The loop is the only place that knows exactly where a round begins, so the
+        # separator is emitted here rather than guessed at on the client.
+        visible_text_emitted = resuming and any(
+            m.get("role") == "assistant" and isinstance(m.get("content"), str) and m["content"].strip()
+            for m in messages
+        )
         for _round in rounds:
             if job.cancelled:
                 job.status = "done"
@@ -1293,7 +1454,10 @@ class JobManager:
             # reasoning ceiling and triggered a spurious intervention on a task that was writing
             # files perfectly.
             round_reasoning_chars = 0
-            _compact_stale_payloads(messages, message_rounds, _round, graph=self._graph, repository=working_repo)
+            _compact_stale_payloads(
+                messages, message_rounds, _round, graph=self._graph, repository=working_repo,
+                task_start_rounds=task_start_rounds,
+            )
 
             # --- select the task this round is for --------------------------------------------
             # Exactly one task is active at a time, and the model is told about that one rather than
@@ -1338,6 +1502,7 @@ class JobManager:
                         return
                 else:
                     if controller.begin_task(active_task):
+                        task_start_rounds.setdefault(active_task.id, _round)
                         self._emit(job, {"status": f"Starting: {active_task.objective}"})
                     controller.apply_task_context(messages, message_rounds, active_task, _round)
                     # Taken before the round so the comparison afterwards measures exactly this
@@ -1357,6 +1522,31 @@ class JobManager:
             # to "hung". Superseded immediately by real thinking/delta/tool_call events once any
             # arrive - this is only ever the placeholder for the gap before those start.
             self._emit(job, {"status": "Understanding the task and planning next steps" if _round == 0 else "Working on the next step"})
+
+            # --- instrument this round ---------------------------------------------------------
+            # Taken here, after the task context and any intervention directive have been applied,
+            # because `messages` is now byte-for-byte what the provider is about to receive. Taken
+            # before generation starts so the timer's zero is the moment the request leaves.
+            round_timer = telemetry.RoundTimer()
+            round_written = False
+            round_record = None
+            if telemetry.enabled():
+                round_record = telemetry.new_record(job_id=job.id, round_no=_round, model=model)
+                if active_task is not None:
+                    round_record.task_id = active_task.id
+                    round_record.task_objective = active_task.objective
+                    round_record.task_index = next(
+                        (i for i, t in enumerate(plan.tasks) if t.id == active_task.id), None
+                    )
+                    round_record.task_state = active_task.status.value
+                round_record.context = telemetry.split_context(
+                    messages,
+                    message_rounds,
+                    task_started_round=(
+                        task_start_rounds.get(active_task.id) if active_task is not None else None
+                    ),
+                ).as_dict()
+
             msg = None
             usage = {"prompt_tokens": 0, "completion_tokens": 0}
             partial_content = ""
@@ -1368,9 +1558,22 @@ class JobManager:
                         self._emit(job, {kind: payload})
                     else:
                         if kind == "delta":
+                            if payload and not partial_content and visible_text_emitted:
+                                # First visible text of a new round, after an earlier round already
+                                # wrote some: start a new paragraph instead of fusing onto the last
+                                # word of the previous round. Emitted as its own delta and kept OUT
+                                # of partial_content, which is the model's own words and goes back
+                                # into the transcript if this round stalls.
+                                self._emit(job, {"delta": "\n\n"})
                             partial_content += payload
+                            if payload:
+                                visible_text_emitted = True
                         self._emit(job, {kind: payload})
             except _GenerationBudgetExceeded as exc:
+                # A cut still ends the wait — without this, wait_state is left reading
+                # "WAITING_LLM_STREAM" for the rest of the job's life (this is the only path out of
+                # stream_round that doesn't reach the normal _mark_wait(job, "idle") after the loop).
+                _mark_wait(job, "idle")
                 # A cut is not one failure, it is four, and they need different answers. Recovering
                 # them identically is what produced the deadlock: rounds 32 and 33 were cut at
                 # 40,053 and 40,002 characters — the same deliberation regenerated and thrown away
@@ -1401,6 +1604,21 @@ class JobManager:
                 if controller is not None and active_task is not None:
                     active_task.reasoning_chars += round_reasoning_chars
 
+                # Whether THIS task has already committed its own structure plan. Checked against
+                # structure_task_id (stamped when commit_direction lands with a `structure` field)
+                # rather than merely "job.commitment exists" — that would be true forever after the
+                # very first project-direction commit, and every later authoring task would look
+                # "already planned" when none of them had been.
+                task_structure_id = (
+                    (job.commitment or {}).get("design", {}).get("structure_task_id")
+                )
+                needs_structure = (
+                    committed and controller is not None and active_task is not None
+                    and bool(active_task.expected_artifacts)
+                    and task_structure_id != active_task.id
+                    and "commit_direction" in available
+                )
+
                 if not committed and "commit_direction" in available:
                     # Make the decision the action. This is the whole fix: the model stops being
                     # asked to finish a large implementation inside a budget it keeps overrunning,
@@ -1408,19 +1626,33 @@ class JobManager:
                     forced_tool = "commit_direction"
                     self._emit(job, {"status": "Pausing planning — recording the decision first"})
                     guidance = _COMMIT_FIRST_TEXT
+                elif needs_structure:
+                    # Same mechanism, one level down: this task is about to author an artifact and
+                    # has no plan for it yet. Force the cheap plan before the expensive write,
+                    # rather than forcing the write directly onto a model still working it out.
+                    forced_tool = "commit_direction"
+                    self._emit(job, {"status": "Pausing — planning this artifact's structure first"})
+                    guidance = _STRUCTURE_FIRST_TEXT
                 else:
-                    # Committed already, or no commitment tool available: drive the outstanding
-                    # action with the shortest possible horizon.
+                    # Committed already, structure already planned (or not an authoring task), or
+                    # no commitment tool available: drive the outstanding action with the shortest
+                    # possible horizon.
                     if controller is not None and active_task is not None:
                         forced_tool = controller.forced_tool_for(active_task, available)
                     force_any_tool = forced_tool is None and bool(active_tools)
                     self._emit(job, {"status": "Planning is done — performing the outstanding action"})
                     guidance = _execution_directive(job.commitment, forced_tool)
 
+                finish_round_telemetry("cut", visible=partial_content)
                 _replace_directive(messages, message_rounds, guidance, _round)
                 self._checkpoint(job)
                 continue
             except Exception:
+                # Same reasoning as the _GenerationBudgetExceeded branch above: this is the other
+                # non-normal exit from stream_round (a stall/timeout/transport error), and it must
+                # end the wait too or wait_state sticks on "WAITING_LLM_STREAM" through the whole
+                # stall-recovery detour below.
+                _mark_wait(job, "idle")
                 # Used to only take this recovery path `if saw_any_chunk:` — a round that failed
                 # with ZERO chunks ever received (a real, observed case: _stream_with_watchdog's
                 # TimeoutError firing on a connection that stayed completely silent) fell through to
@@ -1456,11 +1688,13 @@ class JobManager:
                     # click via continue_job), so it rotates exactly once per exhaustion instead of
                     # needing this same dead model to fail a second time first. See
                     # _rotate_away_from_stalled_model.
+                    finish_round_telemetry("stalled", visible=partial_content)
                     job.status = "error"
                     job.error_reason = "stall_exhausted"
                     self._emit(job, {"error": detail, "continuable": True})
                     self._checkpoint(job)
                     return
+                finish_round_telemetry("stalled", visible=partial_content)
                 job.stall_recoveries += 1
                 if partial_content:
                     messages.append({"role": "assistant", "content": partial_content})
@@ -1500,6 +1734,7 @@ class JobManager:
                 # partial message. Worse, if the break truncated before any tool call arrived, the
                 # round looked like a completion claim and could mark the active task COMPLETED.
                 # Stopping means stopping: nothing after this point should act on a cancelled round.
+                finish_round_telemetry("cancelled", usage=usage, visible=partial_content)
                 job.status = "done"
                 self._emit(job, {"done": True, "cancelled": True, "usage": {
                     "prompt_tokens": job.prompt_tokens, "completion_tokens": job.completion_tokens,
@@ -1520,12 +1755,26 @@ class JobManager:
                     ],
                 })
                 message_rounds.append(_round)
+                repeat_streak_hit = False
                 for tc in tool_calls:
                     name = tc.function.name
                     args = parse_args(tc.function.arguments)
                     tools_called.append(name)
                     self._emit(job, {"tool_call": {"name": name, "args": args}})
                     self._emit(job, {"status": _friendly_tool_status(name, args)})
+                    # See _tool_call_signature: an independent stall detector, keyed on call
+                    # identity rather than round completion. Deliberately checked BEFORE the
+                    # already-performed skip below — a model re-issuing the same call it was just
+                    # told was already done is exactly the "not learning from the observation"
+                    # pattern this exists to catch, not a case to exempt from it.
+                    signature = _tool_call_signature(name, args)
+                    if signature == job.last_tool_signature:
+                        job.same_tool_signature_streak += 1
+                    else:
+                        job.last_tool_signature = signature
+                        job.same_tool_signature_streak = 1
+                    if job.same_tool_signature_streak == _REPEAT_TOOL_CALL_THRESHOLD:
+                        repeat_streak_hit = True
                     # A mutating call already recorded as SUCCEEDED (identical tool + args) is not
                     # re-executed — a real safety net against the model issuing the same write twice
                     # in one turn. Only successful calls are ever recorded (see below the execute_tool
@@ -1536,10 +1785,13 @@ class JobManager:
                         result = f"(skipped — identical to a call already made this turn, action {prior.action_id})"
                     else:
                         tool_ctx: dict = {}
+                        _mark_wait(job, f"WAITING_TOOL:{name}")
                         result = execute_tool(
                             name, args, working_repo, graph=self._graph, store=self._store,
                             context=tool_ctx, llm=llm, model=model,
+                            prior_commitment=job.commitment,
                         )
+                        _mark_wait(job, "idle")
                         if tool_ctx.get("new_repository"):
                             working_repo = tool_ctx["new_repository"]
                             job.working_repo = working_repo
@@ -1555,6 +1807,14 @@ class JobManager:
                             # Promote it onto the job so it is checkpointed and survives the cut,
                             # the restart and the model rotation that would otherwise lose it.
                             job.commitment = tool_ctx["commitment"]
+                            design = job.commitment.get("design")
+                            if design and design.get("structure") and active_task is not None:
+                                # Stamped here, not inside _commit_direction, because that function
+                                # has no notion of "the current task" — only the loop knows which
+                                # task this structure plan was written for. This is what lets the
+                                # cut-handler tell "this task already has its plan" from "it does
+                                # not yet" on the very next round.
+                                design["structure_task_id"] = active_task.id
                             self._emit(job, {"status": "Direction committed"})
                         if "exit_code" in tool_ctx:
                             job.tool_exit_codes[tc.id] = tool_ctx["exit_code"]
@@ -1596,6 +1856,20 @@ class JobManager:
                             ],
                         })
                         message_rounds.append(_round)
+                if repeat_streak_hit:
+                    # Appended once the whole round's tool results are in — a role:"user" message
+                    # can't be interleaved between an assistant tool_calls message and its matching
+                    # role:"tool" results without breaking the format every provider expects.
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            f"[SYSTEM: the last {_REPEAT_TOOL_CALL_THRESHOLD} tool calls were "
+                            f"identical ({job.last_tool_signature.split(':', 1)[0]}, same "
+                            "arguments). Repeating it again will not produce a different result — "
+                            "use what it already returned, or change your approach.]"
+                        ),
+                    })
+                    message_rounds.append(_round)
                 # Checkpoint once the whole round's tool calls have finished (not mid-round) — job.round
                 # is only advanced at the top of the NEXT round, so resume (`start_round = job.round + 1`)
                 # assumes the checkpointed state always has a round's tool_calls fully matched by their
@@ -1623,6 +1897,14 @@ class JobManager:
                     # noticed. Waiting for it to fall silent to find out is what let one task run
                     # fifteen rounds past its own completion, manufacturing work to fill them.
                     controller.try_advance(active_task)
+                    finish_round_telemetry(
+                        "ok", tools=[tc.function.name for tc in tool_calls], progress=signal, usage=usage,
+                        visible=(msg.content or "") if msg else "",
+                    )
+                finish_round_telemetry(
+                    "ok", tools=[tc.function.name for tc in tool_calls], usage=usage,
+                    visible=(msg.content or "") if msg else "",
+                )
                 self._checkpoint(job)
                 continue
 
@@ -1635,11 +1917,14 @@ class JobManager:
                 # round can FAIL it and insert a recovery task, after which treating this round as a
                 # completion claim marked the FAILED task COMPLETED — leaving the plan showing the
                 # task both done and awaiting recovery.
-                controller.record_round(
+                signal = controller.record_round(
                     active_task,
                     before=snapshot_before or controller.snapshot_repo(),
                     tools_this_round=[],
                     reasoning_chars=round_reasoning_chars,
+                )
+                finish_round_telemetry(
+                    "ok", progress=signal, usage=usage, visible=(msg.content or "") if msg else "",
                 )
                 task_completed = controller.on_completion_claim(
                     active_task, messages, message_rounds, _round
@@ -1668,6 +1953,9 @@ class JobManager:
                     # round's final-looking message as the end of the whole job.
                     continue
 
+            # Last exit a round has: no tools, no plan (or the plan just finished). Idempotent, so
+            # this is a no-op whenever one of the paths above already wrote.
+            finish_round_telemetry("ok", usage=usage, visible=(msg.content or "") if msg else "")
             contract = _contract_from_dict(contract_dict)
             passed, correction = validate_completion(contract, tools_called)
             # No round-number cutoff here (there used to be one, `_round < 8`) — that let a job

@@ -37,6 +37,8 @@ reality lives in backend/agents/validators.py, so this stays pure state and stay
 
 from __future__ import annotations
 
+import os
+
 import re
 import time
 from dataclasses import asdict, dataclass, field
@@ -192,6 +194,17 @@ class ExecutionPlan:
     #: (insert a subtask, drop one that became unnecessary); wholesale replacement is refused.
     committed: bool = False
     created_at: float = field(default_factory=time.time)
+    #: Where this plan's tasks came from: "proposed" (the model decomposed the actual request),
+    #: "template" (the deterministic fallback in plan_builder), or "" for a plan built before this
+    #: was recorded. Load-bearing, not decorative: the proposal path is allowed to fail silently
+    #: into the template on any error, and it does — a timeout on the planning call turned a
+    #: specific request ("filtering by tide zone that reorganises the list, a count that updates")
+    #: into the generic nine-task build plan, and nothing anywhere said so. A feature that degrades
+    #: invisibly is indistinguishable from one that was never built.
+    source: str = ""
+    #: Why the proposal path was not used, when it was not. Free text, shown in the UI beside the
+    #: plan so the fallback is visible at the moment it matters rather than in a log nobody reads.
+    source_detail: str = ""
 
     # --- lookup ---------------------------------------------------------------
     def get(self, task_id: str) -> Task | None:
@@ -382,6 +395,8 @@ class ExecutionPlan:
             "revisions": self.revisions,
             "committed": self.committed,
             "created_at": self.created_at,
+            "source": self.source,
+            "source_detail": self.source_detail,
         }
 
     @classmethod
@@ -394,6 +409,8 @@ class ExecutionPlan:
             revisions=int(data.get("revisions", 0)),
             committed=bool(data.get("committed", False)),
             created_at=float(data.get("created_at", time.time())),
+            source=str(data.get("source", "")),
+            source_detail=str(data.get("source_detail", "")),
         )
 
 
@@ -425,7 +442,21 @@ def make_task(
     )
 
 
-def task_context_block(plan: ExecutionPlan, task: Task, *, max_notes: int = 6) -> str:
+# A/B switch for the one hypothesis that is cheap enough to test rather than argue about:
+# whether naming the remaining tasks at all is what invites the model to start solving them. The
+# block is already reduced to bare objectives with an explicit instruction not to work on them, so
+# the expected effect is small — but "expected small" and "measured zero" are different findings,
+# and round_telemetry.py now records enough per round (reasoning volume, time to first tool, tool
+# count) to tell them apart on identical prompts. Set CODEXA_HIDE_LATER=1 for arm B.
+#
+# Read per call, not at import: a benchmark harness flips this between runs in the same process.
+def _hide_later() -> bool:
+    return os.getenv("CODEXA_HIDE_LATER", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def task_context_block(
+    plan: ExecutionPlan, task: Task, *, max_notes: int = 6, commitment: dict | None = None
+) -> str:
     """The message the model receives each round in place of "solve the whole problem".
 
     Structure is fixed on purpose — overall objective, what is settled, this one task, what it must
@@ -441,6 +472,14 @@ def task_context_block(plan: ExecutionPlan, task: Task, *, max_notes: int = 6) -
     behaviour, FLIP implementation and mobile layout — before task 1 had returned. Listing later
     work in detail is an invitation to do it early; the plan already holds those tasks and will
     present each one when it becomes active.
+
+    `commitment` is the job's commit_direction record — rendered here, every round, is what makes a
+    chosen palette actually durable. It used to appear only in the one-shot post-cut directive
+    (backend/agents/jobs.py's _execution_directive), which is invisible by the time it matters: a
+    real job called get_design_guidance at round 1, wrote the file at round 6, and by then the
+    guidance — including an explicit ban on the exact palette it produced — had already been
+    compacted out of context. A decision recorded once and never repeated is not different, to a
+    model five rounds later, from a decision never made.
     """
     completed = [t for t in plan.tasks if t.status is TaskStatus.COMPLETED]
     later = [t for t in plan.tasks if not t.is_terminal and t is not task]
@@ -453,6 +492,21 @@ def task_context_block(plan: ExecutionPlan, task: Task, *, max_notes: int = 6) -
         lines.append(f"OVERALL OBJECTIVE: {plan.objective}")
     lines.append(f"PROGRESS: task {plan.index_of(task.id) + 1} of {len(plan.tasks)} "
                  f"({len(completed)} completed)")
+
+    design = (commitment or {}).get("design") or {}
+    if any((design.get("palette"), design.get("typography"), design.get("motion"),
+            design.get("rejected"))):
+        lines += ["", "COMMITTED DESIGN — decided once, applies to every task, do not redecide:"]
+        if design.get("palette"):
+            lines.append("  Palette: " + ", ".join(f"{k}={v}" for k, v in design["palette"].items()))
+        if design.get("typography"):
+            lines.append(
+                "  Typography: " + ", ".join(f"{k}={v}" for k, v in design["typography"].items())
+            )
+        if design.get("motion", {}).get("easing"):
+            lines.append(f"  Motion: {design['motion']['easing']}")
+        if design.get("rejected"):
+            lines.append("  Rejected — do not drift back to these: " + "; ".join(design["rejected"]))
 
     if completed:
         lines += ["", "ALREADY DONE (do not redo):"]
@@ -474,7 +528,7 @@ def task_context_block(plan: ExecutionPlan, task: Task, *, max_notes: int = 6) -
     if task.next_action:
         lines += ["", f"OUTSTANDING ACTION: {task.next_action}"]
 
-    if later:
+    if later and not _hide_later():
         lines += [
             "",
             f"LATER — {len(later)} task(s), listed only so you know they are covered:",
@@ -521,4 +575,8 @@ def summarize_for_event(plan: ExecutionPlan) -> dict[str, Any]:
         ],
         "completed": len(plan.completed()),
         "total": len(plan.tasks),
+        # So "are these tasks actually built from my request?" is answerable by looking, instead of
+        # by comparing objectives against the template by eye.
+        "source": plan.source,
+        "source_detail": plan.source_detail,
     }

@@ -27,6 +27,7 @@ from backend.agents.controller import (
 from backend.agents.jobs import Job, JobManager
 from backend.agents.plan import ExecutionPlan, TaskStatus, make_task
 from backend.agents.progress import RepoSnapshot
+from backend.agents.tools import _commit_direction
 
 
 # ── harness ───────────────────────────────────────────────────────────────────
@@ -252,6 +253,16 @@ class TestSteppingIn:
                                {"write_file"})
         assert "write_file" in h.job.messages[-1]["content"]
 
+    def test_the_intervention_message_includes_last_check_detail(self, repo):
+        """A model that wrote an incomplete file and was told 'call write_file' regenerated the
+        entire document from scratch. Including the actual validation failure in the message
+        gives the model enough information to fix the defect instead of starting over."""
+        h, task = self._stuck(repo)
+        task.validation_detail = "has no <body> — the document was never finished"
+        h.controller.intervene(task, "no_progress", h.job.messages, h.job.message_rounds, 3,
+                               {"write_file"})
+        assert "has no <body>" in h.job.messages[-1]["content"]
+
     def test_the_streak_resets_so_it_does_not_fire_again_immediately(self, repo):
         h, task = self._stuck(repo)
         h.controller.intervene(task, "no_progress", h.job.messages, h.job.message_rounds, 3,
@@ -346,6 +357,37 @@ class TestRecovery:
         assert h.controller.recover(repair) is False
         assert sum(1 for t in h.plan.tasks if t.is_recovery) == 1
 
+    def test_a_recovery_task_gets_a_reduced_intervention_budget(self, repo):
+        """A recovery task gets only ONE forced-tool attempt, not three. The original task
+        already exhausted its intervention budget — giving the recovery the same budget lets
+        it burn through the exact same failure pattern a second time before the chain stops.
+        Historical evidence (premature-completion-job, status-tool-call-job) shows every
+        recovery task hitting its full intervention budget, confirming the model was not
+        learning but merely exhausting the constraint."""
+        h = _Controller(_build_plan())
+        task = h.controller.current_task()
+        task.interventions = MAX_INTERVENTIONS_PER_TASK  # original exhausted
+        h.plan.fail(task, "forced forward 3 times without advancing")
+        h.controller.recover(task)
+        repair = next(t for t in h.plan.tasks if t.is_recovery)
+        # Recovery starts at 2 (so one forced attempt remains before hitting MAX_INTERVENTIONS=3)
+        assert repair.interventions == MAX_INTERVENTIONS_PER_TASK - 1
+
+    def test_a_recovery_is_abandoned_after_one_intervention(self, repo):
+        """After the pre-seeded interventions plus one more, the recovery task should fail
+        and not spawn another recovery (recursion is blocked by is_recovery)."""
+        h = _Controller(_build_plan())
+        task = h.controller.current_task()
+        task.interventions = MAX_INTERVENTIONS_PER_TASK
+        h.plan.fail(task, "exhausted")
+        h.controller.recover(task)
+        repair = next(t for t in h.plan.tasks if t.is_recovery)
+        # Simulate one intervention reaching max
+        repair.interventions = MAX_INTERVENTIONS_PER_TASK
+        h.plan.fail(repair, "also exhausted")
+        assert h.controller.recover(repair) is False  # no recursion
+        assert sum(1 for t in h.plan.tasks if t.is_recovery) == 1
+
 
 class TestTheJobLevelGate:
     def test_a_plan_with_work_left_blocks_completion(self, repo):
@@ -438,10 +480,16 @@ def loop(repo, monkeypatch):
     writes files. Everything the plan checks — artifact existence, tool history, progress — is then
     measured from real state rather than from a mock's memory."""
 
-    def run(script, *, plan=None, thinking_per_round=0, contract_tools=("write_file",)):
+    def run(script, *, plan=None, thinking_per_round=0, contract_tools=("write_file",),
+            commitment=None):
         llm = ScriptedLLM(script, thinking_per_round=thinking_per_round)
         job = _job(plan if plan is not None else _build_plan(),
-                   required_tools=contract_tools, groups=("code", "browser"))
+                   required_tools=contract_tools, groups=("code", "browser", "repo"))
+        if commitment is not None:
+            # Simulates a job resuming mid-plan, past its own direction-commit task — needed to
+            # test the authoring-specific "needs_structure" branch, which only fires once the
+            # project direction is already settled.
+            job.commitment = commitment
 
         def fake_execute(name, args, working_repo, **kwargs):
             context = kwargs.get("context")
@@ -453,6 +501,17 @@ def loop(repo, monkeypatch):
             if name == "run_command" and context is not None:
                 context["exit_code"] = args.get("exit_code", 0)
                 return "ran"
+            if name == "commit_direction":
+                # The real thing, not a fake string — tests that verify structure_task_id gets
+                # stamped, or that a design commitment survives into the next round's context,
+                # depend on this actually building the record jobs.py itself would build.
+                return _commit_direction(
+                    args.get("direction", ""), args.get("decisions"),
+                    args.get("primary_artifact", ""), args.get("next_action", ""),
+                    args.get("palette"), args.get("typography"), args.get("motion"),
+                    args.get("rejected"), args.get("structure"),
+                    context=context, prior_commitment=kwargs.get("prior_commitment"),
+                )
             return f"{name} ok"
 
         manager = JobManager(llm=llm, graph=None, store=None)
@@ -556,6 +615,78 @@ class TestTheLoopForcesTheRightCall:
             "done", [("screenshot", {"url": "x"})], "done",
         ])
         assert "auto" in llm.tool_choices[3:], llm.tool_choices
+
+
+class TestAuthoringGetsAStructurePlanBeforeTheWrite:
+    """The decision/action split for authoring, one level below commit_direction itself.
+
+    Measured cause: an authoring round given no plan reasons through the WHOLE artifact — every
+    section, every interaction — before writing a single character, and that reasoning routinely
+    outruns the budget before the tool call ever lands. One real job cut on the same authoring task
+    twice in a row for exactly this reason (~80,000 characters combined, both discarded) and only
+    wrote the file once forced on the third attempt. The existing commit_direction mechanism
+    already proves the fix at the project level (decide -> durable state -> act); these tests prove
+    it now also applies one task later, to the artifact itself.
+    """
+
+    def test_a_cut_on_an_uncommitted_authoring_task_asks_for_the_plan_not_the_write(self, loop, repo):
+        # Project direction is already settled (pre-seeded, as if an earlier task committed it) but
+        # this specific artifact has no structure plan yet — the branch under test.
+        _, llm = loop(
+            ["thinking"] * 6, thinking_per_round=45_000,
+            commitment={"direction": "A single-page archive."},
+        )
+        forced = [c for c in llm.tool_choices if isinstance(c, dict)]
+        assert forced, f"nothing was ever forced: {llm.tool_choices}"
+        assert forced[0] == {"type": "function", "function": {"name": "commit_direction"}}
+
+    def test_once_this_artifacts_structure_is_committed_the_cut_forces_the_write_instead(self, loop, repo):
+        # Same task, same starting point, except structure_task_id already names THIS task's id —
+        # simulating that an earlier round already committed the plan. The next cut must go
+        # straight to the artifact tool, not ask for another plan.
+        _, llm = loop(
+            ["thinking"] * 6, thinking_per_round=45_000,
+            commitment={
+                "direction": "A single-page archive.",
+                "design": {"structure": ["hero", "archive grid"], "structure_task_id": "t1-write-the-page"},
+            },
+        )
+        forced = [c for c in llm.tool_choices if isinstance(c, dict)]
+        assert forced, f"nothing was ever forced: {llm.tool_choices}"
+        assert forced[0] == {"type": "function", "function": {"name": "write_file"}}
+
+    def test_a_non_authoring_task_is_never_asked_for_structure(self, loop, repo):
+        # "Look at the result" (task 2) has no expected_artifacts — it must never be routed into
+        # the structure branch, which exists only for tasks that produce a file.
+        plan = _build_plan()
+        plan.complete(plan.tasks[0])  # advance past the authoring task
+        _, llm = loop(
+            ["thinking"] * 6, thinking_per_round=45_000, plan=plan,
+            commitment={"direction": "A single-page archive."},
+        )
+        forced = [c for c in llm.tool_choices if isinstance(c, dict)]
+        assert forced, f"nothing was ever forced: {llm.tool_choices}"
+        assert forced[0] != {"type": "function", "function": {"name": "commit_direction"}}
+
+    def test_the_structure_lands_on_the_job_and_stamps_the_task_id(self, loop, repo):
+        # End to end through the real (unfaked) commit_direction, and through the real jobs.py
+        # code that reads its result and stamps structure_task_id. The task must actually complete
+        # after committing — a script that keeps re-committing past this task's own lifetime would
+        # correctly (and separately-tested-above) re-stamp the id to whatever task is active by
+        # then, which is not what this test is checking.
+        job, _ = loop(
+            [
+                [("commit_direction", {"direction": "A single-page archive.",
+                                       "structure": ["hero", "archive grid"]})],
+                [("write_file", {"path": "index.html", "content": _REAL_PAGE})],
+                "done", [("screenshot", {"url": "x"})], "done",
+            ],
+            commitment={"direction": "A single-page archive."},
+        )
+        design = (job.commitment or {}).get("design") or {}
+        assert design.get("structure") == ["hero", "archive grid"]
+        assert design.get("structure_task_id") == "t1-write-the-page"
+        assert job.plan["tasks"][0]["status"] == "COMPLETED"
 
 
 class TestTerminationIsGuaranteed:
@@ -670,3 +801,71 @@ class TestAPartialFileIsFinishedNotRewritten:
         (repo / "index.html").write_text("PLACEHOLDER", encoding="utf-8")
         h, task = self._task_and_controller(repo)
         assert h.controller.forced_tool_for(task, {"write_file", "edit_file"}) == "write_file"
+
+
+class TestRoundTelemetryIsActuallyWired:
+    """The instrument is only worth anything if the loop reaches it on every exit a round has.
+
+    Unit tests for the split live in tests/test_round_telemetry.py; these prove the wiring, which is
+    the part that silently rots. A telemetry call sitting on the happy path only would leave the cut
+    and stall rounds — the exact rounds the measurement exists to explain — as blank space in the
+    dataset, and nothing would fail.
+    """
+
+    def test_every_round_of_a_normal_job_is_recorded(self, loop, tmp_path, monkeypatch):
+        from backend.agents import round_telemetry as telemetry
+
+        log = tmp_path / "rounds.jsonl"
+        monkeypatch.setenv("CODEXA_TELEMETRY_PATH", str(log))
+        job, _ = loop([
+            [("write_file", {"path": "index.html", "content": _REAL_PAGE})],
+            "Task one done.",
+            [("screenshot", {"url": "http://localhost:8000"})],
+            "All finished.",
+        ])
+
+        rows = telemetry.load(log, job_id=job.id)
+        assert len(rows) >= 4, rows
+        # Each row must carry the two halves of the comparison: what went in, what came out.
+        assert all(row["context"]["total"] > 0 for row in rows)
+        assert any(row["tool_calls"] for row in rows)
+        # And it must be attributable to a task, or the per-task table is empty.
+        assert any(row["task_id"] for row in rows)
+
+    def test_a_round_cut_at_the_budget_is_recorded_as_a_cut(self, loop, tmp_path, monkeypatch):
+        from backend.agents import jobs, round_telemetry as telemetry
+
+        log = tmp_path / "rounds.jsonl"
+        monkeypatch.setenv("CODEXA_TELEMETRY_PATH", str(log))
+        monkeypatch.setattr(jobs, "_PLANNING_CHARS", 200)
+        monkeypatch.setattr(jobs, "_AUTHORING_CHARS", 200)
+        monkeypatch.setattr(jobs, "_EXECUTION_CHARS", 200)
+        job, _ = loop([
+            [("write_file", {"path": "index.html", "content": _REAL_PAGE})],
+            "Task one done.",
+            [("screenshot", {"url": "http://localhost:8000"})],
+            "All finished.",
+        ], thinking_per_round=500)
+
+        rows = telemetry.load(log, job_id=job.id)
+        cuts = [row for row in rows if row["outcome"] == "cut"]
+        assert cuts, [row["outcome"] for row in rows]
+        # A cut round is the one whose reasoning volume matters most; it must not be recorded as 0.
+        assert all(row["reasoning_chars"] > 0 for row in cuts)
+
+    def test_the_context_split_sees_the_execution_state_block(self, loop, tmp_path, monkeypatch):
+        # The controller re-appends this every round. If the split misses it, the block's cost is
+        # invisible and would be misattributed to the user's own request.
+        from backend.agents import round_telemetry as telemetry
+
+        log = tmp_path / "rounds.jsonl"
+        monkeypatch.setenv("CODEXA_TELEMETRY_PATH", str(log))
+        job, _ = loop([
+            [("write_file", {"path": "index.html", "content": _REAL_PAGE})],
+            "Task one done.",
+            [("screenshot", {"url": "http://localhost:8000"})],
+            "All finished.",
+        ])
+
+        rows = telemetry.load(log, job_id=job.id)
+        assert any(row["context"]["task_context"] > 0 for row in rows)

@@ -114,6 +114,127 @@ class TestCommitmentIsAnAction:
         assert len(record["decisions"]) <= 12
 
 
+# ── the design commitment record ────────────────────────────────────────────
+#
+# Built to close a SEPARATE, measured failure from the same night: four unrelated products (a
+# journal, a coffee guide, a dashboard, a field guide) converged on the same warm-cream/near-black/
+# burnt-orange palette and the identical easing curve — even on the job whose loaded design skill
+# explicitly banned that exact palette by hex code. The skill file was only ever a tool result,
+# evicted from context after 3 rounds; by the round that actually wrote the file (5+ rounds later
+# in the measured case), nothing durable said what had been decided or rejected any more. This
+# record is the fix: chosen values become an ACTION (like the direction itself), not a reference
+# document that ages out before it matters.
+
+
+class TestTheDesignCommitmentRecord:
+    def test_palette_typography_and_motion_are_recorded(self):
+        ctx: dict = {}
+        _commit_direction(
+            "A field guide.", context=ctx,
+            palette={"background": "#0B1E17", "ink": "#EDEDE6", "accent": "#4E8B6B"},
+            typography={"display": "Fraunces", "body": "Inter"},
+            motion={"easing": "cubic-bezier(0.4, 0, 0.2, 1)", "philosophy": "snappy, no bounce"},
+        )
+        design = ctx["commitment"]["design"]
+        assert design["palette"] == {"background": "#0B1E17", "ink": "#EDEDE6", "accent": "#4E8B6B"}
+        assert design["typography"] == {"display": "Fraunces", "body": "Inter"}
+        assert design["motion"]["easing"] == "cubic-bezier(0.4, 0, 0.2, 1)"
+
+    def test_rejected_patterns_are_recorded(self):
+        ctx: dict = {}
+        _commit_direction(
+            "A field guide.", context=ctx,
+            rejected=["warm-cream-paper palette, too generic for this brief"],
+        )
+        assert ctx["commitment"]["design"]["rejected"] == [
+            "warm-cream-paper palette, too generic for this brief"
+        ]
+
+    def test_no_design_fields_means_no_design_key_at_all(self):
+        # A plain commit_direction call (the common case — most tasks never touch design) must not
+        # grow a `design: {}` key that then has to be defended against everywhere it's read.
+        ctx: dict = {}
+        _commit_direction("A field guide.", context=ctx)
+        assert "design" not in ctx["commitment"]
+
+    def test_a_second_call_preserves_palette_it_does_not_repeat(self):
+        # This is the actual bug the whole record exists to prevent: a project-level decision made
+        # once must not be silently erased by a later, unrelated commit_direction call.
+        first: dict = {}
+        _commit_direction(
+            "A field guide.", context=first,
+            palette={"background": "#0B1E17", "ink": "#EDEDE6", "accent": "#4E8B6B"},
+        )
+        second: dict = {}
+        _commit_direction(
+            "Refined: filtering reorganises the list.", context=second,
+            prior_commitment=first["commitment"],
+        )
+        assert second["commitment"]["design"]["palette"]["background"] == "#0B1E17"
+
+    def test_rejected_accumulates_rather_than_replaces(self):
+        first: dict = {}
+        _commit_direction("A guide.", context=first, rejected=["burnt-orange accent family"])
+        second: dict = {}
+        _commit_direction(
+            "Refined.", context=second, prior_commitment=first["commitment"],
+            rejected=["centered hero, too generic for this brief"],
+        )
+        assert second["commitment"]["design"]["rejected"] == [
+            "burnt-orange accent family", "centered hero, too generic for this brief",
+        ]
+
+    def test_rejected_does_not_accumulate_duplicates(self):
+        first: dict = {}
+        _commit_direction("A guide.", context=first, rejected=["burnt-orange accent"])
+        second: dict = {}
+        _commit_direction(
+            "Refined.", context=second, prior_commitment=first["commitment"],
+            rejected=["Burnt-Orange Accent"],  # same idea, different case
+        )
+        assert second["commitment"]["design"]["rejected"] == ["burnt-orange accent"]
+
+    def test_structure_is_replaced_not_merged(self):
+        # Structure is the per-artifact plan, not a project decision — carrying task 3's structure
+        # into task 6's authoring round would hand the model someone else's plan.
+        first: dict = {}
+        _commit_direction("A guide.", context=first, structure=["hero", "archive grid"])
+        second: dict = {}
+        _commit_direction(
+            "Refined.", context=second, prior_commitment=first["commitment"],
+            structure=["nav", "detail panel"],
+        )
+        assert second["commitment"]["design"]["structure"] == ["nav", "detail panel"]
+
+    def test_structure_alone_does_not_wipe_a_previously_set_palette(self):
+        first: dict = {}
+        _commit_direction("A guide.", context=first, palette={"accent": "#4E8B6B"})
+        second: dict = {}
+        _commit_direction(
+            "Refined.", context=second, prior_commitment=first["commitment"],
+            structure=["hero", "grid"],
+        )
+        assert second["commitment"]["design"]["palette"]["accent"] == "#4E8B6B"
+        assert second["commitment"]["design"]["structure"] == ["hero", "grid"]
+
+    def test_the_summary_names_what_was_rejected(self):
+        # The summary is what the model itself reads back — if the rejection isn't in the text it
+        # emitted, there is nothing stopping it from proposing the same rejected idea next round.
+        text = _commit_direction(
+            "A guide.", context={}, rejected=["warm-cream-paper, too generic for this brief"]
+        )
+        assert "warm-cream-paper" in text
+        assert "do not drift back" in text.lower()
+
+    def test_a_bare_empty_dict_argument_is_treated_as_nothing_chosen(self):
+        # A model emitting `"palette": {}` (nothing filled in) must not register as a real choice —
+        # `any(design["palette"].values())` in the caller depends on this staying empty, not on a
+        # dict with all-empty-string values that would look truthy by mere presence.
+        ctx: dict = {}
+        _commit_direction("A guide.", context=ctx, palette={"background": "", "ink": None})
+        assert ctx["commitment"].get("design", {}).get("palette", {}) == {}
+
+
 # ── the budget ────────────────────────────────────────────────────────────────
 
 

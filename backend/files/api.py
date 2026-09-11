@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from backend.memory.store import DATA_DIR
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_SKIP = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next", ".agents",
+_SKIP = {".git", ".codexa-repo.json", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next", ".agents",
          ".codexa", "coverage", ".pytest_cache", ".turbo", ".egg-info"}
 _MAX_READ = 600_000
 _LANG = {

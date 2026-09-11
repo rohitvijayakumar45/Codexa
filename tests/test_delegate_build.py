@@ -133,7 +133,12 @@ class TestWorkerRotation:
         session.complete([], tools=None, agent="t")
         assert llm.calls == ["g-a", "g-b", "g-a"]  # wrapped, and the first model worked on lap 2
 
-    def test_a_non_rate_limit_error_never_burns_a_rotation(self):
+    def test_a_non_rate_limit_error_also_rotates_to_the_next_model(self):
+        # Real, observed failure: 3.8-flash returned a genuine (non-rate-limit) provider error
+        # mid-build, the OLD behavior (only is_rate_limit_error rotated) hit _delegate_build's outer
+        # except and gave up on the spot, leaving 3.7 and every configured key completely untouched.
+        # complete() now rotates on ANY exception — still bounded by the same lap budget as a rate
+        # limit would be, so a genuinely dead ring still terminates rather than retrying forever.
         class Broken(FakeLLM):
             def complete_message(self, messages, *, model=None, tools=None, agent="chat"):
                 self.calls.append(model)
@@ -143,8 +148,24 @@ class TestWorkerRotation:
         session = _WorkerSession(llm)
         with pytest.raises(ValueError):
             session.complete([], tools=None, agent="t")
-        assert llm.calls == ["g-a"]
-        assert session.switches == []
+        assert llm.calls == ["g-a", "g-b"] * _MAX_WORKER_LAPS
+        assert session.lap == _MAX_WORKER_LAPS - 1
+
+    def test_a_non_rate_limit_error_that_recovers_on_the_next_model_succeeds(self):
+        # The direct fix, expressed positively: one bad model doesn't fail the whole build when a
+        # peer in the ring is healthy.
+        class OneBadModel(FakeLLM):
+            def complete_message(self, messages, *, model=None, tools=None, agent="chat"):
+                self.calls.append(model)
+                if model == "g-a":
+                    raise ValueError("malformed request")
+                return _msg("done"), {}
+
+        llm = OneBadModel(ring=["g-a", "g-b"], responses=[])
+        session = _WorkerSession(llm)
+        session.complete([], tools=None, agent="t")
+        assert llm.calls == ["g-a", "g-b"]
+        assert session.model == "g-b"
 
     def test_falls_back_to_the_light_tier_when_worker_ring_is_absent(self):
         # Older clients / test doubles without worker_ring must still delegate, not hard-fail.

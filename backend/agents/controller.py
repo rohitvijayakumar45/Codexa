@@ -188,7 +188,10 @@ class ExecutionController:
             ):
                 del messages[i]
                 del message_rounds[i]
-        messages.append({"role": "user", "content": task_context_block(self.plan, task)})
+        messages.append({
+            "role": "user",
+            "content": task_context_block(self.plan, task, commitment=self.job.commitment),
+        })
         message_rounds.append(current_round)
 
     # --- progress ------------------------------------------------------------
@@ -339,6 +342,12 @@ class ExecutionController:
         """
         task.interventions += 1
         forced = self.forced_tool_for(task, available_tool_names)
+        # Gather the actual validation failure details so the intervention message can explain
+        # precisely what went wrong, rather than merely saying "this task has not advanced". A
+        # model that wrote an incomplete file and was told "call write_file" regenerated the
+        # entire document from scratch; one told "your file has no <body> tag" can fix the
+        # actual defect instead of starting over.
+        last_detail = task.validation_detail or task.failure_reason or ""
         task.next_action = (
             f"call {forced} now — this task has not advanced in "
             f"{task.rounds_without_progress} rounds"
@@ -354,7 +363,7 @@ class ExecutionController:
             "forcing": forced or "",
         }}})
         self._emit({"status": f"Not advancing — {task.next_action}"})
-        messages.append({"role": "user", "content": _intervention_message(task, reason, forced)})
+        messages.append({"role": "user", "content": _intervention_message(task, reason, forced, last_detail)})
         message_rounds.append(current_round)
         # Reset the streak: the intervention IS the response to it, and leaving it high would fire
         # again on the very next round regardless of whether the forced call worked.
@@ -498,6 +507,13 @@ class ExecutionController:
         do, and buried the actual first failure under four layers of near-identical task names. One
         repair per task is the whole allowance; after that the task stays failed and the plan says
         so plainly.
+
+        A recovery task gets a reduced intervention budget (1 instead of 3). The original task
+        already demonstrated that the model could not satisfy this goal with the available tools —
+        a fresh recovery with the same budget lets it burn through the exact same failure pattern
+        a second time before the chain stops. Historical evidence (premature-completion-job,
+        status-tool-call-job) shows every recovery task hitting its full intervention budget,
+        confirming the model was not learning from the constraint but merely exhausting it.
         """
         if task.is_recovery:
             logger.info("job %s: task %s is already a recovery — not recovering again", self.job.id, task.id)
@@ -521,6 +537,13 @@ class ExecutionController:
             validators=task.validators,
         )
         repair.is_recovery = True
+        # A recovery gets only ONE forced-tool attempt, not three. The original task already
+        # exhausted its intervention budget — a model that demonstrably cannot call the needed
+        # tool in three tries gets diminishing returns from three more. If the first forced call
+        # in the recovery also fails to advance, that is strong evidence the goal itself is
+        # unachievable with the current tools, and the plan should stop here rather than burn
+        # another full cycle of retries on the same proven failure.
+        repair.interventions = MAX_INTERVENTIONS_PER_TASK - 1
         repair.note(f"previous attempt failed: {task.failure_reason or task.validation_detail}")
         if not self.plan.insert_after(task.id, repair):
             return False
@@ -531,7 +554,8 @@ class ExecutionController:
         self._emit({"tool_call": {"name": "_task_recovery", "args": {
             "failed": task.objective, "recovery": repair.objective,
         }}})
-        logger.info("job %s: inserted recovery task %s", self.job.id, repair.id)
+        logger.info("job %s: inserted recovery task %s (interventions pre-seeded to %s)",
+                    self.job.id, repair.id, repair.interventions)
         return True
 
     # --- job-level -----------------------------------------------------------
@@ -572,7 +596,7 @@ class ExecutionController:
         return [t for t in self.plan.tasks if t.status is TaskStatus.FAILED]
 
 
-def _intervention_message(task: Task, reason: str, forced: str | None) -> str:
+def _intervention_message(task: Task, reason: str, forced: str | None, last_detail: str = "") -> str:
     """The text sent alongside a forced tool call.
 
     The forcing is what works; this explains it, so the model's next round is aimed rather than
@@ -597,6 +621,8 @@ def _intervention_message(task: Task, reason: str, forced: str | None) -> str:
         "",
         f"Task: {task.objective}",
     ]
+    if last_detail:
+        lines.append(f"LAST CHECK RESULT: {last_detail}")
     if task.expected_artifacts:
         lines.append(f"Must exist when done: {', '.join(task.expected_artifacts)}")
     if forced == "edit_file":

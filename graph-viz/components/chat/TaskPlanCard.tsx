@@ -95,6 +95,10 @@ export function TaskPlanCard({ plan }: { plan: PlanSnapshot }) {
     tasks.find((t) => t.id === plan.current_task_id) ?? tasks.find((t) => t.status === "IN_PROGRESS");
   const lastProgress = active?.last_progress ?? "";
   const headline = plan.objective || "Execution plan";
+  // Whether these tasks were written for THIS request or came from the deterministic template.
+  // Only worth a badge when it is the template: a plan built from the request is the expectation,
+  // and a badge on the normal case is noise. The title carries the reason it fell back.
+  const templated = plan.source === "template";
 
   return (
     <motion.div
@@ -113,6 +117,18 @@ export function TaskPlanCard({ plan }: { plan: PlanSnapshot }) {
       >
         {finished && <Check size={12} className="shrink-0 text-signal" />}
         <span className="status-line min-w-0 flex-1 truncate">{headline}</span>
+        {templated && (
+          <span
+            title={
+              plan.source_detail
+                ? `Generic plan — the planner fell back to a template (${plan.source_detail})`
+                : "Generic plan — the planner fell back to a template"
+            }
+            className="shrink-0 rounded border border-line-strong px-1.5 py-0.5 text-[10px] text-faint"
+          >
+            generic
+          </span>
+        )}
         <span className="num shrink-0 text-[11px] text-muted">
           {completed}/{total}
         </span>

@@ -6,7 +6,7 @@ import { Line, Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { LineMaterial, OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { GraphEdgeSourceType } from "@/lib/api";
-import { EDGE_NEUTRAL, STATE_ACCENT, STATE_ACCENT_SOFT, edgeOpacity, edgeWidth } from "@/lib/graph-visual";
+import { edgeOpacity, edgeWidth, type GraphPalette } from "@/lib/graph-visual";
 
 const RECENT_MS = 12 * 86_400_000; // an edge younger than this at the viewed time reads as "recent"
 const CURVE_SAMPLES = 18;
@@ -65,6 +65,8 @@ interface SceneProps {
   timeMs: number;
   reducedMotion: boolean;
   layoutKey: string;
+  /** Resolved theme colours — the scene re-skins when the workspace theme changes. */
+  palette: GraphPalette;
   onHover: (id: string | null) => void;
   onSelect: (id: string | null) => void;
 }
@@ -74,8 +76,6 @@ const tmpB = new THREE.Vector3();
 const tmpFlow = new THREE.Vector3();
 const ctrl = new THREE.Vector3();
 const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3());
-const colNeutral = new THREE.Color(EDGE_NEUTRAL);
-const colAccent = new THREE.Color(STATE_ACCENT);
 const colTmp = new THREE.Color();
 const flowDummy = new THREE.Object3D();
 const flowHide = new THREE.Object3D();
@@ -90,10 +90,13 @@ function Scene({
   timeMs,
   reducedMotion,
   layoutKey,
+  palette,
   onHover,
   onSelect,
 }: SceneProps) {
   const { camera } = useThree();
+  const colNeutral = useMemo(() => new THREE.Color(palette.edge), [palette.edge]);
+  const colAccent = useMemo(() => new THREE.Color(palette.accent), [palette.accent]);
   const controls = useRef<OrbitControlsImpl>(null);
 
   const positions = useRef<THREE.Vector3[]>([]);
@@ -239,7 +242,7 @@ function Scene({
         isSel ? 0.85 : isHov ? 0.5 : 0.12 + pulseEnv * 0.4,
         0.18,
       );
-      // Selected node picks up a faint teal rim; everyone else stays their family hue.
+      // Selected node picks up a faint signal-colour rim; everyone else stays their family hue.
       (mat.emissive as THREE.Color).lerp(isSel ? colAccent : (mesh.userData.base as THREE.Color), 0.15);
 
       // Soft additive halo behind the node — a cheap stand-in for bloom that still reads as glow.
@@ -369,7 +372,7 @@ function Scene({
       <ambientLight intensity={0.95} />
       <directionalLight position={[10, 14, 8]} intensity={0.7} />
       <directionalLight position={[-8, -6, -10]} intensity={0.24} color="#c7d2fe" />
-      <pointLight position={[0, 4, 14]} intensity={0.5} color={STATE_ACCENT_SOFT} distance={40} />
+      <pointLight position={[0, 4, 14]} intensity={0.5} color={palette.accentSoft} distance={40} />
 
       {/* Halos render first, additively, so they sit as soft light behind the crisp node spheres. */}
       {glow &&
@@ -393,7 +396,7 @@ function Scene({
             edgeLines.current[i] = el;
           }}
           points={Array.from({ length: CURVE_SAMPLES }, () => [0, 0, 0] as [number, number, number])}
-          color={EDGE_NEUTRAL}
+          color={palette.edge}
           lineWidth={edgeWidth(e.confidence)}
           transparent
           opacity={0}
@@ -408,7 +411,7 @@ function Scene({
       <instancedMesh ref={flowMesh} args={[undefined, undefined, FLOW_CAPACITY]} frustumCulled={false}>
         <sphereGeometry args={[1, 8, 8]} />
         <meshBasicMaterial
-          color={STATE_ACCENT_SOFT}
+          color={palette.accentSoft}
           transparent
           opacity={0.85}
           blending={THREE.AdditiveBlending}
@@ -419,7 +422,7 @@ function Scene({
       {/* Pulsing accent ring around the selected node — the one place motion carries meaning. */}
       <mesh ref={ringRef} visible={false}>
         <torusGeometry args={[1, 0.045, 12, 56]} />
-        <meshBasicMaterial color={STATE_ACCENT} transparent opacity={0} depthWrite={false} />
+        <meshBasicMaterial color={palette.accent} transparent opacity={0} depthWrite={false} />
       </mesh>
 
       {nodes.map((node, i) => (
@@ -460,8 +463,11 @@ function Scene({
               <div
                 className="translate-y-[-2.4em] whitespace-nowrap rounded-md border bg-panel/95 px-2 py-1 text-[11px] font-medium text-ink shadow-md backdrop-blur-sm"
                 style={{
-                  borderColor: node.id === selectedId ? STATE_ACCENT : "var(--color-line)",
-                  boxShadow: node.id === selectedId ? `0 0 0 1px ${STATE_ACCENT}22, 0 8px 20px -6px ${STATE_ACCENT}55` : undefined,
+                  borderColor: node.id === selectedId ? "var(--color-signal)" : "var(--color-line)",
+                  boxShadow:
+                    node.id === selectedId
+                      ? "0 0 0 1px color-mix(in srgb, var(--color-signal) 14%, transparent), 0 8px 20px -6px color-mix(in srgb, var(--color-signal) 34%, transparent)"
+                      : undefined,
                 }}
               >
                 {node.label}
@@ -494,7 +500,7 @@ export function GraphScene(props: SceneProps) {
       gl={{ antialias: true, alpha: true }}
       onPointerMissed={() => props.onSelect(null)}
     >
-      <fog attach="fog" args={["#f1f0f7", 34, 72]} />
+      <fog attach="fog" args={[props.palette.fog, 34, 72]} />
       <Scene {...props} />
     </Canvas>
   );

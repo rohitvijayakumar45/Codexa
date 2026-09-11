@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from typing import Iterator
 
 import litellm
@@ -168,6 +169,15 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
         return {
             "job_id": job.id, "status": job.status, "round": job.round,
             "continuable": job.status == "error" and job.error_reason in ("max_rounds", "stall_exhausted"),
+            # Wait-state telemetry (see backend/agents/jobs.py _mark_wait / HARNESS_RESEARCH_
+            # FINDINGS.md problem 2): distinguishes "quiet between rounds" from "stuck waiting on
+            # the model" or "stuck inside one tool call", and how long it's been silent — instead
+            # of "running" reading identically whether the job is 1 second or 7 hours into a hang.
+            "wait_state": job.current_wait_state,
+            "idle_seconds": round(time.time() - job.last_activity_ts, 1),
+            # Independent repeat-call detector (see _tool_call_signature) — visible even when
+            # rounds keep "completing successfully" by every other measure.
+            "same_tool_signature_streak": job.same_tool_signature_streak,
         }
 
     @router.post("/agent/job/{job_id}/continue")

@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { api, type GraphEdge, type GraphNode } from "@/lib/api";
 import { useRepoStore } from "@/lib/repo-store";
-import { FAMILY_META, NODE_STYLE, STATE_ACCENT, nodeLabel, nodeRadius, type NodeFamily } from "@/lib/graph-visual";
+import {
+  FAMILY_META,
+  NODE_STYLE,
+  familyColor,
+  nodeColor,
+  nodeLabel,
+  nodeRadius,
+  readGraphPalette,
+  typeColorCss,
+  type NodeFamily,
+} from "@/lib/graph-visual";
+import { useWorkspaceTheme } from "@/lib/theme";
 import type { SceneEdge, SceneNode } from "@/components/graph/GraphScene";
 import { Inspector } from "@/components/graph/Inspector";
 import { GraphSearch } from "@/components/graph/GraphSearch";
@@ -18,12 +29,14 @@ const GraphScene = dynamic(() => import("@/components/graph/GraphScene").then((m
   ssr: false,
 });
 
+// Theme-aware ground: a faint ink dot field over the graph canvas, lifting toward the page ground.
+// Every colour is a variable, so Blueprint and Noir both re-skin it without a re-render.
 const SURFACE =
-  "radial-gradient(circle at 1px 1px, rgba(26,26,24,0.045) 1px, transparent 0) 0 0 / 27px 27px, " +
-  "radial-gradient(38% 42% at 14% 12%, rgba(99,102,241,0.10) 0%, transparent 60%), " +
-  "radial-gradient(34% 38% at 90% 20%, rgba(244,63,94,0.08) 0%, transparent 60%), " +
-  "radial-gradient(40% 44% at 78% 92%, rgba(245,158,11,0.08) 0%, transparent 60%), " +
-  "radial-gradient(120% 100% at 50% 18%, #fffffe 0%, #f5f3ef 52%, #ecebe6 100%)";
+  "radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--color-ink) 6%, transparent) 1px, transparent 0) 0 0 / 27px 27px, " +
+  "radial-gradient(38% 42% at 14% 12%, color-mix(in srgb, var(--color-g-sub) 7%, transparent) 0%, transparent 60%), " +
+  "radial-gradient(34% 38% at 90% 20%, color-mix(in srgb, var(--color-g-sig) 7%, transparent) 0%, transparent 60%), " +
+  "radial-gradient(40% 44% at 78% 92%, color-mix(in srgb, var(--color-g-reason) 7%, transparent) 0%, transparent 60%), " +
+  "radial-gradient(120% 100% at 50% 18%, var(--color-g-canvas) 0%, var(--color-paper) 100%)";
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -100,6 +113,8 @@ function GraphView({
   endMs: number;
 }) {
   const reducedMotion = useReducedMotion();
+  const theme = useWorkspaceTheme();
+  const palette = useMemo(() => readGraphPalette(theme), [theme]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [timeMs, setTimeMs] = useState<number>(endMs);
@@ -122,12 +137,12 @@ function GraphView({
     () =>
       nodes.map((n, i) => ({
         id: n.id,
-        color: NODE_STYLE[n.node_type].color,
+        color: nodeColor(n.node_type, palette),
         radius: nodeRadius(n.node_type, degree.get(n.id) ?? 0),
         label: nodeLabel(n.properties, n.stable_id),
         seed: seedPosition(i, nodes.length),
       })),
-    [nodes, degree],
+    [nodes, degree, palette],
   );
 
   const sceneEdges: SceneEdge[] = useMemo(() => {
@@ -189,6 +204,7 @@ function GraphView({
           timeMs={t}
           reducedMotion={reducedMotion}
           layoutKey={layoutKey}
+          palette={palette}
           onHover={setHoveredId}
           onSelect={setSelectedId}
         />
@@ -263,8 +279,8 @@ function FamilyLegend({ activeTypes }: { activeTypes: Set<string> }) {
         className="flex w-full items-center justify-between px-3 py-2.5 text-left"
       >
         <span className="flex items-center gap-2">
-          {families.map(([k, f]) => (
-            <span key={k} className="h-2.5 w-2.5 rounded-full" style={{ background: f.swatch }} />
+          {families.map(([k]) => (
+            <span key={k} className="h-2.5 w-2.5 rounded-full" style={{ background: familyColor(k) }} />
           ))}
           <span className="ml-1 text-[11px] font-medium uppercase tracking-wide text-muted">Legend</span>
         </span>
@@ -291,7 +307,7 @@ function FamilyLegend({ activeTypes }: { activeTypes: Set<string> }) {
                 return (
                   <div key={key}>
                     <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: f.swatch }} />
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: familyColor(key) }} />
                       <span className="text-[11px] font-medium text-ink">{f.label}</span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 pl-4">
@@ -299,7 +315,7 @@ function FamilyLegend({ activeTypes }: { activeTypes: Set<string> }) {
                         <span key={tp} className="flex items-center gap-1 text-[10.5px] text-muted">
                           <span
                             className="h-1.5 w-1.5 rounded-full"
-                            style={{ background: NODE_STYLE[tp].color }}
+                            style={{ background: typeColorCss(tp) }}
                           />
                           {NODE_STYLE[tp].label}
                         </span>
@@ -310,8 +326,8 @@ function FamilyLegend({ activeTypes }: { activeTypes: Set<string> }) {
               })}
               <div className="space-y-1 border-t border-line pt-2 text-[10.5px] text-faint">
                 <p>
-                  <span className="mr-1 inline-block h-1.5 w-3 rounded-full align-middle" style={{ background: STATE_ACCENT }} />
-                  teal = recently changed
+                  <span className="mr-1 inline-block h-1.5 w-3 rounded-full align-middle" style={{ background: "var(--color-signal)" }} />
+                  signal colour = recently changed or selected
                 </p>
                 <p>Edge weight = confidence · dashed = LLM-inferred</p>
               </div>

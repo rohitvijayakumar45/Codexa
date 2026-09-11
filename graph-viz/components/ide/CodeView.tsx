@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { codeToHtml } from "shiki";
+import { codexaDark, codexaLight } from "@/lib/code-theme";
 
 const LANG: Record<string, string> = {
   tsx: "tsx", typescript: "typescript", javascript: "javascript", jsx: "jsx", python: "python",
@@ -14,7 +15,14 @@ export function CodeView({ code, language }: { code: string; language: string })
 
   useEffect(() => {
     let cancelled = false;
-    codeToHtml(code, { lang: LANG[language] ?? "text", theme: "github-light" })
+    // Dual themes rather than one: Shiki emits both colors per token as CSS variables, so the
+    // Blueprint/Aurora toggle re-themes the file instantly without re-highlighting it. `defaultColor:
+    // false` is what stops Shiki inlining one of them as a hard color and winning over the CSS.
+    codeToHtml(code, {
+      lang: LANG[language] ?? "text",
+      themes: { light: codexaLight, dark: codexaDark },
+      defaultColor: false,
+    })
       .then((h) => !cancelled && setHtml(h))
       .catch(() => !cancelled && setHtml(""));
     return () => {

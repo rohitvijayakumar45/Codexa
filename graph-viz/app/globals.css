@@ -1,50 +1,74 @@
 @import "tailwindcss";
 
+/* Short viewports (a 13" laptop with the browser chrome showing is ~700px tall). The rail holds
+   ten destinations plus repo, theme, job and avatar controls in one column, and at full size that
+   stack stops fitting below ~860px, so the bottom cluster gets pushed out of the rail. `short:`
+   compacts it instead. */
+@custom-variant short (@media (max-height: 860px));
+
 /*
   Codexa OS — design system.
 
-  One instrument, one light theme. Warm-neutral paper, graphite ink, restraint. Color is signal,
-  never decoration: a single teal accent for live state, a muted gold for the reasoning family.
-  Hierarchy comes from type scale and space, not borders and badges. Motion eases; nothing pops.
+  BLUEPRINT: the light instrument. Cool blue-grey drawing stock, near-black navy ink, one blue
+  signal. Replaces the old warm-tan "paper" theme, which lost every contrast fight it entered —
+  white panels on near-white ground with soft graphite ink left the eye nothing to grip.
+
+  Color is signal, never decoration. Blue means live state and, in the code view, means the agent
+  touched this — nothing else is allowed to be blue. Rust carries the reasoning family (thinking,
+  cut rounds, budget pressure) so the two never get confused. Hierarchy comes from the elevation
+  ladder, type scale and space, not from borders and badges. Motion springs; nothing pops.
 */
 
 @theme {
-  /* Surfaces — warm neutral, barely off-white, never cream. */
-  --color-paper: #f7f6f4;
-  --color-paper-sunk: #efeeea;
+  /* Surfaces — cool blue-grey stock. The ground is deliberately DARKER than the panels so panels
+     lift off it; the old theme had this inverted and everything read as one flat plane. */
+  --color-paper: #eef1f5;
+  --color-paper-sunk: #e3e8ef;
   --color-panel: #ffffff;
-  --color-panel-2: #fbfbf9;
+  --color-panel-2: #f8fafc;
 
-  /* Ink — warm near-black graphite, never pure #000. */
-  --color-ink: #1a1a18;
-  --color-ink-soft: #3c3c38;
-  --color-muted: #6c6a63;
-  --color-faint: #97948b;
-  --color-line: #e9e7e1;
-  --color-line-strong: #dad6ce;
+  /* Ink — near-black navy, never pure #000, never soft grey either. */
+  --color-ink: #1b2430;
+  --color-ink-soft: #35404f;
+  --color-muted: #5c6a7b;
+  --color-faint: #8797a8;
+  --color-line: #dde4ed;
+  --color-line-strong: #c9d4e0;
 
-  /* Signal — the one saturated accent. State only. */
-  --color-signal: #0f7d71;
-  --color-signal-live: #12b39f;
-  --color-signal-wash: #e6f3f0;
+  /* Signal — the one saturated accent. Live state, and agent authorship. Nothing else. */
+  --color-signal: #0f6fd4;
+  --color-signal-live: #2b8ef0;
+  --color-signal-wash: #e7f0fb;
 
-  /* Muted gold — secondary, reasoning family. */
-  --color-gold: #9c7d33;
-  --color-gold-wash: #f3efe1;
+  /* Rust — secondary, reasoning family. Kept as --color-gold so existing callers don't break. */
+  --color-gold: #a8551f;
+  --color-gold-wash: #f7ede2;
 
-  --color-warn: #b0571f;
-  --color-danger: #a92a30;
+  --color-warn: #b4622a;
+  --color-danger: #b3261e;
 
-  /* Tracing-paper grid — the workspace's page ground. Warm graph-paper tan with a fine ruled
-     grid, matched 1:1 to the illoca.unseen.co reference (sampled: base/line colors + 10.667px
-     cell). Panels sit on top of this, never blend into it. */
-  --color-grid-base: #eadfc9;
-  --color-grid-line-v: #d3c9b5;
-  --color-grid-line-h: #e3d9c3;
+  /* Drawing-office ruling — the workspace ground. Deliberately about a third of the old tan grid's
+     contrast: a ground should be felt, not read. It lost every fight with the content sitting on
+     top of it before. Same 10.667px cell. */
+  --color-grid-base: #e9edf3;
+  --color-grid-line-v: #dfe5ee;
+  --color-grid-line-h: #e4e9f1;
 
-  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+  /* Graph (Strata). Three family hues and nothing else: neutral substrate for code, rust for
+     intent, purple for signals. The theme signal stays reserved for the agent. Validated all-pairs
+     against the signal on the canvas: worst CVD ΔE 8.4 (deutan), normal vision ≥ 19. */
+  --color-g-canvas: #fbfcfe;
+  --color-g-sub: #4b5767;
+  --color-g-sub-wash: rgba(75, 87, 103, 0.07);
+  --color-g-reason: #a8551f;
+  --color-g-reason-wash: #f7ede2;
+  --color-g-sig: #9b3aa6;
+  --color-g-sig-wash: #f5eaf7;
+  --color-g-edge: #8797a8;
+
+  --font-display: var(--font-funnel), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
 
   /* Motion — cinematic ease, nothing linear, nothing bouncy. */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -65,54 +89,100 @@
   --dur-1: 0.16s;
   --dur-2: 0.28s;
   --dur-3: 0.5s;
+
+  /* Code view grounds. Cooler and cleaner than the panel white so a file reads as material being
+     worked on rather than another card. --code-agent is the attribution stripe, the streaming
+     caret and the selection: the only blue in the code view, and never a token color. */
+  --code-bg: #fbfcfe;
+  --code-gutter: #eff3f8;
+  --code-rule: #dde4ed;
+  --code-line-hl: rgba(15, 111, 212, 0.055);
+  --code-agent: #0f6fd4;
+  --code-revert: #b4622a;
 }
 
 /*
-  Aurora — the second, hot-swappable workspace theme. Same components, same markup, entirely
-  different instrument: near-black graphite instead of tracing paper, one live amber signal instead
-  of teal, a fine dot-field instead of ruled lines. Scoped to a `data-theme="aurora"` attribute on
-  the workspace root so it never touches the default theme's tokens — toggle it, nothing else in
-  the app has to know.
+  NOIR — the dark instrument. Replaces Aurora, which was one good instinct executed halfway: it
+  correctly refused to be an inverted Blueprint, but spent its signal on amber, the same hue this
+  system already uses for the reasoning family. "Live" and "under budget pressure" became the same
+  colour, which cost a channel the product actively reads.
+
+  Noir is the opposite discipline: an almost-neutral black, bone type, and exactly one saturated cut
+  of claret. Expensive because of how little it does. Scoped to `data-theme="noir"` on the workspace
+  root, so it never touches Blueprint's tokens.
+
+  The one real problem this palette has, solved explicitly rather than hidden: claret sits close to
+  error red. Danger is therefore pushed to a distinctly brighter, more orange vermilion, warn stays
+  gold, and — critically — every failure surface in the app pairs its colour with an icon and a
+  severity stripe (see chat/ExecutionPane), so hue is never the only thing carrying the meaning.
 */
-[data-theme="aurora"] {
+[data-theme="noir"] {
   color-scheme: dark;
 
-  --color-paper: #0c0c0e;
-  --color-paper-sunk: #16171a;
-  --color-panel: #1a1b1f;
-  --color-panel-2: #212227;
+  /* Almost-neutral, with the faintest warm cast so bone type doesn't read blue against it. */
+  --color-paper: #0a0a0b;
+  --color-paper-sunk: #101011;
+  --color-panel: #141416;
+  --color-panel-2: #1a1a1d;
 
-  --color-ink: #f5f3ec;
-  --color-ink-soft: #d9d6cc;
-  --color-muted: #9d9a8f;
-  --color-faint: #7c7969;
-  --color-line: #2a2b30;
-  --color-line-strong: #35363c;
+  /* Bone, never white — #ffffff on near-black halates and softens every glyph edge. */
+  --color-ink: #eae7e1;
+  --color-ink-soft: #c5c2bc;
+  --color-muted: #84848a;
+  --color-faint: #63636a;
+  --color-line: #242427;
+  --color-line-strong: #313136;
 
-  --color-signal: #ff7a3d;
-  --color-signal-live: #ff9a5c;
-  --color-signal-wash: #2e2015;
+  /* The single cut. Live state, and agent authorship in the code view. */
+  --color-signal: #c2415a;
+  --color-signal-live: #d9556f;
+  --color-signal-wash: #241016;
 
-  --color-gold: #8a97a6;
-  --color-gold-wash: #1b2024;
+  /* Reasoning family — gold. Warm, but far enough from claret in both hue and value to stay
+     separable at a glance, which is the test Oscilloscope failed. */
+  --color-gold: #c9a227;
+  --color-gold-wash: #1e1a0c;
 
-  --color-warn: #e7b532;
-  --color-danger: #ef5350;
+  --color-warn: #c9a227;
+  /* Deliberately more orange and brighter than the claret signal, so completed and failed never
+     resolve to "two similar reds". */
+  --color-danger: #f0603a;
 
-  --color-grid-base: #0c0c0e;
-  --color-grid-line-v: #0c0c0e;
-  --color-grid-line-h: #0c0c0e;
+  /* No ruling at all. Noir's ground is flat — a grid would be the one decorative thing in a palette
+     whose entire argument is restraint. Texture comes from the grain layer only. */
+  --color-grid-base: #0a0a0b;
+  --color-grid-line-v: #0a0a0b;
+  --color-grid-line-h: #0a0a0b;
 
-  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jbmono), ui-monospace, "SFMono-Regular", monospace;
+  /* Graph (Strata) — same roles, own steps for the black ground (worst CVD ΔE 11.5 vs claret). */
+  --color-g-canvas: #0c0c0d;
+  --color-g-sub: #a9a6a0;
+  --color-g-sub-wash: rgba(234, 231, 225, 0.045);
+  --color-g-reason: #b08a1c;
+  --color-g-reason-wash: #1e1a0c;
+  --color-g-sig: #b377d9;
+  --color-g-sig-wash: #1d1424;
+  --color-g-edge: #6f6f76;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, 0.75);
+  --font-display: var(--font-funnel), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
 
-  --panel-highlight: rgba(255, 255, 255, 0.07);
-  --panel-shadow-tint: rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.65);
+  --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+
+  --panel-highlight: rgba(255, 255, 255, 0.055);
+  --panel-shadow-tint: rgba(0, 0, 0, 0.55);
+
+  /* Code grounds. The agent hue follows the theme's own signal, so "the signal means the agent"
+     stays true across both themes even though the hue differs. */
+  --code-bg: #0c0c0d;
+  --code-gutter: #121214;
+  --code-rule: #202023;
+  --code-line-hl: rgba(194, 65, 90, 0.07);
+  --code-agent: #c2415a;
+  --code-revert: #c9a227;
 }
 
 html,
@@ -160,6 +230,15 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line-strong) transparent;
+}
+
+/* Stop scroll chaining. Twelve nested scrollers in this app (file tree, reasoning transcript, call
+   log, model dropdown, docs nav, inspector...) and every one of them used to hand its momentum to
+   whatever sat behind it the moment you hit its end — so flicking through a file tree scrolled the
+   page underneath it. `contain` keeps the gesture in the pane the user is actually pointing at. */
+[class*="overflow-y-auto"],
+[class*="overflow-auto"] {
+  overscroll-behavior: contain;
 }
 
 ::selection {
@@ -250,43 +329,116 @@ body {
   }
 }
 
-/* Shiki code viewer — strip the theme background, add CSS line numbers. */
+/*
+  CODE VIEW — see lib/code-theme.ts for the palette reasoning.
+
+  Shiki is asked for both themes at once (defaultColor: false), so every token carries a
+  --shiki-light and a --shiki-dark value and the workspace theme toggle re-colors the file
+  instantly without re-highlighting a single line.
+*/
+.shiki-wrap {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  /* Loose for a mono, on purpose: the agent-attribution stripe needs vertical room per line, or a
+     run of agent-written lines merges into one solid bar. */
+  line-height: 1.68;
+  /* Off, deliberately. You are auditing exactly what an agent wrote, and a ligature that renders
+     != as a single glyph hides a character you may need to see. */
+  font-variant-ligatures: none;
+  background: var(--code-bg);
+}
 .shiki-wrap pre {
   background: transparent !important;
   margin: 0;
-  padding: 1rem 1rem 1rem 0;
+  padding: 0.75rem 1rem 0.75rem 0;
   overflow-x: auto;
 }
 .shiki-wrap code {
   counter-reset: shiki-line;
   display: block;
 }
+.shiki-wrap span {
+  color: var(--shiki-light);
+}
+[data-theme="noir"] .shiki-wrap span {
+  color: var(--shiki-dark);
+}
 .shiki-wrap .line {
   counter-increment: shiki-line;
   display: inline-block;
   width: 100%;
 }
+.shiki-wrap .line:hover {
+  background: var(--code-line-hl);
+}
+/* Line numbers sit on the gutter fill rather than the code ground, so the code column keeps a
+   clean left edge. Present, but recessive. */
 .shiki-wrap .line::before {
   content: counter(shiki-line);
   display: inline-block;
-  width: 3ch;
-  margin-right: 1.25rem;
+  width: 3.5ch;
+  margin-right: 1.15rem;
+  padding-right: 0.7rem;
   text-align: right;
+  font-size: 11px;
   color: var(--color-faint);
+  background: var(--code-gutter);
+  border-right: 1px solid var(--code-rule);
   user-select: none;
 }
 
-/* Bulged card chrome — the workspace rail/panels read as a raised card resting on the grid, not a
-   glass pane: mostly-opaque paper, a soft light bevel along the top edge, a deep tinted shadow
-   underneath. Replaces the old glassmorphism treatment (blobs are gone, so there's nothing colorful
-   left to blur). */
+/*
+  ELEVATION LADDER — four rungs, each meaning something.
+
+  There used to be exactly one panel class doing rail, dialog, card and canvas chrome alike, which
+  meant depth encoded nothing: if everything is lifted, nothing is. Height now maps to role, and two
+  things at the same elevation are the same kind of thing.
+
+    L0  the ruled ground          .workspace-ambient      never holds content directly
+    L1  resting panel             .glass-panel            where content lives — most of the app
+    L2  the thing you're doing    .panel-lift             active editor, expanded job, inspector
+    L3  chrome floating on canvas .panel-float            palette, legend, time machine
+
+  One hard rule, currently broken on /graph: never stack a translucent surface on another
+  translucent surface. L3 is the only translucent rung, and nothing translucent goes inside it.
+*/
+
+/* L1 — resting. Flat fill, hairline, barely there. Deliberately quieter than the old treatment:
+   this is the default for nearly every surface, and a default that shouts has nothing left to say
+   when something actually needs to be lifted. */
 .glass-panel {
-  background: color-mix(in srgb, var(--color-panel) 90%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-line-strong) 70%, transparent);
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-sm);
+}
+
+/* L2 — lifted. The one pane you are actually working in. Only one of these on screen at a time. */
+.panel-lift {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line-strong);
   box-shadow:
-    inset 0 1.5px 0 var(--panel-highlight),
-    inset 0 -1px 0 var(--panel-shadow-tint),
+    inset 0 1px 0 var(--panel-highlight),
+    var(--shadow-md);
+}
+
+/* L3 — floating chrome over a canvas. The only rung that gets translucency, blur and a bright top
+   edge catching the light. Content flows underneath it rather than being pushed aside. */
+.panel-float {
+  background: color-mix(in srgb, var(--color-panel) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--color-line-strong) 80%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--panel-highlight),
     var(--shadow-lg);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .panel-float {
+    background: var(--color-panel);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 /* Tracing-paper grid ground — fine ruled grid over warm tan, 1:1 matched to the illoca.unseen.co
@@ -300,16 +452,14 @@ body {
 }
 
 /* Aurora ground — a fine dot-field standing in for the ruled grid, plus one warm signal glow
-   anchored behind the rail (the instrument's light source). Replaces the linear-gradient ruling
-   entirely rather than reusing the paper theme's grid-line vars, since lines-on-black read as a
-   spreadsheet, not an instrument. */
-[data-theme="aurora"] .workspace-ambient {
+   Noir's ground: nothing at all except one very faint claret bloom behind the rail, standing in for
+   the light source the panels are lit by. Aurora's dot-field is gone — a repeating texture is the
+   opposite of what this palette argues for, and against a near-neutral black the dots read as dirt
+   rather than as material. The grain layer below supplies all the texture it needs. */
+[data-theme="noir"] .workspace-ambient {
   background-color: var(--color-grid-base);
   background-image:
-    radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    radial-gradient(60% 50% at 6% 12%, rgba(255, 122, 61, 0.16) 0%, transparent 70%);
-  background-size: 22px 22px, 100% 100%;
-  background-position: 0 0, 0 0;
+    radial-gradient(70% 55% at 4% 10%, rgba(194, 65, 90, 0.10) 0%, transparent 72%);
 }
 
 /* Paper grain — a faint fractal-noise texture over the whole workspace, the same trick the
@@ -327,7 +477,7 @@ body {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 
-[data-theme="aurora"] .workspace-ambient::after {
+[data-theme="noir"] .workspace-ambient::after {
   opacity: 0.12;
   mix-blend-mode: soft-light;
 }
@@ -366,4 +516,163 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/*
+  STRATA — the layered knowledge-graph view. Scoped under .strata so none of these short class
+  names can leak into the rest of the app. The aliases map the view's tokens onto the theme's, so
+  Blueprint and Noir re-skin it through variables alone.
+*/
+.strata {
+  --ground: var(--color-paper);
+  --panel: var(--color-panel);
+  --canvas: var(--color-g-canvas);
+  --sunk: var(--color-paper-sunk);
+  --ink: var(--color-ink);
+  --ink-soft: var(--color-ink-soft);
+  --muted: var(--color-muted);
+  --faint: var(--color-faint);
+  --line: var(--color-line);
+  --line-strong: var(--color-line-strong);
+  --agent: var(--color-signal);
+  --agent-wash: var(--color-signal-wash);
+  --sub: var(--color-g-sub);
+  --sub-wash: var(--color-g-sub-wash);
+  --reason: var(--color-g-reason);
+  --reason-wash: var(--color-g-reason-wash);
+  --sig: var(--color-g-sig);
+  --sig-wash: var(--color-g-sig-wash);
+  --edge: var(--color-g-edge);
+  --gold: var(--color-gold);
+  --f-display: var(--font-display);
+  --f-mono: var(--font-mono);
+  color: var(--ink);
+}
+.strata .eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.strata code { font-family: var(--f-mono); font-size: .86em; background: var(--sunk); padding: .08em .35em; border-radius: 4px; }
+.strata .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.strata .seg { display: inline-flex; background: var(--sunk); border-radius: 10px; padding: 3px; }
+.strata .seg button { cursor: pointer; font: 500 13px/1 var(--font-sans); padding: 8px 14px; border-radius: 8px; color: var(--muted); background: transparent; border: 0; }
+.strata .seg button[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.strata .seg button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.strata .search { display: flex; align-items: center; gap: 8px; background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; padding: 0 10px; height: 34px; min-width: 220px; }
+.strata .search input { flex: 1; font: 13px var(--font-sans); color: var(--ink); background: transparent; border: 0; outline: none; min-width: 0; }
+.strata .search input::placeholder { color: var(--faint); }
+.strata .search kbd { font: 11px var(--f-mono); color: var(--faint); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+.strata .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-left: auto; font-size: 12px; color: var(--muted); }
+.strata .legend span { display: inline-flex; align-items: center; gap: 6px; }
+.strata .legend svg { display: block; }
+.strata .legend .sep { width: 1px; height: 14px; background: var(--line); }
+.strata .canvas { position: relative; background: var(--canvas); min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.strata .canvas > svg { display: block; width: 100%; min-width: 720px; height: auto; }
+.strata .canvas { cursor: grab; }
+.strata .fs-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--canvas); color: var(--ink-soft); font: 500 12.5px var(--font-sans); cursor: pointer; }
+.strata .fs-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+.strata .fs-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+/* Full screen: the Strata environment takes the whole window (overlay) or display (native), on its
+   own theme ground, above the rail and page chrome. */
+.strata.is-full { position: fixed; inset: 0; z-index: 80; width: 100vw; height: 100vh; background: var(--panel); }
+.strata:fullscreen { width: 100vw; height: 100vh; background: var(--panel); }
+.strata:fullscreen .canvas > svg { min-width: 0; }
+.strata .canvas.panning { cursor: grabbing; user-select: none; }
+.strata aside.insp { border-left: 1px solid var(--line); padding: 18px 18px 20px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--panel); }
+.strata .time { display: grid; grid-template-columns: auto minmax(0, 1fr) 190px; gap: 16px; align-items: center; padding: 12px 16px 14px; border-top: 1px solid var(--line); background: var(--panel); }
+.strata .play { cursor: pointer; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line-strong); color: var(--ink); background: transparent; }
+.strata .play:hover { background: var(--sunk); }
+.strata .track { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.strata .track svg { display: block; width: 100%; height: 34px; }
+.strata .track input { width: 100%; margin: 0; accent-color: var(--ink); }
+.strata .track .ends { display: flex; justify-content: space-between; font: 11px var(--f-mono); color: var(--faint); }
+.strata .readout { font: 12px/1.45 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.strata .readout b { display: block; color: var(--ink); font: 500 15px var(--font-sans); }
+
+.strata .band-rule { stroke: var(--line); stroke-width: 1; }
+.strata .band-name { font: 500 10.5px var(--f-mono); letter-spacing: .14em; fill: var(--muted); }
+.strata .band-cap { font: 12px var(--font-sans); fill: var(--faint); }
+.strata .hull { fill: var(--sub-wash); stroke: var(--line-strong); stroke-width: 1; }
+.strata .hull-name { font: 500 10.5px var(--f-mono); fill: var(--muted); }
+.strata .lbl { font: 12px var(--font-sans); fill: var(--ink-soft); paint-order: stroke; stroke: var(--canvas); stroke-width: 3.5px; stroke-linejoin: round; }
+.strata .lbl.sub { font: 10.5px var(--f-mono); fill: var(--faint); }
+.strata .lbl.in { stroke: none; font: 11px var(--f-mono); fill: var(--ink); }
+.strata .lbl.method { stroke: none; font: 600 9.5px var(--f-mono); fill: var(--panel); }
+.strata .lbl.big { stroke: none; font: 600 17px var(--f-display); fill: var(--ink); }
+.strata .s-fill { fill: var(--sub); }
+.strata .s-stroke { stroke: var(--sub); }
+.strata .r-fill { fill: var(--reason); }
+.strata .r-stroke { stroke: var(--reason); }
+.strata .r-wash { fill: var(--reason-wash); }
+.strata .g-fill { fill: var(--sig); }
+.strata .g-stroke { stroke: var(--sig); }
+.strata .g-wash { fill: var(--sig-wash); }
+.strata .tile { fill: var(--panel); stroke: var(--line-strong); }
+.strata .hole { fill: var(--canvas); }
+.strata .track-ring { fill: none; stroke: var(--line); }
+.strata .e-struct { fill: var(--edge); }
+.strata .e-intent { fill: var(--reason); }
+.strata .e-signal { fill: var(--sig); }
+.strata .ring-struct { stroke: var(--edge); }
+.strata .ring-intent { stroke: var(--reason); }
+.strata .ring-signal { stroke: var(--sig); }
+.strata .ghost { fill: none; stroke: var(--faint); stroke-width: 1.2; stroke-dasharray: 3 4; }
+.strata .leader { fill: none; stroke: var(--gold); stroke-width: 1.2; stroke-dasharray: 2 3; opacity: .9; }
+.strata .node { cursor: pointer; outline: none; }
+.strata .node .hit { fill: transparent; }
+.strata .node:focus-visible .hit { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 3; }
+/* Selection wears the theme's signal (Blueprint blue, Noir claret); what it relates to gets a lighter ring. */
+.strata .sel-ring { fill: none; stroke: var(--agent); stroke-width: 2.2; }
+.strata .rel-ring { fill: none; stroke: var(--agent); stroke-width: 1.3; opacity: .8; }
+.strata .agent-ring { fill: none; stroke: var(--agent); stroke-width: 2; }
+.strata .agent-pulse { fill: none; stroke: var(--agent); stroke-width: 1.5; animation: strata-pulse 2.4s cubic-bezier(.16, 1, .3, 1) infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes strata-pulse {
+  0% { opacity: .7; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+.strata .node, .strata .edge { transition: opacity .25s; }
+.strata .dim { opacity: .13; }
+.strata .gone { opacity: 0; pointer-events: none; transition: opacity .35s; }
+.strata .mx-lbl { font: 10.5px var(--f-mono); fill: var(--muted); }
+.strata .mx-grid { stroke: var(--line); stroke-width: 1; }
+.strata .mx-diag { fill: var(--sunk); }
+.strata .overflow-lbl { font: 10.5px var(--f-mono); fill: var(--faint); }
+.strata .tip { position: absolute; left: 0; top: 0; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-md); padding: 9px 11px; font-size: 12.5px; line-height: 1.45; max-width: 280px; opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; z-index: 5; }
+.strata .tip.on { opacity: 1; transform: none; }
+.strata .tip .t { font: 500 10px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.strata .tip .n { font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
+.strata .tip .d { color: var(--muted); }
+
+.strata .insp h3 { font: 600 21px/1.15 var(--f-display); letter-spacing: -.01em; margin: 6px 0 10px; text-wrap: balance; overflow-wrap: anywhere; color: var(--ink); }
+.strata .insp .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 12.5px; margin: 0 0 14px; }
+.strata .insp .kv dt { color: var(--muted); }
+.strata .insp .kv dd { margin: 0; font-family: var(--f-mono); font-size: 11.5px; color: var(--ink); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.strata .insp h4 { font: 500 10.5px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 16px 0 6px; display: flex; justify-content: space-between; }
+.strata .erow { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+.strata .erow button { cursor: pointer; color: var(--ink); overflow-wrap: anywhere; text-align: left; background: none; border: 0; padding: 0; font: inherit; }
+.strata .erow button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.strata .erow .p { font: 11px var(--f-mono); color: var(--muted); }
+.strata .erow .c { font: 11px var(--f-mono); color: var(--ink-soft); text-align: right; font-variant-numeric: tabular-nums; }
+.strata .erow.off { opacity: .55; }
+.strata .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.strata .btn { cursor: pointer; font: 500 12.5px var(--font-sans); padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line-strong); color: var(--ink); background: transparent; }
+.strata .btn:hover { background: var(--sunk); }
+.strata .btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.strata .stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 6px; }
+.strata .stat div { background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.strata .stat b { display: block; font: 600 22px/1.1 var(--f-display); font-variant-numeric: tabular-nums; color: var(--ink); }
+.strata .stat span { font-size: 11.5px; color: var(--muted); }
+.strata .bars { display: grid; gap: 7px; margin: 4px 0; }
+.strata .bars .row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 28px; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-soft); }
+.strata .bars .row i { display: block; height: 6px; border-radius: 3px; background: var(--line); }
+.strata .bars .row i u { display: block; height: 100%; border-radius: 3px; background: var(--ink-soft); }
+.strata .bars .row em { font: 11px var(--f-mono); font-style: normal; text-align: right; color: var(--muted); }
+.strata .s-gap { font-size: 12.5px; color: var(--ink-soft); padding: 7px 0; border-top: 1px solid var(--line); }
+.strata .agent-note { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-soft); padding: 0 0 10px; }
+.strata .agent-note i { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--agent); flex: none; }
+@media (max-width: 1023px) {
+  .strata aside.insp { border-left: 0; border-top: 1px solid var(--line); }
+  .strata .time { grid-template-columns: auto minmax(0, 1fr); }
+  .strata .readout { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .strata * { transition: none !important; }
+  .strata .agent-pulse { animation: none; opacity: 0; }
 }
