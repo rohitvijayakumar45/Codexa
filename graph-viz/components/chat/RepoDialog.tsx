@@ -265,20 +265,20 @@ export function RepoDialog({
                 ) : mode === "load" ? (
                   <>
                     <p className="text-sm text-muted">
-                      Paste a git URL. Codexa clones it, reads it, and writes a permanent memory every
-                      model can use.
+                      Paste a repository URL — the GitHub page address works too. Codexa clones it,
+                      reads it, and builds its graph, architecture and memory.
                     </p>
                     <input
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && load()}
-                      placeholder="https://github.com/owner/repo.git"
+                      placeholder="https://github.com/owner/repo"
                       autoFocus
                       className="num mt-4 w-full rounded-lg border border-line-strong bg-panel px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-ink/30"
                     />
                     {error && <p className="mt-2 text-xs text-danger">{error}</p>}
                     <Button onClick={load} disabled={loading || !url.trim()} className="mt-4 w-full">
-                      {loading ? "Cloning…" : "Clone & analyze"}
+                      {loading ? "Cloning & analysing — large repositories take a minute…" : "Clone & analyze"}
                     </Button>
                   </>
                 ) : (

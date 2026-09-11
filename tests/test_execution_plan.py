@@ -291,12 +291,82 @@ class TestTheTaskContextBlock:
         assert "chain of thought" not in block
 
 
+class TestTheCommittedDesignIsInEveryRoundNotJustAfterACut:
+    """The gap this closes: a design commitment used to appear only in the one-shot post-cut
+    directive (_execution_directive), which a round five tasks later never sees at all. Rendering
+    it here — the block re-built every single round — is what makes "chosen palette" survive as
+    long as "current task" does, instead of expiring the moment the transcript scrolls past it.
+    """
+
+    def _block(self, commitment: dict | None) -> str:
+        plan = _plan("inspect", "write index.html")
+        task = plan.tasks[1]
+        task.required_tools = ["write_file"]
+        task.expected_artifacts = ["index.html"]
+        plan.complete(plan.tasks[0])
+        plan.begin(task)
+        return task_context_block(plan, task, commitment=commitment)
+
+    def test_no_commitment_means_no_design_section_at_all(self):
+        block = self._block(None)
+        assert "COMMITTED DESIGN" not in block
+
+    def test_a_commitment_with_no_design_fields_adds_nothing(self):
+        # The plain, common case (direction/decisions only) must not grow a section that says
+        # nothing — that would just be more text to skim past on every round.
+        block = self._block({"direction": "An archive.", "decisions": ["serif body"]})
+        assert "COMMITTED DESIGN" not in block
+
+    def test_the_chosen_palette_appears(self):
+        block = self._block({
+            "direction": "An archive.",
+            "design": {"palette": {"background": "#0B1E17", "accent": "#4E8B6B"}},
+        })
+        assert "COMMITTED DESIGN" in block
+        assert "#0B1E17" in block
+        assert "#4E8B6B" in block
+
+    def test_rejected_patterns_appear_and_are_labelled_as_rejected(self):
+        # This is the specific fact that was missing on the real job that produced the banned
+        # palette anyway: the reject was recorded once, then invisible by the round that wrote the
+        # file. Rendering it here every round is the fix.
+        block = self._block({
+            "direction": "An archive.",
+            "design": {"rejected": ["warm-cream-paper, too generic for this brief"]},
+        })
+        assert "warm-cream-paper" in block
+        assert "rejected" in block.lower()
+
+    def test_typography_and_motion_also_appear(self):
+        block = self._block({
+            "direction": "An archive.",
+            "design": {
+                "typography": {"display": "Fraunces", "body": "Inter"},
+                "motion": {"easing": "cubic-bezier(0.4, 0, 0.2, 1)"},
+            },
+        })
+        assert "Fraunces" in block
+        assert "cubic-bezier(0.4, 0, 0.2, 1)" in block
+
+    def test_it_still_names_the_current_task_alongside_the_design_section(self):
+        # The addition must not crowd out or replace what was already there.
+        block = self._block({"direction": "An archive.", "design": {"palette": {"accent": "#000"}}})
+        assert "write index.html" in block
+        assert "CURRENT TASK" in block
+
+
 class TestTheUiSnapshot:
     def test_it_matches_the_shape_the_frontend_consumes(self):
         plan = _plan("a", "b")
         plan.complete(plan.tasks[0])
         event = summarize_for_event(plan)
-        assert set(event) == {"objective", "current_task_id", "tasks", "completed", "total"}
+        assert set(event) == {
+            "objective", "current_task_id", "tasks", "completed", "total",
+            # Provenance travels to the UI on purpose: a plan that silently fell back to
+            # the deterministic template looks exactly like a proposed one from outside,
+            # and that is how the template quietly became the product.
+            "source", "source_detail",
+        }
         assert (event["completed"], event["total"]) == (1, 2)
         assert event["current_task_id"] == plan.tasks[1].id
         assert set(event["tasks"][0]) == {
@@ -385,17 +455,28 @@ class TestTheProposalPath:
          "expected_artifacts": ["index.html"], "completion_criteria": [], "depends_on_previous": True},
     ]
 
+    # These locate tasks by objective rather than by index on purpose. A proposal with no commitment
+    # task gets one inserted (see _ensure_commitment_task), so positions are not stable — and
+    # asserting on positions tests the plan's shape rather than the normalisation under test here.
+    @staticmethod
+    def _find(plan, objective: str):
+        return next(t for t in plan.tasks if t.objective == objective)
+
     def test_a_clean_proposal_is_used(self):
         plan = _built(_proposal(self._FOUR))
-        assert [t.objective for t in plan.tasks][:2] == ["Inspect the repo", "Write index.html"]
+        objectives = [t.objective for t in plan.tasks]
+        assert objectives[0] == "Inspect the repo"
+        proposed = {t["objective"] for t in self._FOUR}
+        # Every proposed objective survives, in the order it was proposed.
+        assert [o for o in objectives if o in proposed] == [t["objective"] for t in self._FOUR]
 
     def test_json_fenced_in_a_code_block_parses(self):
         plan = _built(f"```json\n{_proposal(self._FOUR)}\n```")
-        assert len(plan.tasks) == 4
+        assert self._find(plan, "Write index.html")
 
     def test_prose_around_the_json_parses(self):
         plan = _built(f"Here is my plan!\n{_proposal(self._FOUR)}\nHope that helps.")
-        assert len(plan.tasks) == 4
+        assert self._find(plan, "Write index.html")
 
     def test_depends_on_previous_becomes_a_real_id_chain(self):
         # A model inventing its own id graph is a reliable source of unsatisfiable dependencies, and
@@ -413,14 +494,15 @@ class TestTheProposalPath:
         tasks = [dict(t) for t in self._FOUR]
         tasks[1]["required_tools"] = ["write_file", "teleport_file"]
         plan = _built(_proposal(tasks))
-        assert "teleport_file" not in plan.tasks[1].required_tools
-        assert "write_file" in plan.tasks[1].required_tools
+        task = self._find(plan, "Write index.html")
+        assert "teleport_file" not in task.required_tools
+        assert "write_file" in task.required_tools
 
     def test_artifact_paths_are_normalised_and_escapes_rejected(self):
         tasks = [dict(t) for t in self._FOUR]
         tasks[1]["expected_artifacts"] = ["/index.html", "../../etc/passwd"]
         plan = _built(_proposal(tasks))
-        assert plan.tasks[1].expected_artifacts == ["index.html"]
+        assert self._find(plan, "Write index.html").expected_artifacts == ["index.html"]
 
     def test_an_oversized_proposal_is_clamped(self):
         many = [dict(self._FOUR[1], objective=f"step {i}") for i in range(40)]
@@ -792,3 +874,36 @@ class TestAPlaceholderIsNotAnArtifact:
         # A one-line config is a legitimate artifact. Size alone earns a closer look, not rejection.
         (repo / "app.config").write_text("mode=production\n", encoding="utf-8")
         assert self._check(repo, "app.config").passed
+
+
+class TestPlanProvenance:
+    """A plan must say where its tasks came from.
+
+    The proposal path in plan_builder is allowed to fail into the deterministic template on any
+    error, and on the measured runs it usually did — a 75s timeout against a model whose time to
+    first token was 92,766 ms could not succeed. Nothing recorded that, so a generic plan and a
+    request-specific one were indistinguishable from outside, and the fallback rate was unknowable.
+    """
+
+    def test_a_fresh_plan_has_no_source_claim(self):
+        assert ExecutionPlan().source == ""
+        assert ExecutionPlan().source_detail == ""
+
+    def test_provenance_survives_a_checkpoint(self):
+        plan = ExecutionPlan(objective="build it", source="template",
+                             source_detail="Timeout: request timed out")
+        restored = ExecutionPlan.from_dict(plan.to_dict())
+        assert restored.source == "template"
+        assert restored.source_detail.startswith("Timeout")
+
+    def test_a_checkpoint_from_before_provenance_still_loads(self):
+        # Jobs checkpointed by an older build have neither key; they must resume, not crash.
+        restored = ExecutionPlan.from_dict({"objective": "old job", "tasks": []})
+        assert restored is not None
+        assert restored.source == ""
+
+    def test_the_ui_snapshot_carries_it(self):
+        plan = _plan("a", "b")
+        plan.source = "proposed"
+        event = summarize_for_event(plan)
+        assert event["source"] == "proposed"

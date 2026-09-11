@@ -30,6 +30,8 @@ whole feature exists to remove.
 
 from __future__ import annotations
 
+import os
+
 import json
 import logging
 import re
@@ -78,11 +80,33 @@ _REAL_TOOLS: frozenset[str] = frozenset(chain.from_iterable(tool_groups.values()
 # a place a reasoning model will happily spend the whole budget thinking about the build instead of
 # describing it.
 _PROPOSAL_TEMPERATURE = 0.2
-# Raised from 1400. A reasoning model spends its budget thinking BEFORE any content is emitted, so
-# a cap sized for the JSON alone can be entirely consumed by reasoning and return an empty string —
-# reproduced directly: max_tokens=20 returned "", max_tokens=1400 returned the JSON. 3000 leaves
-# room for the deliberation a twelve-task decomposition actually takes.
-_PROPOSAL_MAX_TOKENS = 3000
+# Sized to the reasoning, not to the JSON — and the previous two values were both sized to the JSON.
+#
+# A reasoning model spends its budget thinking BEFORE it emits a single character of content, so
+# max_tokens here is not "how long is the plan", it is "how long may the model think, plus the
+# plan". 1400 and then 3000 were each fitted to a short request and each failed on a real one.
+# Reproduced exactly, against a live LUMEN request of 7,178 prompt characters:
+#
+#     completion_tokens=3000  reasoning_tokens=3000  finish_reason=length
+#     reasoning_chars=13,838  content_chars=0
+#
+# Every token went to deliberation, the model was cut off mid-thought, and the reply was empty.
+# That surfaced as "plan proposal was not parseable JSON", which was true and useless: there was
+# nothing to parse because there was no reply. The plan silently became the template.
+#
+# Re-running the SAME request with room to finish gives the real figure:
+#
+#     completion_tokens=15,624  reasoning_tokens=13,651  finish_reason=stop  content=10,090 chars
+#
+# 13,651 tokens of deliberation before the first character of JSON. The old ceiling was not close —
+# it was 4.5x too small. A first attempt at this fix used 16,000 and would have worked by 376
+# tokens, which is not a margin, it is the same bug waiting for a slightly longer request.
+#
+# The cost asymmetry is the whole argument for a generous number. Unused budget costs nothing — the
+# model stops when it stops, and only tokens actually generated are billed — while a budget that is
+# too small costs the entire feature, silently. 32,000 is roughly twice the measured need and still
+# a quarter of this model's 128k context.
+_PROPOSAL_MAX_TOKENS = int(os.getenv("CODEXA_PLAN_MAX_TOKENS", "32000"))
 # This call sits on the critical path: nothing else happens until it returns or gives up.
 #
 # It has been wrong in both directions. At 90s it cost a run 100 seconds of dead time against an
@@ -92,11 +116,21 @@ _PROPOSAL_MAX_TOKENS = 3000
 # consequence was invisible and much worse than slowness: every plan in the system silently became
 # the deterministic template, which is how a template's genericness became the product.
 #
-# 75s is chosen from the measurement rather than from taste: a real HELIX proposal returned valid
-# JSON, and the failures at 25s were timeouts and not refusals. A proposal that misses this window
-# still costs the job nothing — fallback_plan is deterministic and good — so the risk of the higher
-# number is bounded dead time, while the risk of the lower one was silently disabling the feature.
-_PROPOSAL_TIMEOUT_S = 75
+# 75s was chosen from measurement too, and was still too low. Per-round telemetry
+# (backend/agents/round_telemetry.py) on the default free GLM endpoint recorded a time to FIRST
+# TOKEN of 92,766 ms on an ordinary round — the model had not finished thinking before this timeout
+# would already have fired. Against a provider like that, 75s cannot succeed even when everything
+# is healthy, and the observed consequence is exactly what the paragraph above warned about: a live
+# TIDEPOOL run timed out here, fell back to the template, and produced the generic nine-task plan
+# while the request's two named behaviours (filtering that reorganises the list; a detail view)
+# never became tasks at all.
+#
+# 180s is sized to the measured worst case with headroom, not to taste. The cost of being too high
+# is bounded dead time on an unreachable provider; the cost of being too low is that the entire
+# feature silently does not exist. Those are not symmetric, and the last three values were all set
+# as though they were. `source_detail` on the plan now records when this fires, so the next
+# adjustment can be made from the fallback rate rather than from another anecdote.
+_PROPOSAL_TIMEOUT_S = int(os.getenv("CODEXA_PLAN_TIMEOUT_S", "180"))
 _PROPOSAL_REQUEST_CHARS = 4000
 
 _MAX_OBJECTIVE_CHARS = 160
@@ -265,6 +299,66 @@ def _clean_str_list(value: Any, *, limit: int, item_limit: int) -> list[str]:
 # ── proposal → plan (the "Codexa owns it" half) ────────────────────────────────
 
 
+def _ensure_commitment_task(
+    entries: list[dict[str, Any]], contract: TaskContract
+) -> list[dict[str, Any]]:
+    """Guarantee that something commits to one direction before anything is authored.
+
+    The proposal prompt asks for this and the model does not reliably provide it. Observed across
+    three consecutive trials of the same request: two plans included it, the third — twelve tasks,
+    from a fallback planner — went straight from "inspect the project structure" to "write
+    index.html" with nothing in between.
+
+    That task is not ceremony. It is the measured fix for the failure this whole plan system was
+    built around: a model handed a large open request designs three complete products in a row and
+    discards two. The deterministic plans have always carried it, and a proposed plan that omits it
+    silently loses the protection while looking more specific and therefore better.
+
+    Inserted immediately before the first task that produces an artifact, so it sits exactly where
+    it does in the deterministic shape: after looking, before building.
+    """
+    if contract.intent not in _SUBSTANTIAL_INTENTS:
+        return entries
+    if any("commit_direction" in e["required_tools"] for e in entries):
+        return entries
+
+    # The model often writes the task and forgets the tool. Observed live: "Commit to building Lumen
+    # as a single index.html file directly in the repository root" with required_tools=[] — which is
+    # the commitment task in everything but the one field this checks, so inserting another produced
+    # a plan that committed twice in a row. Adopt it instead: give it the tool that makes it
+    # mechanically completable, which is the only thing it was actually missing.
+    for entry in entries:
+        objective = entry["objective"].lower()
+        if entry["expected_artifacts"]:
+            continue
+        if objective.startswith("commit") or "commit to" in objective:
+            entry["required_tools"] = ["commit_direction"]
+            logger.info("adopted the proposal's own commitment task: %s", entry["objective"][:60])
+            return entries
+
+    commitment = {
+        "objective": "Commit to one direction and state it in a few sentences",
+        "required_tools": ["commit_direction"],
+        "expected_artifacts": [],
+        "completion_criteria": [
+            "One concept, stated once, in no more than a few sentences",
+            "No alternatives evaluated — a better idea goes in a comment, not into a rethink",
+        ],
+        "depends_on_previous": True,
+    }
+    at = next((i for i, e in enumerate(entries) if e["expected_artifacts"]), None)
+    if at is None:
+        # No task declares an artifact (a proposal that named no paths). Second position is the
+        # deterministic shape's slot: after the look, before the work.
+        at = min(1, len(entries))
+    entries = entries[:at] + [commitment] + entries[at:]
+    logger.info("proposed plan had no commitment task — inserted one at position %d", at + 1)
+    # The MAX_TASKS clamp ran before this, so inserting here can push a full plan one over the
+    # ceiling. Drop from the END, which is where refinement tasks live — never from the front, which
+    # is what gets the job to a written file.
+    return entries[:MAX_TASKS]
+
+
 def _plan_from_proposal(data: dict[str, Any], request: str, contract: TaskContract) -> ExecutionPlan | None:
     """Normalise a parsed proposal into a real ExecutionPlan, or return None to fall back.
 
@@ -313,6 +407,8 @@ def _plan_from_proposal(data: dict[str, Any], request: str, contract: TaskContra
             # proposal is the part that gets the job to a written file.
             break
 
+    entries = _ensure_commitment_task(entries, contract)
+
     if len(entries) < MIN_TASKS and contract.intent in _SUBSTANTIAL_INTENTS:
         logger.warning(
             "plan proposal had %d task(s) for a %s request — below MIN_TASKS, using deterministic plan",
@@ -351,6 +447,77 @@ def _default_objective(request: str) -> str:
 
 
 # ── the proposal call ──────────────────────────────────────────────────────────
+
+
+def _planning_model(llm: Any, job_model: str) -> str:
+    """Which model decomposes the request. Deliberately not the job's model.
+
+    Planning is decomposition, not design — turning a paragraph into an ordered list of checkable
+    objectives. Running it on the job's ultra-heavy reasoning model was measured and does not work:
+
+        max_tokens=3,000   reasoning=3,000, content=0        cut off mid-thought, plan lost
+        max_tokens=16,000  reasoning=13,651, content=10,090  valid JSON, ~4-5 minutes of wall clock
+        max_tokens=32,000  timed out at 180s                 plan lost again
+
+    Both knobs move together: room to think is also time spent thinking, so every raise of the token
+    ceiling pushes the call further past the timeout. There is no pair of values that makes a model
+    which needs 13,651 tokens of deliberation to write nine one-line objectives fast enough to sit
+    on the critical path before any work begins.
+
+    A fast model returns the same shape in seconds. The trade is real but small — decomposition is
+    well within a flash-class model — and it is measured against the alternative that actually
+    happened, which was no proposal at all and the generic template on nearly every job.
+
+    Falls back to the job's model when nothing faster is configured, so a single-provider setup
+    still gets a proposal rather than losing the feature entirely.
+    """
+    return _planning_models(llm, job_model)[0]
+
+
+# How many models the planner will try before giving up and using the template. Small on purpose:
+# every attempt is latency on the critical path, and the fallback is a good plan rather than a
+# broken one, so it is better to plan generically than to keep a job waiting.
+_MAX_PLANNING_ATTEMPTS = 3
+
+
+def _planning_models(llm: Any, job_model: str) -> list[str]:
+    """The models to try, in order, ending with the job's own.
+
+    One candidate is not enough: the first live attempt at this picked gemini-3.7-flash and got a
+    503 "high demand" in 6.8 seconds, which would have sent every job straight back to the template
+    for as long as that provider was busy. Free and shared endpoints are unavailable often enough
+    that a planner depending on one specific model is a planner that works most of the time.
+
+    The job's model is always last. It is slow enough that it cannot be the primary (see
+    _planning_model), but on a machine with a single provider it is the only thing there is, and
+    losing the feature entirely is a worse outcome than a slow plan.
+    """
+    override = os.getenv("CODEXA_PLAN_MODEL", "").strip()
+    if override:
+        return [override]
+    ordered: list[str] = []
+    for tier in ("light", "balanced"):
+        try:
+            candidates = llm.models_for_tier(tier)
+        except Exception:  # noqa: BLE001 - a client without tiers just uses the job's model
+            candidates = []
+        for candidate in candidates:
+            if candidate not in ordered:
+                ordered.append(candidate)
+    ordered = ordered[:_MAX_PLANNING_ATTEMPTS]
+    if job_model and job_model not in ordered:
+        ordered.append(job_model)
+    return ordered or [job_model]
+
+
+class _ProposalRejected(Exception):
+    """The proposal call returned, and what it returned could not be used.
+
+    Distinct from an exception out of the provider (timeout, rate limit, connection) because the
+    remedy is different: a rejected proposal is a prompt or budget problem on our side, a failed
+    call is the provider's. Both fall back to the template — neither may fail a job — but the plan
+    now records which, so the fallback rate can be attributed instead of guessed at.
+    """
 
 
 _PROPOSAL_SYSTEM = (
@@ -398,7 +565,25 @@ def _proposal_prompt(request: str, contract: TaskContract, repository: str) -> s
         "of the path; a wrong path fails a correct build forever.",
         "- required_tools are the tools that task cannot be finished without, not every tool it "
         "might touch.",
-        "- No prose before or after the JSON.",
+        # The rule this planner existed to provide and did not enforce. Without it the proposal is
+        # allowed to be the template in different words — and the whole reason to spend a model
+        # call here is to produce tasks that could only have come from THIS request.
+        "",
+        "THE POINT OF THIS PLAN — read the REQUEST again before writing the tasks:",
+        "- Every behaviour, feature or constraint the request names EXPLICITLY must appear in some "
+        "task's objective, in the request's own words. If the request says 'filtering by tide zone "
+        "that reorganises the list, and a count that updates', that is a task — not a clause "
+        "swallowed by a general one.",
+        "- A task objective a stranger could not trace back to a specific line of the request is "
+        "the wrong objective. 'Implement the core experience end to end', 'build the main "
+        "functionality', 'polish the UI' say nothing and are rejected: name the actual behaviour.",
+        "- Do not pad the plan to a shape. A request naming three behaviours does not need eight "
+        "tasks, and a request naming eight does not fit in three.",
+        "- Prefer objectives stated as observable outcomes a person could check by using the "
+        "thing: 'clicking a creature opens its detail view and closing returns to the list' beats "
+        "'add interactivity'.",
+        "",
+        "No prose before or after the JSON.",
     ]
     return "\n".join(lines)
 
@@ -415,19 +600,56 @@ def _request_proposal(
         {"role": "system", "content": _PROPOSAL_SYSTEM},
         {"role": "user", "content": _proposal_prompt(request, contract, repository)},
     ]
-    raw = llm.complete(
-        messages,
-        model=model,
-        agent="plan",
-        temperature=_PROPOSAL_TEMPERATURE,
-        max_tokens=_PROPOSAL_MAX_TOKENS,
-        timeout=_PROPOSAL_TIMEOUT_S,
-    )
-    data = _extract_json_object(raw if isinstance(raw, str) else "")
+    text = ""
+    last_error: Exception | None = None
+    for planner in _planning_models(llm, model):
+        try:
+            logger.info("planning with %s", planner)
+            raw = llm.complete(
+                messages,
+                model=planner,
+                agent="plan",
+                temperature=_PROPOSAL_TEMPERATURE,
+                max_tokens=_PROPOSAL_MAX_TOKENS,
+                timeout=_PROPOSAL_TIMEOUT_S,
+            )
+            text = raw if isinstance(raw, str) else ""
+            if text.strip():
+                break
+            # An empty reply is a real failure, not a refusal: the model ran out of budget before
+            # emitting anything. Try the next one rather than falling straight to the template.
+            last_error = _ProposalRejected(
+                f"{planner} used its entire token budget thinking and emitted no plan "
+                f"(max_tokens={_PROPOSAL_MAX_TOKENS})"
+            )
+        except Exception as exc:  # noqa: BLE001 - one provider being down must not end planning
+            logger.warning("planning with %s failed (%s: %s)", planner, type(exc).__name__, str(exc)[:120])
+            last_error = exc
+    if not text.strip() and last_error is not None:
+        # Already-classified failures carry their own message; re-wrapping produced
+        # "_ProposalRejected: _ProposalRejected: ..." in the badge tooltip, which is noise in the one
+        # place the reason has to be readable.
+        if isinstance(last_error, _ProposalRejected):
+            raise last_error
+        raise _ProposalRejected(f"{type(last_error).__name__}: {str(last_error)[:160]}")
+    data = _extract_json_object(text)
     if data is None:
-        logger.warning("plan proposal was not parseable JSON — using deterministic plan")
-        return None
-    return _plan_from_proposal(data, request, contract)
+        # These are three different bugs with three different fixes, and collapsing them into one
+        # message cost a diagnosis: "not parseable JSON" was reported for a reply that was EMPTY,
+        # because the model had spent its whole token budget thinking. Say which happened, and put
+        # it where the UI can show it.
+        if not text.strip():
+            reason = ("the model used its entire token budget thinking and emitted no plan "
+                      f"(max_tokens={_PROPOSAL_MAX_TOKENS})")
+        else:
+            head = " ".join(text.split())[:120]
+            reason = f"the reply was not JSON: {head}"
+        logger.warning("plan proposal unusable — %s — using deterministic plan", reason)
+        raise _ProposalRejected(reason)
+    plan = _plan_from_proposal(data, request, contract)
+    if plan is None:
+        raise _ProposalRejected("the proposed plan did not survive validation")
+    return plan
 
 
 # ── deterministic plans ────────────────────────────────────────────────────────
@@ -917,20 +1139,30 @@ def build_plan(
     try:
         if contract.intent is TaskIntent.CONVERSATION:
             return ExecutionPlan()
+        why = "no model available for planning"
         if llm is not None and model:
             try:
                 proposed = _request_proposal(
                     request, contract, llm=llm, model=model, repository=repository
                 )
                 if proposed is not None and proposed.tasks:
+                    proposed.source = "proposed"
+                    logger.info("plan proposed from the request: %d tasks", len(proposed.tasks))
                     return proposed
+                why = "the proposal was rejected or empty"  # unreachable via _ProposalRejected
             except Exception as exc:  # noqa: BLE001 - the proposal path must never fail a job
+                why = f"{type(exc).__name__}: {str(exc)[:160]}"
                 logger.warning(
                     "plan proposal failed (%s: %s) — using deterministic plan",
                     type(exc).__name__,
                     exc,
                 )
-        return fallback_plan(request, contract)
+        plan = fallback_plan(request, contract)
+        # Recorded, not merely logged. This fallback has been happening on most jobs and was
+        # invisible from outside — see ExecutionPlan.source.
+        plan.source = "template"
+        plan.source_detail = why
+        return plan
     except Exception as exc:  # noqa: BLE001 - last resort; callers treat an empty plan as "no plan"
         logger.warning("plan construction failed (%s: %s) — running without a plan", type(exc).__name__, exc)
         return ExecutionPlan()

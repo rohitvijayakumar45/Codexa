@@ -9,11 +9,19 @@ in what the repository actually is.
 from __future__ import annotations
 
 import json
+import logging
+import os
 import re
 import shutil
+import stat
 import subprocess
+import tempfile
+import threading
+import time
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -31,6 +39,7 @@ from backend.graph.service import GraphService
 from backend.memory.store import DATA_DIR, MemoryStore
 from backend.repository.analyze import Analysis, analyze_repo
 from backend.repository.coupling import mine_change_coupling
+from backend.repository.intent import add_intent_to_graph
 from backend.repository.scoring import score_repository
 from backend.repository.semantic import annotate_repository_symbols
 
@@ -95,8 +104,292 @@ class DeleteRepoResponse(BaseModel):
 
 
 def _repo_name(url: str) -> str:
-    tail = url.rstrip("/").split("/")[-1]
+    tail = url.rstrip("/").replace(":", "/").split("/")[-1]
     return re.sub(r"[^\w.-]", "-", tail[:-4] if tail.endswith(".git") else tail) or "repository"
+
+
+# Hosts whose web UI puts the repository at exactly /owner/repo, with everything after it (/tree/main,
+# /blob/..., /pulls) being pages ABOUT the repository rather than part of its clone URL. GitLab nests
+# groups arbitrarily deep, so there the repository path ends where its UI's "/-/" separator begins.
+_OWNER_REPO_HOSTS = ("github.com", "bitbucket.org")
+_CLONE_TIMEOUT = 600
+_CLONE_ATTEMPTS = 3
+# Failures that are about the DOWNLOAD, not the repository: the connection dropped, or the pack git
+# was indexing came out truncated/disturbed ("fetch-pack: invalid index-pack output", seen live on a
+# repository that cloned fine seconds later). Worth another attempt; "not found" never is.
+_TRANSIENT_MARKERS = (
+    "index-pack", "fetch-pack", "early eof", "rpc failed", "unexpected disconnect",
+    "remote end hung up", "connection reset", "connection was reset", "curl 18", "curl 56",
+    "curl 92", "operation timed out", "transfer closed", "unpack-objects failed",
+)
+
+
+class CloneError(Exception):
+    """A load that failed for a reason the user can act on; the message is shown to them verbatim."""
+
+
+def _normalize_url(raw: str) -> str | None:
+    """The clone URL for whatever the user pasted, or None if it isn't one.
+
+    People paste what their browser shows: `https://github.com/owner/repo/tree/main`, or
+    `github.com/owner/repo` with no scheme. Handing those to git verbatim failed ("repository
+    '.../tree/main/' not found") or was rejected outright, so normalise them to the repository root.
+    """
+    url = raw.strip().strip("<>\"'").strip()
+    if not url:
+        return None
+    if url.startswith("git@"):
+        return url if _URL_RE.match(url) else None
+    if not re.match(r"^https?://", url, re.I):
+        if not re.match(r"^(www\.)?[\w.-]+\.[a-z]{2,}(:\d+)?/[\w.~-]+/[\w.~-]+", url, re.I):
+            return None
+        url = "https://" + url
+    parts = urlsplit(url)
+    host = parts.netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    segs = [seg for seg in parts.path.split("/") if seg]
+    if host in _OWNER_REPO_HOSTS:
+        segs = segs[:2]
+    elif host == "gitlab.com" and "-" in segs:
+        segs = segs[: segs.index("-")]
+    if len(segs) < 2:
+        return None
+    candidate = f"{parts.scheme.lower()}://{host}/{'/'.join(segs)}"
+    return candidate if _URL_RE.match(candidate) else None
+
+
+def _canonical(url: str) -> str:
+    """Comparable identity for a repository URL: host/owner/repo, lower-cased, no .git, no scheme."""
+    u = url.strip().lower()
+    u = re.sub(r"^(https?://|git@)", "", u).replace(":", "/")
+    u = u[4:] if u.startswith("www.") else u
+    u = u.rstrip("/")
+    return u[:-4] if u.endswith(".git") else u
+
+
+def _owner(url: str) -> str:
+    segs = [seg for seg in re.split(r"[/:]", _canonical(url)) if seg]
+    return re.sub(r"[^\w.-]", "-", segs[-2]) if len(segs) >= 3 else ""
+
+
+def _clone_error_message(stderr: str) -> str:
+    """git's stderr, turned into one sentence that says what to do. Its LAST line is usually the
+    useless "Cloning into '...'" preamble, which is what the old message showed."""
+    low = stderr.lower()
+    if any(k in low for k in ("repository not found", "could not read username", "authentication failed",
+                              "terminal prompts disabled", "access denied", "403")):
+        return "Repository not found, or it's private. Check the URL — only public repositories can be cloned without credentials."
+    if "could not resolve host" in low or "failed to connect" in low or "timed out" in low:
+        return "Couldn't reach the git host. Check your network connection and try again."
+    if any(k in low for k in _TRANSIENT_MARKERS):
+        return (
+            "The download from the git host kept getting interrupted before git could finish "
+            "(a flaky connection, or antivirus scanning the files as they arrive). Try again in a moment."
+        )
+    if "filename too long" in low:
+        return "The repository contains paths too long for this system to check out."
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
+    useful = next((line for line in lines if line.lower().startswith(("fatal:", "error:"))), None)
+    if useful is None:
+        useful = next((line for line in reversed(lines) if not line.lower().startswith("cloning into")), None)
+    return f"Clone failed: {useful}" if useful else "Clone failed: git exited with an error and gave no reason."
+
+
+def _git_clone(url: str, dest: Path) -> None:
+    """Clone `url` into `dest`, raising CloneError with an actionable message on any failure.
+
+    Credential prompts are disabled: a private or mistyped URL used to make git wait on a terminal
+    prompt (or pop a Git Credential Manager window) until the timeout. Now it fails in a second.
+    `core.longpaths` lets deep JavaScript trees check out on Windows.
+    """
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}
+    # Depth 250, not 1 — change-coupling mining and commit history need real history to work from.
+    cmd = ["git", "-c", "core.longpaths=true", "-c", "credential.interactive=never",
+           "clone", "--depth", "250", url, str(dest)]
+    for attempt in range(1, _CLONE_ATTEMPTS + 1):
+        if dest.exists():
+            _discard(dest)  # a failed attempt leaves a partial checkout behind
+        try:
+            subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           timeout=_CLONE_TIMEOUT, check=True, env=env)
+            return
+        except FileNotFoundError as exc:
+            raise CloneError("git isn't installed on the server, so repositories can't be cloned.") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise CloneError(f"The clone took longer than {_CLONE_TIMEOUT // 60} minutes and was stopped — the repository may be very large.") from exc
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr or ""
+            transient = any(k in stderr.lower() for k in _TRANSIENT_MARKERS)
+            if transient and attempt < _CLONE_ATTEMPTS:
+                logging.getLogger(__name__).warning("clone attempt %d of %s failed transiently: %s",
+                                                    attempt, url, stderr.strip().splitlines()[-1:] or "")
+                time.sleep(2 * attempt)
+                continue
+            raise CloneError(_clone_error_message(stderr)) from exc
+
+
+def _clone_tmp_root() -> Path:
+    """Where clones are written before being moved into `.codexa/repos/`. Deliberately the system temp
+    folder, NOT the repository folder: Codexa lives inside OneDrive, and OneDrive's filter driver
+    scanning a pack file while git is still indexing it is a known way to get "fetch-pack: invalid
+    index-pack output". Git gets an unsynced folder to write in; only the finished checkout moves."""
+    root = Path(tempfile.gettempdir()) / "codexa-clones"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+_LOAD_LOCKS: dict[str, threading.Lock] = {}
+_LOAD_LOCKS_GUARD = threading.Lock()
+
+
+def _lock_for(name: str) -> threading.Lock:
+    """One load per repository at a time — a double-clicked "Clone" must not race itself."""
+    with _LOAD_LOCKS_GUARD:
+        return _LOAD_LOCKS.setdefault(name, threading.Lock())
+
+
+def _read_meta(dest: Path) -> dict | None:
+    try:
+        return json.loads((dest / ".codexa-repo.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _is_healthy_clone(dest: Path) -> bool:
+    """Whether `dest` is a genuine, complete git checkout — not merely a directory that exists.
+
+    The specific failure this guards against: `git clone` interrupted mid-operation (observed live
+    — a backend restart landing while a clone subprocess was running) leaves a `.git` directory
+    behind with no working tree and a HEAD that cannot resolve. `dest.exists()` is true for that
+    directory exactly as it is for a healthy one, so a check that stops there cannot tell them
+    apart — which is how a broken clone gets ingested as an empty repository and then silently
+    re-ingested as the same empty repository on every later load of the same URL.
+
+    `rev-parse HEAD` alone is NOT enough, and shipping it alone was itself a bug, caught the first
+    time this ran against a real broken clone rather than a synthetic one: every cloned repository
+    lives under `.codexa/repos/`, which is itself INSIDE Codexa's own git-tracked working tree. When
+    a nested clone's own `.git` is broken, git does not fail — it walks UP the directory tree
+    looking for a valid repository, exactly as it is designed to when you run a git command from a
+    subdirectory of a real repo, and finds Codexa's own `.git` several levels above. `rev-parse
+    HEAD` then happily returns Codexa's own commit hash, and this function would report a
+    genuinely empty, broken clone as healthy — the opposite of what it exists to catch, and worse
+    than never having the check at all, because it looks confirmed rather than merely unverified.
+    `--show-toplevel` names which repository git actually resolved; requiring it to equal `dest`
+    itself (not an ancestor of it) is what makes this immune to that walk-up.
+    """
+    if not (dest / ".git").exists():
+        return False
+    try:
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=str(dest),
+            capture_output=True, text=True, timeout=10,
+        )
+        if head.returncode != 0:
+            return False
+        toplevel = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"], cwd=str(dest),
+            capture_output=True, text=True, timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    if toplevel.returncode != 0:
+        return False
+    try:
+        resolved_top = Path(toplevel.stdout.strip()).resolve()
+    except OSError:
+        return False
+    return resolved_top == dest.resolve()
+
+
+# Same retry shape as jobs.py's checkpoint write (_CHECKPOINT_ATTEMPTS/_CHECKPOINT_RETRY_DELAY) —
+# used again below for the final rename, not just the delete. Cloning straight into `dest` (even
+# after successfully deleting a prior broken clone there) was tried first and reproduced the same
+# failure it was meant to fix: `git clone` died almost immediately, its only stderr line being its
+# own opening "Cloning into '...'" — the signature of a process that failed to acquire the
+# directory it had just been told was empty. This repository lives inside an actively-synced
+# OneDrive folder, and the most likely explanation is OneDrive's own filter driver touching a path
+# in the instant after it is deleted and before git's mkdir on that same path completes. Cloning
+# into a brand-new, never-before-existing temp path sidesteps that race entirely — nothing has ever
+# touched it, so there is nothing to contend with — and only the final swap (delete the old
+# directory, rename the temp one into place) ever operates on `dest` itself, with its own retry.
+def _replace_directory(tmp: Path, dest: Path) -> None:
+    if dest.exists():
+        _remove_directory(dest)
+    last_exc: OSError | None = None
+    for attempt in range(_RMTREE_ATTEMPTS):
+        try:
+            tmp.rename(dest)
+            return
+        except OSError as exc:
+            last_exc = exc
+            if getattr(exc, "winerror", None) == 17 or getattr(exc, "errno", None) == 18:
+                break  # different volume: rename can never work, copy instead
+            time.sleep(_RMTREE_RETRY_DELAY)
+    try:
+        shutil.move(str(tmp), str(dest))
+        return
+    except OSError as exc:
+        last_exc = exc
+    raise last_exc or OSError(f"could not move {tmp} into place at {dest}")
+# the same class of problem, a different file. `shutil.rmtree(..., ignore_errors=True)` was the
+# first version of this and it is what let the actual bug through: on Windows a `.git` file can be
+# held open by a scanner, an indexer, or the just-finished git process itself for a handful of
+# milliseconds after it exits, `ignore_errors=True` swallows that instead of surfacing it, and the
+# code proceeded straight to `git clone` into a directory that LOOKED removed but was not — which
+# `git clone` then correctly refuses ("destination path already exists and is not an empty
+# directory"), one line of which became a confusing, contextless "Clone failed: Cloning into
+# '...'" instead of a clear explanation. Retrying the delete a few times resolves the same
+# transient hold a checkpoint write already retries around; actually checking it worked, rather
+# than trusting `ignore_errors`, is what turns a silent failure into either a clean success or a
+# real error message.
+_RMTREE_ATTEMPTS = 10
+# 0.05s (250ms total) was the first value here and it was too short — live, against a real broken
+# clone's pack directory, deleting it failed with WinError 5 ("Access is denied") on a freshly
+# git-written `tmp_pack_*` file with no git process holding it: nothing pathological, just
+# OneDrive's own sync engine scanning a directory tree of many small object files immediately after
+# git finished writing them, for longer than 250ms. 0.2s x 10 = 2s total gives that scan room to
+# finish without making a genuinely stuck case (a real permission problem, a file held open by
+# something else entirely) hang for an unreasonable share of the HTTP request's own timeout.
+_RMTREE_RETRY_DELAY = 0.2
+
+
+def _make_writable(func, path, _exc) -> None:
+    """rmtree error hook: git writes its pack files and indexes READ-ONLY, and on Windows a read-only
+    file cannot be deleted. That alone made every re-clone fail with "[WinError 5] Access is denied"
+    on `.git/objects/pack/*.idx` — after deleting everything else in the old checkout, so each
+    failed attempt also destroyed the working copy it was replacing. Clear the flag and retry."""
+    try:
+        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+        func(path)
+    except FileNotFoundError:
+        pass
+
+
+def _discard(path: Path) -> None:
+    """Best-effort removal of a temp or leftover directory; logs instead of raising."""
+    try:
+        _remove_directory(path)
+    except OSError:
+        logging.getLogger(__name__).warning("could not remove %s", path, exc_info=True)
+
+
+def _remove_directory(dest: Path) -> None:
+    """Delete `dest` and confirm it is actually gone before returning. Raises OSError (the last
+    real one seen) if it still exists after every retry — never silently leaves a partial directory
+    behind for the caller to clone into."""
+    last_exc: OSError | None = None
+    for attempt in range(_RMTREE_ATTEMPTS):
+        try:
+            shutil.rmtree(dest, onexc=_make_writable)
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            last_exc = exc
+        if not dest.exists():
+            return
+        time.sleep(_RMTREE_RETRY_DELAY)
+    raise last_exc or OSError(f"could not remove {dest}")
 
 
 def _slugify(name: str) -> str:
@@ -208,39 +501,12 @@ def create_repository_router(*, store: MemoryStore, graph: GraphService, llm: LL
 
     @router.post("/load", response_model=RepositoryInfo)
     def load(request: LoadRepoRequest, background_tasks: BackgroundTasks) -> RepositoryInfo:
-        url = request.url.strip()
-        if not _URL_RE.match(url):
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Provide a valid git URL (https:// or git@).")
-
-        name = _repo_name(url)
-        dest = (DATA_DIR / "repos" / name).resolve()
-        already = store.has_repository(name) and dest.exists()
-
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        if not dest.exists():
-            try:
-                # Depth 250, not 1 — change-coupling mining (which files historically change
-                # together, even with zero static reference) needs real commit history to work
-                # from. Still far lighter than a full clone for most repos.
-                subprocess.run(
-                    ["git", "clone", "--depth", "250", url, str(dest)],
-                    capture_output=True, text=True, timeout=180, check=True,
-                )
-            except FileNotFoundError as exc:
-                raise HTTPException(status.HTTP_400_BAD_REQUEST, "git is not available on the server.") from exc
-            except subprocess.TimeoutExpired as exc:
-                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Clone timed out.") from exc
-            except subprocess.CalledProcessError as exc:
-                detail = (exc.stderr or "").strip().splitlines()[-1:] or ["clone failed"]
-                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Clone failed: {detail[0]}") from exc
-
-        # Remember the source URL on disk — the in-memory graph is wiped on every backend restart,
-        # so this is what lets us rebuild a repo's graph/score without the user re-pasting the URL.
-        (dest / ".codexa-repo.json").write_text(json.dumps({"url": url, "name": name}), encoding="utf-8")
-
-        info = _ingest(name, url, dest, already, store=store, graph=graph)
+        try:
+            info, dest = load_repository(request.url, store=store, graph=graph)
+        except (ValueError, CloneError) as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
         # Semantic annotation is a bulk LLM pass — never block the load response on it.
-        background_tasks.add_task(_run_annotation, name, dest, store, llm)
+        background_tasks.add_task(_run_annotation, info.name, dest, store, llm)
         return info
 
     @router.post("/create", response_model=RepositoryInfo)
@@ -320,7 +586,10 @@ def create_repository_router(*, store: MemoryStore, graph: GraphService, llm: LL
         dest = (repos_dir / name).resolve()
         deleted_from_disk = False
         if dest.is_relative_to(repos_dir) and dest.exists():
-            shutil.rmtree(dest, ignore_errors=True)
+            try:
+                _remove_directory(dest)
+            except OSError:
+                logging.getLogger(__name__).warning("could not delete %s", dest, exc_info=True)
             deleted_from_disk = not dest.exists()
 
         if nodes_removed == 0 and memories_removed == 0 and not deleted_from_disk:
@@ -381,6 +650,78 @@ def create_local_repository(
         json.dumps({"url": "", "name": slug, "created_locally": True}), encoding="utf-8",
     )
     return _ingest(slug, "", dest, False, store=store, graph=graph)
+
+
+def _destination(url: str, repos_dir: Path) -> str:
+    """The folder name to clone `url` into. Reuses the plain repository name when that folder is
+    free, is already this repository's clone, or is a broken clone (a `.git` that no longer resolves
+    — safe to replace). Anything else living there (a different repository with the same name, or a
+    project the agent created locally) is never overwritten: use `owner-repo` instead."""
+    base = _repo_name(url)
+    candidates = [base] + ([f"{_owner(url)}-{base}"] if _owner(url) else []) + [f"{base}-{i}" for i in range(2, 50)]
+    for name in candidates:
+        dest = repos_dir / name
+        if not dest.exists():
+            return name
+        meta = _read_meta(dest)
+        if meta and meta.get("url") and _canonical(meta["url"]) == _canonical(url):
+            return name
+        if meta is None and (dest / ".git").exists() and not _is_healthy_clone(dest):
+            return name
+    raise CloneError(f"Too many folders already named like '{base}'. Delete an old one and try again.")
+
+
+def load_repository(raw_url: str, *, store: MemoryStore, graph: GraphService) -> tuple[RepositoryInfo, Path]:
+    """Clone (or reuse) a repository and ingest it — the whole /repository/load pipeline.
+
+    Order of operations, each step leaving the disk consistent if the next one fails:
+      1. normalise the URL and pick a folder that is safe to use;
+      2. under a per-repository lock, sweep temp clones a previous failed load left behind;
+      3. if there is no healthy checkout, clone into a brand-new temp folder (OneDrive-safe) and only
+         then swap it into place — a failed clone never touches the existing folder;
+      4. record the URL, then ingest (graph, memory, routes, commits, intent, health).
+    """
+    url = _normalize_url(raw_url)
+    if url is None:
+        raise ValueError("That doesn't look like a git URL. Paste something like https://github.com/owner/repo — a GitHub page URL works too.")
+    repos_dir = (DATA_DIR / "repos").resolve()
+    repos_dir.mkdir(parents=True, exist_ok=True)
+    name = _destination(url, repos_dir)
+    dest = repos_dir / name
+    with _lock_for(name):
+        tmp_root = _clone_tmp_root()
+        for stale in [*repos_dir.glob(f".{name}.load-*"), *tmp_root.glob(f"{name}.load-*")]:
+            _discard(stale)
+        healthy_on_disk = dest.exists() and _is_healthy_clone(dest)
+        already = store.has_repository(name) and healthy_on_disk
+        if not healthy_on_disk:
+            tmp_dest = tmp_root / f"{name}.load-{uuid.uuid4().hex[:8]}"
+            try:
+                _git_clone(url, tmp_dest)
+                if not _is_healthy_clone(tmp_dest):
+                    raise CloneError("The clone finished but produced no usable checkout — the repository may be empty.")
+                try:
+                    _replace_directory(tmp_dest, dest)
+                except OSError as exc:
+                    raise CloneError(
+                        f"Cloned {name}, but couldn't move it into place ({exc}). Close anything that has "
+                        "files from that folder open, then try again."
+                    ) from exc
+            finally:
+                if tmp_dest.exists():
+                    _discard(tmp_dest)
+        # Remember the source URL on disk — the in-memory graph is wiped on every backend restart,
+        # so this is what lets us rebuild a repo's graph/score without the user re-pasting the URL.
+        (dest / ".codexa-repo.json").write_text(json.dumps({"url": url, "name": name}), encoding="utf-8")
+        if already or store.has_repository(name):
+            # Re-loading replaces the repository's graph rather than piling a second copy on top.
+            graph.remove_repository(name)
+        try:
+            info = _ingest(name, url, dest, already, store=store, graph=graph)
+        except Exception as exc:  # noqa: BLE001 - report it; the clone itself is kept for a retry
+            logging.getLogger(__name__).exception("ingestion failed for %s", name)
+            raise CloneError(f"Cloned {name}, but analysing it failed: {exc}") from exc
+    return info, dest
 
 
 def _run_annotation(repository: str, dest: Path, store: MemoryStore, llm: LLMClient) -> dict:
@@ -468,20 +809,38 @@ def _ingest(
                 source_type=GraphEdgeSourceType.STATIC_ANALYSIS,
             ))
 
+    # API routes, commit history and dependency-evidenced intent (intent.py). Extras, not the core
+    # graph: a failure here is logged and ingestion carries on with what it already has.
+    try:
+        add_intent_to_graph(graph, name=name, root=dest, code=code, repo_node_id=repo_node.id,
+                            file_nodes=file_nodes, sym_nodes=sym_nodes)
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("intent extraction failed for %s", name)
+
     # Git-mined change coupling: files with no import/call link at all, but that historically break
     # together (CodeScene's "hidden coupling" insight). Blast radius should catch this too. Unlike
     # imports/calls this relationship is symmetric, so it's added in both directions — changing
     # either file should surface the other, not just one way.
-    for coupling in mine_change_coupling(dest, set(file_nodes.keys())):
-        if coupling.file_a in file_nodes and coupling.file_b in file_nodes:
-            a_id, b_id = file_nodes[coupling.file_a].id, file_nodes[coupling.file_b].id
-            for from_id, to_id in ((a_id, b_id), (b_id, a_id)):
-                graph.add_edge(GraphEdgeCreate(
-                    from_node_id=from_id, to_node_id=to_id,
-                    edge_type=GraphEdgeType.CORRELATES_WITH, confidence=coupling.strength,
-                    source_type=GraphEdgeSourceType.STATIC_ANALYSIS,
-                    properties={"shared_commits": coupling.shared_commits},
-                ))
+    #
+    # That two files changed together is a fact read straight from git, so the edge is static
+    # analysis at confidence 1.0; HOW strongly they are coupled is a property. Writing the strength
+    # into `confidence` (the first version) violated the static-analysis invariant, so every
+    # repository with enough history to produce a coupling pair crashed mid-ingestion and was left
+    # half-loaded — which is why cloning worked for tiny repos and failed for real ones.
+    try:
+        for coupling in mine_change_coupling(dest, set(file_nodes.keys())):
+            if coupling.file_a in file_nodes and coupling.file_b in file_nodes:
+                a_id, b_id = file_nodes[coupling.file_a].id, file_nodes[coupling.file_b].id
+                for from_id, to_id in ((a_id, b_id), (b_id, a_id)):
+                    graph.add_edge(GraphEdgeCreate(
+                        from_node_id=from_id, to_node_id=to_id,
+                        edge_type=GraphEdgeType.CORRELATES_WITH, confidence=1.0,
+                        source_type=GraphEdgeSourceType.STATIC_ANALYSIS,
+                        properties={"strength": coupling.strength, "shared_commits": coupling.shared_commits,
+                                    "relation": "changes_with"},
+                    ))
+    except Exception:  # noqa: BLE001 - an extra, like intent: never sink the whole load
+        logging.getLogger(__name__).exception("change-coupling mining failed for %s", name)
 
     # Score the repository automatically on ingestion — real metrics, reasoning, suggestions.
     scored = score_repository(dest, code)
@@ -522,6 +881,10 @@ def rehydrate_repositories(*, store: MemoryStore, graph: GraphService) -> int:
     repos_dir = DATA_DIR / "repos"
     if not repos_dir.exists():
         return 0
+    # Temp clones from a load that crashed or failed before the fix that cleans them up. Nothing is
+    # loading at startup, so every one of them is garbage.
+    for stale in [*repos_dir.glob(".*.load-*"), *_clone_tmp_root().glob("*.load-*")]:
+        _discard(stale)
     have = {n.properties.get("repository") for n in graph.list_nodes() if n.node_type == GraphNodeType.REPOSITORY}
     rebuilt = 0
     for dest in sorted(p for p in repos_dir.iterdir() if p.is_dir()):

@@ -205,15 +205,24 @@ _FAILOVER_RING: dict[str, list[str]] = {
 # once and dead-ending. Adding a non-Gemini tail would mean a worker silently drifting onto a
 # different model family mid-build, which is how one codebase ended up with several mutually
 # incompatible conventions; staying in-family keeps output style predictable.
-# Order is 3.8 before 3.7 deliberately. Combined with per-model key rotation this produces exactly
-# one cycle: 3.8[key1..key4] -> 3.7[key1..key4] -> wrap to 3.8[key1]. Level 1 (keys, inside
-# _with_key_failover) exhausts every key of the current model before level 2 (this ring) advances
-# the model, so with four Gemini keys configured that is eight independent 5-req/min buckets walked
-# strongest-model-first. 2.5-flash is intentionally out of the cycle — the two-model rotation is
-# the requested shape, and 2.5 stays reachable by explicit selection.
+# Order is 3.8, then 3.7, then 2.5 deliberately (strongest first). Combined with per-model key
+# rotation this produces one cycle: 3.8[key1..keyN] -> 3.7[key1..keyN] -> 2.5[key1..keyN] -> wrap
+# to 3.8[key1]. Level 1 (keys, inside _with_key_failover) exhausts every key of the current model
+# before level 2 (this ring) advances the model, so with four Gemini keys configured that's twelve
+# independent 5-req/min buckets walked strongest-model-first.
+#
+# 2.5-flash used to be deliberately excluded ("the two-model rotation is the requested shape") —
+# reversed after a real, observed failure: _WorkerSession.complete() used to only rotate on a
+# CLASSIFIED rate limit, so a genuine (non-rate-limit) provider error from 3.8-flash mid-build hit
+# _delegate_build's outer except, gave up immediately, and told the caller "write the files
+# yourself" with 3.7 and every configured key still completely untouched — the two-model ring was
+# never even the bottleneck that failure hit. complete() now rotates on ANY exception (see its
+# docstring), which makes a wider ring actually pay off: a bad response from 3.8 now falls through
+# to 3.7, then 2.5, before the whole worker pool is considered exhausted.
 _WORKER_RING: list[str] = [
     "gemini/gemini-3.8-flash",
     "gemini/gemini-3.7-flash",
+    "gemini/gemini-2.5-flash",
 ]
 
 # High-stakes generation routes to heavy (GLM); low-stakes to light.

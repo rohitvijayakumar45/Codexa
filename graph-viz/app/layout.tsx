@@ -1,26 +1,29 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono, Bricolage_Grotesque, Manrope, JetBrains_Mono } from "next/font/google";
+import { Funnel_Display, Geist, Geist_Mono, Bricolage_Grotesque, Manrope, JetBrains_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+// Blueprint's type stack. Character lives ONLY at display sizes — Funnel Display is tight and
+// opinionated, which is what pulls a cool blue-grey engineering ground away from generic
+// drafting-office. Everywhere density lives (rails, tables, telemetry, code) the type gets out of
+// the way: Geist was drawn for product UI (tall x-height, unambiguous 1lI0O, real tabular figures)
+// and Geist Mono is its designed companion, so numbers and code sit coherently with body copy
+// instead of looking bolted on. All three are variable, so one file each covers the whole range.
+const funnelDisplay = Funnel_Display({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-space-grotesk",
+  variable: "--font-funnel",
   display: "swap",
 });
 
-const plexSans = IBM_Plex_Sans({
+const geist = Geist({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-plex-sans",
+  variable: "--font-geist",
   display: "swap",
 });
 
-const plexMono = IBM_Plex_Mono({
+const geistMono = Geist_Mono({
   subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-plex-mono",
+  variable: "--font-geist-mono",
   display: "swap",
 });
 
@@ -57,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable} ${bricolage.variable} ${manrope.variable} ${jbMono.variable}`}
+      className={`${funnelDisplay.variable} ${geist.variable} ${geistMono.variable} ${bricolage.variable} ${manrope.variable} ${jbMono.variable}`}
     >
       <body>
         <Providers>{children}</Providers>

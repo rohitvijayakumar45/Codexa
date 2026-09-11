@@ -21,7 +21,6 @@ from typing import Any
 
 import litellm
 
-from backend.agents.llm import is_rate_limit_error
 from backend.files.api import (
     build_tree,
     is_platform_repo,
@@ -179,6 +178,126 @@ def _reject_if_destroys_existing_work(root: Path, rel_path: str, content: Any) -
     )
 
 
+# ── lint-on-write ────────────────────────────────────────────────────────────
+#
+# The mechanism, and the reason for it, come directly from reading SWE-agent's actual edit tool
+# (tools/windowed_edit_linting/bin/edit) rather than a description of it: lint BEFORE the write,
+# lint AFTER, and only ever act on errors the write itself introduced. That distinction is what
+# makes it safe to run on every write instead of just at the end — a file with pre-existing
+# problems elsewhere doesn't get blocked over them, and a model that fixes an old bug doesn't get
+# accused of introducing one. Post-hoc validation (Codexa's existing artifacts_exist/renders_cleanly
+# checks) catches a broken artifact at the END of a task, several rounds and possibly a full
+# re-authoring cycle later; this catches it at the write that broke it, with the specific error
+# handed straight back instead of a full regeneration.
+#
+# Scoped to JavaScript syntax specifically, not HTML well-formedness: browsers are extremely
+# forgiving of malformed HTML and it rarely breaks a page the way it looks like it might, whereas a
+# single JS syntax error kills the entire enclosing <script> block — every interactive feature on
+# the page — silently, with nothing in the DOM to show it happened. That is the one class of error
+# most worth catching here.
+_JS_CHECK_TIMEOUT = 8.0
+_SCRIPT_BLOCK = _re.compile(
+    r'<script\b(?P<attrs>[^>]*)>(?P<body>.*?)</script\s*>', _re.IGNORECASE | _re.DOTALL,
+)
+_SCRIPT_SRC = _re.compile(r'\bsrc\s*=', _re.IGNORECASE)
+_SCRIPT_NON_JS_TYPE = _re.compile(
+    r'\btype\s*=\s*["\'](?!(?:$|text/javascript|application/javascript|module)\b)',
+    _re.IGNORECASE,
+)
+
+
+def _extract_inline_scripts(html: str) -> list[str]:
+    """Every inline (non-external, JS-typed) <script> body in an HTML document, in order."""
+    out = []
+    for m in _SCRIPT_BLOCK.finditer(html):
+        attrs = m.group("attrs") or ""
+        if _SCRIPT_SRC.search(attrs) or _SCRIPT_NON_JS_TYPE.search(attrs):
+            continue  # external script, or a non-JS payload (e.g. type="application/json")
+        body = m.group("body")
+        if body.strip():
+            out.append(body)
+    return out
+
+
+def _js_syntax_errors(code: str) -> set[str]:
+    """Distinct syntax-error messages in one JS source, via `node --check` — parse-only, nothing
+    executes. Returns an empty set on a clean parse, on a missing/broken node, or on timeout: this
+    check must never be able to block a write over an environment gap rather than a real error.
+    Messages are normalised (path and line number stripped) so the same underlying problem compares
+    equal whether it shifted three lines from one edit to the next."""
+    if not code.strip():
+        return set()
+    import tempfile
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".mjs", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(code)
+            tmp_path = f.name
+        try:
+            result = subprocess.run(
+                ["node", "--check", tmp_path],
+                capture_output=True, text=True, timeout=_JS_CHECK_TIMEOUT,
+            )
+        finally:
+            try:
+                Path(tmp_path).unlink(missing_ok=True)
+            except OSError:
+                pass
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
+        return set()  # no usable node on this host — degrade to "unchecked", not "blocked"
+
+    if result.returncode == 0:
+        return set()
+    errors = set()
+    for line in result.stderr.splitlines():
+        line = line.strip()
+        # node's own diagnostic lines: "<tmpfile>:<n>\n<source line>\n^\n\nSyntaxError: ..." — only
+        # the actual "SyntaxError: ..." (or similar) message line is useful and stable; the file
+        # path is a random temp name and the line number shifts with every edit, so neither belongs
+        # in the identity used to compare "before" against "after".
+        if _re.match(r'^[A-Za-z]+Error:', line):
+            errors.add(line)
+    return errors
+
+
+def _lint_javascript_regressions(before: str | None, after: str, *, path: str) -> str | None:
+    """None if this write introduced no NEW JavaScript syntax error; otherwise a message naming
+    exactly what broke, meant to be handed back to the model instead of accepted silently.
+
+    `before` is the file's content prior to this write (None for a brand-new file — there is
+    nothing to diff against, so any error found is reported but nothing is asked to revert).
+    """
+    suffix = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+    if suffix in ("js", "mjs", "cjs"):
+        before_snippets = [before] if before is not None else []
+        after_snippets = [after]
+    elif suffix in ("html", "htm"):
+        before_snippets = _extract_inline_scripts(before) if before is not None else []
+        after_snippets = _extract_inline_scripts(after)
+    else:
+        return None  # nothing this check knows how to parse
+
+    # Diffed PER BLOCK, matched by position — not pooled into one set across the whole file. Node's
+    # syntax-error messages are short and generic ("Unexpected token '('"), and a real HTML document
+    # can have several independent <script> blocks; pooling would let a pre-existing error in one
+    # block silently mask a genuinely new, same-message error in a different block. A block with no
+    # counterpart in `before` (the edit added one, or this is a fresh file) has nothing to diff
+    # against, so every error found in it counts as introduced.
+    introduced: set[str] = set()
+    for i, snippet in enumerate(after_snippets):
+        before_errors = _js_syntax_errors(before_snippets[i]) if i < len(before_snippets) else set()
+        introduced |= _js_syntax_errors(snippet) - before_errors
+    if not introduced:
+        return None
+    return (
+        "This write introduced " + ("a new JavaScript syntax error" if len(introduced) == 1
+                                    else f"{len(introduced)} new JavaScript syntax errors") + ":\n"
+        + "\n".join(f"  - {e}" for e in sorted(introduced))
+    )
+
+
 # Design systems the agent can pull into context before writing UI code — professional,
 # production-tested rulesets (typography, color, motion, anti-slop constraints) so scaffolded
 # frontends don't default to generic AI-template output. Files are self-contained copies (not a
@@ -301,6 +420,60 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "next_action": {
                         "type": "string",
                         "description": "The concrete next tool call, e.g. write_file(index.html).",
+                    },
+                    "palette": {
+                        "type": "object",
+                        "description": "The specific colors you chose, once, for the whole "
+                                       "project. Not a category ('warm neutrals') - the actual "
+                                       "values, so this project has ONE palette that every later "
+                                       "round implements instead of re-guessing.",
+                        "properties": {
+                            "background": {"type": "string"},
+                            "ink": {"type": "string"},
+                            "accent": {"type": "string"},
+                        },
+                    },
+                    "typography": {
+                        "type": "object",
+                        "description": "The specific fonts you chose for the whole project.",
+                        "properties": {
+                            "display": {"type": "string"},
+                            "body": {"type": "string"},
+                        },
+                    },
+                    "motion": {
+                        "type": "object",
+                        "description": "The one easing curve and the reasoning behind the motion "
+                                       "choices for this project - not a token to copy, a decision "
+                                       "you made for THIS product.",
+                        "properties": {
+                            "easing": {"type": "string"},
+                            "philosophy": {"type": "string"},
+                        },
+                    },
+                    "rejected": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Specific defaults you are deliberately NOT using for this "
+                                       "project, and why - e.g. 'not the warm-cream-paper palette, "
+                                       "too generic for this brief'. Naming what you rejected is "
+                                       "what keeps you from drifting back to it three rounds from "
+                                       "now.",
+                    },
+                    "structure": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "ONLY when committing the plan for the artifact you are "
+                                       "about to write: the sections/interactions in order, one "
+                                       "short phrase each (e.g. 'sticky nav', 'hero with the "
+                                       "signature interaction', 'filterable archive grid', 'detail "
+                                       "panel that slides in'). This is the plan; the next call "
+                                       "should be the write itself, implementing exactly this "
+                                       "list. DO NOT put real markup, CSS or JS in any phrase — "
+                                       "name what a section IS, never how it is built. A phrase "
+                                       "containing a tag, a selector or a line of code is not a "
+                                       "plan, it is the artifact starting to leak into the wrong "
+                                       "call.",
                     },
                 },
                 "required": ["direction"],
@@ -1174,11 +1347,23 @@ class _WorkerSession:
         return True
 
     def complete(self, messages: list[dict[str, Any]], *, tools: list | None, agent: str) -> Any:
+        """Call the active worker model; on ANY error, rotate to the next one in the ring and retry.
+
+        Used to only rotate on is_rate_limit_error(exc) — real, observed failure: 3.8-flash
+        returned a genuine (non-rate-limit) provider error mid-build, _delegate_build's own
+        try/except caught it, gave up on the spot, and told the caller "write the files yourself"
+        with a whole Gemini ring (and every other configured key) still untouched. A transient
+        500/safety-block/empty-response from one model is not evidence the NEXT model in the ring
+        will fail the same way — rotating on any exception, not just a classified rate limit, is
+        what makes this an actual round-robin fallback instead of one that only fires for one
+        specific error shape. Still bounded by the same lap budget (_MAX_WORKER_LAPS) as before, so
+        a genuinely dead ring terminates rather than retrying forever.
+        """
         while True:
             try:
                 return self._llm.complete_message(messages, model=self.model, tools=tools, agent=agent)
-            except Exception as exc:  # noqa: BLE001 - only rate limits rotate; everything else raises
-                if not is_rate_limit_error(exc) or not self.rotate():
+            except Exception as exc:  # noqa: BLE001 - deliberately broad; see docstring
+                if not self.rotate():
                     raise
 
 
@@ -1318,13 +1503,76 @@ def _get_design_guidance(style: str) -> str:
     return _truncate(text, limit=30000)
 
 
+_PALETTE_KEYS = ("background", "ink", "accent")
+_TYPOGRAPHY_KEYS = ("display", "body")
+_MOTION_KEYS = ("easing", "philosophy")
+
+
+def _merge_design(prior: dict | None, incoming: dict) -> dict:
+    """Fold a new commit_direction call's design fields onto the previous ones.
+
+    Two different lifetimes live in the same object, and they merge differently on purpose:
+
+    Sticky (palette, typography, motion, rejected) are PROJECT decisions, made once on the
+    direction task and meant to hold for the whole job. A later call that does not repeat them
+    must not erase them — the observed failure this prevents is exactly the sameness problem: a
+    real palette was chosen, then several rounds and a compaction later nothing durable said so
+    any more, and the model quietly reached for its own trained-in default instead. `rejected`
+    specifically accumulates rather than replaces, because "here is what I decided against" is
+    only useful if a later round can't forget it and drift back.
+
+    Per-task (structure) is DELIBERATELY replaced every call, never merged. It is the section/
+    interaction plan for whichever artifact is being written right now; carrying task 3's
+    structure into task 6's authoring round would hand the model someone else's plan.
+    """
+    prior_design = (prior or {}).get("design") or {}
+    design: dict = {
+        "palette": dict(prior_design.get("palette") or {}),
+        "typography": dict(prior_design.get("typography") or {}),
+        "motion": dict(prior_design.get("motion") or {}),
+        "rejected": list(prior_design.get("rejected") or []),
+        "structure": [],
+        "structure_task_id": prior_design.get("structure_task_id"),
+    }
+    for key, sub_keys in (("palette", _PALETTE_KEYS), ("typography", _TYPOGRAPHY_KEYS),
+                          ("motion", _MOTION_KEYS)):
+        incoming_sub = incoming.get(key)
+        if isinstance(incoming_sub, dict):
+            for sk in sub_keys:
+                value = incoming_sub.get(sk)
+                if isinstance(value, str) and value.strip():
+                    design[key][sk] = value.strip()[:80]
+    incoming_rejected = incoming.get("rejected")
+    if isinstance(incoming_rejected, list):
+        seen = {r.lower() for r in design["rejected"]}
+        for item in incoming_rejected:
+            if isinstance(item, str) and item.strip() and item.strip().lower() not in seen:
+                design["rejected"].append(item.strip()[:160])
+                seen.add(item.strip().lower())
+        design["rejected"] = design["rejected"][:10]
+    incoming_structure = incoming.get("structure")
+    if isinstance(incoming_structure, list):
+        design["structure"] = [
+            s.strip()[:100] for s in incoming_structure if isinstance(s, str) and s.strip()
+        ][:16]
+        # structure_task_id is stamped by the caller (jobs.py), which knows which task is active;
+        # this function has no notion of "current task" and must not guess one.
+    return design
+
+
 def _commit_direction(
     direction: str,
     decisions: list[str] | None = None,
     primary_artifact: str = "",
     next_action: str = "",
+    palette: dict | None = None,
+    typography: dict | None = None,
+    motion: dict | None = None,
+    rejected: list[str] | None = None,
+    structure: list[str] | None = None,
     *,
     context: dict | None = None,
+    prior_commitment: dict | None = None,
 ) -> str:
     """Record what the agent has decided, as a durable fact rather than as reasoning.
 
@@ -1345,10 +1593,21 @@ def _commit_direction(
     settled fact. It is also cheap: a few hundred characters the model can reach inside any budget,
     which is what makes it a usable escape from a round it cannot otherwise finish.
 
-    Deliberately not a substitute for the work. It records a decision; it creates nothing.
+    The design fields (palette/typography/motion/rejected/structure) exist because the plain
+    version of this record was not enough to fix a SEPARATE, measured failure: four different
+    products — a journal, a coffee guide, a dashboard, a field guide — converged on the same
+    warm-cream/near-black/burnt-orange palette and the identical easing curve, EVEN on the job
+    whose loaded design skill explicitly banned that exact palette by hex code. The skill file
+    that named the ban was only ever a tool result, evicted from context after 3 rounds — by the
+    round that actually wrote the file, 5+ rounds later, nothing durable said what had been
+    decided or rejected any more. Reference material is not state; only an ACTION survives the
+    cut and the compaction both, which is why the fix is the same mechanism this tool already is,
+    not a new one.
+
+    Deliberately not a substitute for the work. It records decisions; it creates nothing.
     """
     decisions = [d.strip() for d in (decisions or []) if isinstance(d, str) and d.strip()]
-    record = {
+    record: dict = {
         "direction": (direction or "").strip()[:1200],
         "decisions": decisions[:12],
         "primary_artifact": (primary_artifact or "").strip()[:200],
@@ -1357,6 +1616,13 @@ def _commit_direction(
     if not record["direction"]:
         return ("Refused: `direction` is required — one or two sentences saying what you are "
                 "building. This call is how that decision survives; an empty one records nothing.")
+    design = _merge_design(prior_commitment, {
+        "palette": palette, "typography": typography, "motion": motion,
+        "rejected": rejected, "structure": structure,
+    })
+    if any(design["palette"].values()) or any(design["typography"].values()) or \
+            any(design["motion"].values()) or design["rejected"] or design["structure"]:
+        record["design"] = design
     if context is not None:
         context["commitment"] = record
     lines = [f"Committed: {record['direction']}"]
@@ -1366,6 +1632,16 @@ def _commit_direction(
         lines.append(f"Primary artifact: {record['primary_artifact']}")
     if record["next_action"]:
         lines.append(f"Next action: {record['next_action']}")
+    if design["palette"]:
+        lines.append("Palette: " + ", ".join(f"{k}={v}" for k, v in design["palette"].items()))
+    if design["typography"]:
+        lines.append("Typography: " + ", ".join(f"{k}={v}" for k, v in design["typography"].items()))
+    if design["motion"].get("easing"):
+        lines.append(f"Motion: {design['motion']['easing']}")
+    if design["rejected"]:
+        lines.append("Rejected (do not drift back to these): " + "; ".join(design["rejected"]))
+    if design["structure"]:
+        lines.append("Structure for this artifact: " + " -> ".join(design["structure"]))
     lines.append(
         "This is now settled and will be carried into every following round. Do not reconsider the "
         "direction — implement it."
@@ -2663,7 +2939,7 @@ def _check_design_consistency(repository: str) -> str:
 def execute_tool(
     name: str, args: dict[str, Any], repository: str, *,
     graph: Any = None, store: Any = None, context: dict[str, Any] | None = None, llm: Any = None,
-    model: str | None = None,
+    model: str | None = None, prior_commitment: dict[str, Any] | None = None,
 ) -> str:
     """Run a tool by name and return a text result for the model.
 
@@ -2673,6 +2949,9 @@ def execute_tool(
     requiring a whole extra request/response round-trip. `model` is the name of the model that
     issued this call — only used by screenshot, to decide whether the actual image is worth
     base64-encoding into context["screenshot_b64"] (only a vision-capable model can use it).
+    `prior_commitment` is the job's existing commit_direction record, if any — an INPUT (the
+    opposite direction from `context`), so a second commit_direction call can merge its sticky
+    design fields onto the first instead of silently erasing a palette that was already chosen.
     """
     # is_platform_repo RESOLVES the path instead of comparing the string. `repository="../.."`
     # resolved to the project root while being unequal to "codexa-os", so the guard passed and the
@@ -2701,7 +2980,9 @@ def execute_tool(
             return _commit_direction(
                 args.get("direction", ""), args.get("decisions"),
                 args.get("primary_artifact", ""), args.get("next_action", ""),
-                context=context,
+                args.get("palette"), args.get("typography"), args.get("motion"),
+                args.get("rejected"), args.get("structure"),
+                context=context, prior_commitment=prior_commitment,
             )
         if name == "read_file":
             if _is_secret_file(args["path"]):
@@ -2745,12 +3026,35 @@ def execute_tool(
             rejection = _reject_if_stale_placeholder(args["content"])
             if rejection:
                 return rejection
-            rejection = _reject_if_destroys_existing_work(
-                repo_root(repository), args["path"], args["content"]
-            )
+            root = repo_root(repository)
+            rejection = _reject_if_destroys_existing_work(root, args["path"], args["content"])
             if rejection:
                 return rejection
-            write_file(repo_root(repository), args["path"], args["content"])
+            # Read the PRE-write content, if any exists, before it is gone — this is the only
+            # moment a revert target is available, same reasoning as the destroys-existing-work
+            # guard just above it. None (not "") for a brand-new file: no prior JS to diff against,
+            # and nothing to revert TO if the new content has an error.
+            target = (root / args["path"]).resolve()
+            previous = (
+                target.read_text(encoding="utf-8", errors="replace") if target.is_file() else None
+            )
+            write_file(root, args["path"], args["content"])
+            lint_issue = _lint_javascript_regressions(previous, args["content"], path=args["path"])
+            if lint_issue:
+                if previous is not None:
+                    write_file(root, args["path"], previous)  # revert — see helper's docstring
+                    return (
+                        f"Write REVERTED — {args['path']} is unchanged from before this call.\n"
+                        f"{lint_issue}\n"
+                        "Fix the syntax error and call write_file again with corrected content. "
+                        "Do not call write_file again with the same broken content unchanged."
+                    )
+                return (
+                    f"Wrote {len(args['content'])} bytes to {args['path']}, but with a problem — "
+                    "there was no prior version to revert to, so this stands as written.\n"
+                    f"{lint_issue}\nFix this before moving on; a page with a JS syntax error loses "
+                    "every interactive feature silently."
+                )
             return f"Wrote {len(args['content'])} bytes to {args['path']}."
         if name == "create_directory":
             create_directory(repo_root(repository), args["path"])
@@ -2759,7 +3063,25 @@ def execute_tool(
             rejection = _reject_if_stale_placeholder(args["new_text"])
             if rejection:
                 return rejection
-            edit_file(repo_root(repository), args["path"], args["old_text"], args["new_text"])
+            root = repo_root(repository)
+            target = (root / args["path"]).resolve()
+            previous = target.read_text(encoding="utf-8", errors="replace") if target.is_file() else None
+            edit_file(root, args["path"], args["old_text"], args["new_text"])
+            after = target.read_text(encoding="utf-8", errors="replace")
+            lint_issue = _lint_javascript_regressions(previous, after, path=args["path"])
+            if lint_issue:
+                # Restored by writing the captured `previous` content back whole, not by reversing
+                # old_text/new_text through another edit_file call — that call requires new_text to
+                # be unique in the file, which a short or generic replacement is not guaranteed to
+                # be (it may now coincidentally match a second, unrelated spot), and a failed revert
+                # attempt would leave the broken edit standing with a raw exception on top of it.
+                write_file(root, args["path"], previous)
+                return (
+                    f"Edit REVERTED — {args['path']} is unchanged from before this call.\n"
+                    f"{lint_issue}\n"
+                    "Fix the syntax error and try the edit again. Do not repeat the exact same "
+                    "old_text/new_text pair unchanged."
+                )
             return f"Edited {args['path']}."
         if name == "delete_file":
             delete_path(repo_root(repository), args["path"])

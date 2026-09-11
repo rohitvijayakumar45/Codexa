@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, Wrench, BrainCircuit, Copy, Check, RotateCcw, Users, ArrowLeftRight } from "lucide-react";
+import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, BrainCircuit, Copy, Check, RotateCcw, Users } from "lucide-react";
 import {
   api,
   cancelAgentJob,
@@ -20,13 +20,15 @@ import {
 } from "@/lib/api";
 import { Mark } from "@/components/shell/Mark";
 import { EASE_OUT } from "@/components/ui/primitives";
+import { springPanel, springState } from "@/lib/motion";
 import { ImpactCard } from "@/components/chat/ImpactCard";
-import { TaskPlanCard } from "@/components/chat/TaskPlanCard";
+import { ExecutionPane } from "@/components/chat/ExecutionPane";
 import { RepoDialog } from "@/components/chat/RepoDialog";
 import { DotsLoader } from "@/components/ui/DotsLoader";
 import { ThinkingLoader } from "@/components/ui/ThinkingLoader";
 import { MarkdownView } from "@/components/ui/MarkdownView";
 import { useRepoStore } from "@/lib/repo-store";
+import { pathsFromToolArgs, useJobStore } from "@/lib/job-store";
 import { useChatStore, type Conversation, type StoredTurn } from "@/lib/chat-store";
 
 interface Attachment {
@@ -275,9 +277,49 @@ export default function ChatPage() {
   );
   const usedPct = Math.min(100, (usedTokens / contextWindow) * 100);
 
+  /*
+    Follow the stream, but never take the scroll away from the reader.
+
+    The previous version called scrollTo({behavior:"smooth"}) keyed on the whole turns array, which
+    is three faults in one line: it fired on every token (so dozens of smooth scrolls queued and
+    fought each other), it had no idea whether the user had scrolled up, and smooth is the wrong
+    mode for continuous following anyway — it is for discrete jumps. Scrolling up to re-read
+    something mid-run yanked you straight back down on the next token.
+
+    Now: a scroll listener owns one boolean — is the viewport pinned to the bottom — and following
+    only happens while that is true. Leaving the bottom stops the follow; coming back resumes it.
+  */
+  const [pinned, setPinned] = useState(true);
+
   useEffect(() => {
-    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns]);
+    const el = threadRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      // 64px of slack: "close enough to the bottom" survives a half-rendered markdown block or a
+      // late-loading image nudging the height by a few pixels.
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setPinned(distance < 64);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [started]);
+
+  useEffect(() => {
+    if (!pinned) return;
+    const el = threadRef.current;
+    if (!el) return;
+    // Instant, not smooth. While tokens are arriving this runs constantly, and a queued smooth
+    // scroll per token is exactly what made the thread stutter.
+    el.scrollTop = el.scrollHeight;
+  }, [turns, pinned]);
+
+  function jumpToBottom() {
+    const el = threadRef.current;
+    if (!el) return;
+    // Smooth is right HERE — this one is a deliberate discrete jump, not continuous following.
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    setPinned(true);
+  }
 
   function handleModel(m: ChatModel) {
     setModel(m);
@@ -363,8 +405,9 @@ export default function ChatPage() {
           next[next.length - 1] = { ...last, role: "assistant", error: false, thinking: (last.thinking ?? "") + chunk };
           return next;
         }),
-      onStatus: (text: string) =>
-        setTurns((prev) => {
+      onStatus: (text: string) => {
+        useJobStore.getState().setStatus(text);
+        return setTurns((prev) => {
           if (controller.signal.aborted) return prev;
           const next = startFreshIfErrored(prev);
           // A rotation is a durable fact about the run, not a transient progress label: it must
@@ -377,7 +420,8 @@ export default function ChatPage() {
           const last = next[next.length - 1];
           next[next.length - 1] = { ...last, role: "assistant", error: false, status: text };
           return next;
-        }),
+        });
+      },
       onDelta: (delta: string) =>
         setTurns((prev) => {
           if (controller.signal.aborted) return prev;
@@ -438,13 +482,15 @@ export default function ChatPage() {
           next[next.length - 1] = { ...last, role: "assistant", error: false, plan };
           return next;
         }),
-      onToolCall: ({ name, args }: { name: string; args: Record<string, unknown> }) =>
+      onToolCall: ({ name, args }: { name: string; args: Record<string, unknown> }) => {
+        if (!controller.signal.aborted) useJobStore.getState().touch(pathsFromToolArgs(args));
         setTurns((prev) => {
           if (controller.signal.aborted) return prev;
           const next = startFreshIfErrored(prev);
           next.splice(next.length - 1, 0, { role: "assistant", tool: { name, args } });
           return next;
-        }),
+        });
+      },
       onToolResult: ({ name, result }: { name: string; result: string }) =>
         setTurns((prev) => {
           if (controller.signal.aborted) return prev;
@@ -534,12 +580,15 @@ export default function ChatPage() {
     }
     if (activeId) storeSetJobId(activeId, jobId);
     jobIdRef.current = jobId;
+    // Publish liveness to the shell, so the rail shows this job from every route (lib/job-store).
+    useJobStore.getState().start(jobId);
 
     if (controller.signal.aborted) return;
 
     await subscribeAgentJob(jobId, agentHandlers(controller));
 
     if (!controller.signal.aborted && activeId) storeSetJobId(activeId, null);
+    useJobStore.getState().stop();
     setStreaming(false);
     abortRef.current = null;
     jobIdRef.current = null;
@@ -740,6 +789,28 @@ export default function ChatPage() {
     />
   );
 
+  /*
+    Everything the execution pane needs, derived from the same turn list the conversation renders —
+    no second source of truth, so a reload mid-job rebuilds the pane exactly as it was. Tool calls
+    and plan snapshots are pulled OUT of the transcript rather than duplicated into it: the
+    conversation column stops rendering them entirely, which is the whole point of the split.
+  */
+  // When Codexa last touched this repository, from the newest observability event. The landing
+  // screen's one job is orientation, and "is what it knows current" is the question behind it.
+  const lastIndexed = (() => {
+    const newest = activityQuery.data?.[0]?.occurred_at;
+    if (!newest) return null;
+    return new Date(newest).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  })();
+
+  const toolCalls = turns.flatMap((t) => (t.tool ? [t.tool] : []));
+  // Plans arrive as whole snapshots, never patches, so the latest one is the current one.
+  const activePlan = [...turns].reverse().find((t) => t.plan)?.plan;
+  const lastAssistant = [...turns].reverse().find((t) => t.role === "assistant" && !t.tool);
+  const liveThinking = lastAssistant?.thinking;
+  const liveStatus = lastAssistant?.status;
+  const showExecution = toolCalls.length > 0 || !!activePlan;
+
   return (
     <div className="flex h-full">
       <ChatHistory
@@ -759,13 +830,31 @@ export default function ChatPage() {
             variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
             className="w-full max-w-2xl px-6 py-10"
           >
+            {/* Left-aligned, not centered: the composer below it is a left-aligned object, and a
+                centered heading over a left-aligned form is the mismatch that made this screen feel
+                unresolved. The old subtitle ("Ask the engineering brain anything about your
+                codebase") described the text box you are already looking at; it is replaced by the
+                one thing a landing screen owes you — which repository you are about to talk about,
+                and when Codexa last looked at it. */}
             <motion.div
-              variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
-              transition={{ duration: 0.45, ease: EASE_OUT }}
-              className="mb-8 text-center"
+              variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
+              transition={springPanel}
+              className="mb-7"
             >
-              <h1 className="display text-4xl font-semibold tracking-tight text-ink">{greeting()}</h1>
-              <p className="mt-3 text-sm text-muted">Ask the engineering brain anything about your codebase.</p>
+              <h1 className="display text-[34px] font-semibold leading-tight tracking-tight text-ink">
+                {greeting()}
+              </h1>
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted">
+                <span className="num text-ink-soft">{activeRepo}</span>
+                {lastIndexed ? (
+                  <>
+                    <span className="text-faint" aria-hidden>
+                      ·
+                    </span>
+                    <span>last indexed {lastIndexed}</span>
+                  </>
+                ) : null}
+              </p>
             </motion.div>
             <motion.div
               variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
@@ -782,47 +871,88 @@ export default function ChatPage() {
           </motion.div>
         </div>
       ) : (
-        <>
-          <div ref={threadRef} className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-2xl px-6 py-8">
-              {turns.map((turn, i) =>
-                turn.impact ? (
-                  <ImpactCard
-                    key={i}
-                    impact={turn.impact}
-                    pending={!!turn.pending}
-                    onProceed={() => proceedImpact(i)}
-                    onCancel={() => cancelImpact(i)}
-                  />
-                ) : turn.quorum ? (
-                  <QuorumCard key={i} quorum={turn.quorum} />
-                ) : turn.analyzing ? (
-                  <AnalyzingRow key={i} />
-                ) : turn.notice ? (
-                  <ModelSwitchNotice key={i} text={turn.notice} />
-                ) : turn.tool ? (
-                  <ToolTrace key={i} tool={turn.tool} />
-                ) : (
-                  <Fragment key={i}>
-                    {turn.plan ? <TaskPlanCard plan={turn.plan} /> : null}
+        <div className="flex min-h-0 flex-1">
+          {/* Conversation: prose only, at reading width. Everything the agent DID moves to the
+              execution pane rather than being interleaved here — see chat/ExecutionPane.tsx. */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {/* Bottom edge fades rather than guillotining, so text slides UNDER the composer and the
+                "Latest" pill instead of being hard-covered by them. The extra bottom padding (pb-14)
+                is what keeps the fade from ever eating the final line: when pinned to the bottom,
+                the faded band is empty padding, not the end of the answer. */}
+            <div
+              ref={threadRef}
+              className="min-h-0 flex-1 overflow-y-auto"
+              style={{
+                maskImage: "linear-gradient(to bottom, black calc(100% - 44px), transparent)",
+                WebkitMaskImage: "linear-gradient(to bottom, black calc(100% - 44px), transparent)",
+              }}
+            >
+              <div className="mx-auto max-w-2xl px-6 pb-14 pt-8">
+                {turns.map((turn, i) =>
+                  turn.impact ? (
+                    <ImpactCard
+                      key={i}
+                      impact={turn.impact}
+                      pending={!!turn.pending}
+                      onProceed={() => proceedImpact(i)}
+                      onCancel={() => cancelImpact(i)}
+                    />
+                  ) : turn.quorum ? (
+                    <QuorumCard key={i} quorum={turn.quorum} />
+                  ) : turn.analyzing ? (
+                    <AnalyzingRow key={i} />
+                  ) : turn.tool || turn.notice ? null : (
                     <Bubble
+                      key={i}
                       turn={turn}
                       streaming={streaming && i === turns.length - 1}
                       onRetry={() => retryFrom(i)}
                       onContinue={() => continueJob(i)}
                     />
-                  </Fragment>
-                ),
-              )}
+                  ),
+                )}
+              </div>
+            </div>
+            {/* Appears only while unpinned, which is the only time it means anything. Anchored to
+                the composer rather than floating in the middle of the thread, so it reads as "there
+                is more below" instead of as a notification. */}
+            <AnimatePresence>
+              {started && !pinned ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={springState}
+                  className="pointer-events-none relative z-10 mx-auto w-full max-w-2xl px-6"
+                >
+                  <button
+                    onClick={jumpToBottom}
+                    className="glass-panel pointer-events-auto absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-soft transition-transform duration-150 ease-out hover:scale-105 active:scale-95"
+                  >
+                    <ChevronDown size={13} />
+                    Latest
+                  </button>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+            <div className="mx-auto w-full max-w-2xl px-6 pb-6">
+              {composer}
+              <p className="mt-2 text-center text-[11px] text-faint">
+                Codexa reasons over the knowledge graph. Verify decisions before you ship them.
+              </p>
             </div>
           </div>
-          <div className="mx-auto w-full max-w-2xl px-6 pb-6">
-            {composer}
-            <p className="mt-2 text-center text-[11px] text-faint">
-              Codexa reasons over the knowledge graph. Verify decisions before you ship them.
-            </p>
-          </div>
-        </>
+
+          {showExecution ? (
+            <ExecutionPane
+              plan={activePlan}
+              calls={toolCalls}
+              thinking={liveThinking}
+              live={streaming}
+              status={liveStatus}
+            />
+          ) : null}
+        </div>
       )}
 
       <input
@@ -908,21 +1038,35 @@ function ChatHistory({
   );
 }
 
+/* The event kind, shortened to the part that carries meaning. The raw values are namespaced
+   ("HealthMetric", "Repository", "ArchitectureSnapshot") and reading them in full down a column
+   buries the summary that actually says what happened. */
+function eventKind(t: string): string {
+  return t.replace(/([a-z])([A-Z])/g, "$1 $2").split(/[.\s]/)[0].toLowerCase();
+}
+
 function RecentActivity({ events }: { events: { id: string; summary: string; occurred_at: string; event_type: string }[] }) {
   if (events.length === 0) return null;
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.3, duration: 0.5 }}
-      className="mt-12"
+      variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
+      transition={springPanel}
+      className="mt-10"
     >
-      <p className="status-line mb-3">Recent activity</p>
-      <ul className="divide-y divide-line">
+      <p className="status-line mb-2">Recent activity</p>
+      {/* No dividers. Seven hairlines down a short list is more structure than seven rows need —
+          the mono kind-tag column already aligns them, and the rules were doing nothing except
+          adding weight to the quietest thing on the screen. */}
+      <ul>
         {events.map((e) => (
-          <li key={e.id} className="flex items-center gap-4 py-2.5">
-            <span className="min-w-0 flex-1 truncate text-sm text-ink-soft">{e.summary}</span>
-            <span className="num shrink-0 text-[11px] text-faint">
+          // The kind column only exists from sm up. On a narrow pane a fixed 76px tag plus a
+          // wrapping timestamp left the summary — the part that says what happened — zero width.
+          <li key={e.id} className="grid grid-cols-[1fr_auto] items-baseline gap-3 py-[5px] sm:grid-cols-[76px_1fr_auto]">
+            <span className="num hidden truncate text-[10.5px] uppercase tracking-[0.1em] text-faint sm:block">
+              {eventKind(e.event_type)}
+            </span>
+            <span className="min-w-0 truncate text-[13px] text-ink-soft">{e.summary}</span>
+            <span className="num shrink-0 whitespace-nowrap text-[11px] tabular-nums text-faint">
               {new Date(e.occurred_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
           </li>
@@ -1073,46 +1217,6 @@ function ThinkingPanel({ text, live }: { text: string; live: boolean }) {
         >
           {text}
         </div>
-      )}
-    </div>
-  );
-}
-
-/** A model/key rotation, marked inline in the transcript. Deliberately quiet — this is diagnostic
- *  provenance ("which of the eight buckets produced the next stretch of work"), not an alert, so it
- *  reads as a hairline divider rather than competing with the actual output around it. */
-function ModelSwitchNotice({ text }: { text: string }) {
-  return (
-    <div className="mb-3 ml-9 flex items-center gap-2" role="status">
-      <span className="h-px flex-1 bg-line" />
-      <span className="num flex items-center gap-1.5 whitespace-nowrap text-[10px] uppercase tracking-[0.12em] text-faint">
-        <ArrowLeftRight size={10} />
-        {text}
-      </span>
-      <span className="h-px flex-1 bg-line" />
-    </div>
-  );
-}
-
-function ToolTrace({ tool }: { tool: { name: string; args: Record<string, unknown>; result?: string } }) {
-  const [open, setOpen] = useState(false);
-  const arg = tool.args.path ?? tool.args.query ?? tool.args.code ?? "";
-  return (
-    <div className="mb-3 ml-9">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-lg border border-line bg-panel-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-paper-sunk"
-      >
-        <Wrench size={12} className="text-signal" />
-        <span className="font-medium text-ink-soft">{tool.name}</span>
-        {arg ? <span className="num max-w-[220px] truncate text-faint">{String(arg)}</span> : null}
-        {!tool.result && <DotsLoader size={5} />}
-        <ChevronDown size={12} className={`text-faint transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && tool.result && (
-        <pre className="num mt-1 max-h-56 max-w-2xl overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-panel-2 p-2.5 text-[11px] text-ink-soft">
-          {tool.result}
-        </pre>
       )}
     </div>
   );
@@ -1306,23 +1410,34 @@ function Composer(props: {
             <GitBranch size={15} />
             <span className="num max-w-[120px] truncate">{props.activeRepo}</span>
           </button>
-          <button
-            onClick={props.onToggleQuorum}
-            aria-pressed={props.quorumMode}
-            title="Quorum: answer with a panel of agents that cross-check each other against the real codebase before responding"
-            className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
-              props.quorumMode
-                ? "bg-signal/15 text-signal"
-                : "text-muted hover:bg-paper-sunk hover:text-ink"
-            }`}
-          >
-            <Users size={15} />
-            Quorum
-          </button>
+          {/* Progressive disclosure: Quorum is a deliberate choice about HOW to answer, which is
+              only a meaningful choice once there is something to answer. Shown from the first
+              keystroke; hidden on an empty composer, where it was one of six equal-weight controls
+              ringing an empty text box. Stays visible while it is switched on, so it can be
+              switched back off. */}
+          {props.input.trim().length > 0 || props.quorumMode ? (
+            <button
+              onClick={props.onToggleQuorum}
+              aria-pressed={props.quorumMode}
+              title="Quorum: answer with a panel of agents that cross-check each other against the real codebase before responding"
+              className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
+                props.quorumMode
+                  ? "bg-signal/15 text-signal"
+                  : "text-muted hover:bg-paper-sunk hover:text-ink"
+              }`}
+            >
+              <Users size={15} />
+              Quorum
+            </button>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2">
-          <ContextGauge used={props.usedTokens} total={props.contextWindow} pct={props.usedPct} />
+          {/* A context meter reading zero communicates nothing except visual noise. It appears
+              once there is context to measure. */}
+          {props.usedTokens > 0 ? (
+            <ContextGauge used={props.usedTokens} total={props.contextWindow} pct={props.usedPct} />
+          ) : null}
 
           <div className="relative">
             <button

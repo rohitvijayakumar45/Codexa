@@ -84,6 +84,21 @@ export class ApiError extends Error {
   }
 }
 
+/** The backend's own explanation of a failed request (FastAPI puts it in `detail`), falling back to
+    the status line. Showing only "Backend responded 400" hid every actionable error — a private
+    repository, a bad URL — behind the same useless sentence. */
+async function failureMessage(res: Response, path: string): Promise<string> {
+  try {
+    const body = (await res.clone().json()) as { detail?: unknown };
+    const d = body?.detail;
+    if (typeof d === "string" && d.trim()) return d;
+    if (Array.isArray(d) && d.length && typeof (d[0] as { msg?: unknown })?.msg === "string") return (d[0] as { msg: string }).msg;
+  } catch {
+    // not JSON — fall through to the status line
+  }
+  return `Backend responded ${res.status} for ${path}.`;
+}
+
 async function get<T>(path: string): Promise<T> {
   let res: Response;
   try {
@@ -96,7 +111,7 @@ async function get<T>(path: string): Promise<T> {
     );
   }
   if (!res.ok) {
-    throw new ApiError(`Backend responded ${res.status} for ${path}.`, res.status);
+    throw new ApiError(await failureMessage(res, path), res.status);
   }
   return (await res.json()) as T;
 }
@@ -143,6 +158,15 @@ export interface PlanSnapshot {
   tasks: PlanTask[];
   completed: number;
   total: number;
+  /**
+   * Where these tasks came from. "proposed" means the model decomposed this specific request;
+   * "template" means the deterministic fallback ran. Surfaced because the fallback is silent by
+   * design — it never fails a job — and so a generic plan and a request-specific one looked
+   * identical from here while most plans were quietly the template.
+   */
+  source?: "proposed" | "template" | "";
+  /** Why the fallback ran, when it did. Shown as the badge's tooltip. */
+  source_detail?: string;
 }
 
 // --- Impact / blast radius --------------------------------------------------
@@ -391,7 +415,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   } catch (cause) {
     throw new ApiError(`Can't reach the Codexa backend at ${API_BASE}.`, null, cause);
   }
-  if (!res.ok) throw new ApiError(`Backend responded ${res.status} for ${path}.`, res.status);
+  if (!res.ok) throw new ApiError(await failureMessage(res, path), res.status);
   return (await res.json()) as T;
 }
 
@@ -402,7 +426,7 @@ async function del<T>(path: string): Promise<T> {
   } catch (cause) {
     throw new ApiError(`Can't reach the Codexa backend at ${API_BASE}.`, null, cause);
   }
-  if (!res.ok) throw new ApiError(`Backend responded ${res.status} for ${path}.`, res.status);
+  if (!res.ok) throw new ApiError(await failureMessage(res, path), res.status);
   return (await res.json()) as T;
 }
 
