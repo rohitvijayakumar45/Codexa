@@ -3,18 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, BrainCircuit, Copy, Check, RotateCcw, Users } from "lucide-react";
+import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, BrainCircuit, Copy, Check, RotateCcw, Users, Layers } from "lucide-react";
 import {
   api,
   cancelAgentJob,
   continueAgentJob,
+  phasedBuildStatus,
   startAgentJob,
+  startPhasedBuild,
   streamChat,
   subscribeAgentJob,
   type ChatMessage,
   type ChatModel,
   type ImpactResult,
   type PlanSnapshot,
+  type PredictedBudget,
   type QuorumRunResult,
   type StreamHandlers,
 } from "@/lib/api";
@@ -157,15 +160,23 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [streaming, setStreaming] = useState(false);
-  const [model, setModel] = useState<ChatModel | null>(null);
   const [quorumMode, setQuorumMode] = useState(false);
   const [liveImpact, setLiveImpact] = useState<ImpactResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const turnsRef = useRef<Turn[]>(turns);
-  turnsRef.current = turns;
-  const skipSaveRef = useRef(false);
+  useEffect(() => {
+    turnsRef.current = turns;
+  }, [turns]);
+  const [phasedMode, setPhasedMode] = useState(false);
+  // Load a conversation's turns when it becomes active — adjusted during render (React's pattern
+  // for state that follows a changing key), not synced from an effect.
+  const [hydratedId, setHydratedId] = useState<string | null>(null);
+  if (activeId !== hydratedId) {
+    setHydratedId(activeId);
+    setTurns(((activeId && conversations[activeId]?.turns) as Turn[] | undefined) ?? []);
+  }
 
   useEffect(() => {
     ensureActive();
@@ -177,10 +188,8 @@ export default function ChatPage() {
   // longer looks like a change request or drops below a length worth bothering the backend for.
   useEffect(() => {
     const text = input.trim();
-    if (!text || text.length < 12 || !CHANGE_INTENT.test(text)) {
-      setLiveImpact(null);
-      return;
-    }
+    // Not a change request: nothing to fetch. The composer hides any earlier preview itself.
+    if (!text || text.length < 12 || !CHANGE_INTENT.test(text)) return;
     let cancelled = false;
     const handle = setTimeout(async () => {
       try {
@@ -198,38 +207,11 @@ export default function ChatPage() {
     };
   }, [input, activeRepo]);
 
-  // Load a conversation's turns when it becomes active.
-  useEffect(() => {
-    if (!activeId) return;
-    const conv = useChatStore.getState().conversations[activeId];
-    skipSaveRef.current = true;
-    setTurns((conv?.turns as Turn[]) ?? []);
-  }, [activeId]);
-
-  // Reattach to an agent job that was left running when this conversation was last visited — the
-  // job keeps working on the backend regardless of tab switches, navigation, or even a backend
-  // restart (checkpointed to disk), so reopening the conversation should catch up on it rather than
-  // silently showing a stale, incomplete response.
-  useEffect(() => {
-    if (!activeId || streaming) return;
-    const jobId = useChatStore.getState().conversations[activeId]?.pendingJobId;
-    if (!jobId) return;
-    // Own controller per effect run (not the shared abortRef) so React StrictMode's dev-mode
-    // double-invoke of this effect can't open two concurrent subscriptions to the same job: the
-    // first run's cleanup aborts its controller before the second run starts its own.
-    const controller = new AbortController();
-    attachToJob(jobId, controller);
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId]);
-
   // Persist turns when idle (not mid-stream), skipping the write right after hydration.
   useEffect(() => {
     if (streaming || !activeId) return;
-    if (skipSaveRef.current) {
-      skipSaveRef.current = false;
-      return;
-    }
+    // Just hydrated from the store: nothing new to write.
+    if ((turns as unknown) === useChatStore.getState().conversations[activeId]?.turns) return;
     storeSetTurns(activeId, turns as StoredTurn[]);
   }, [turns, streaming, activeId, storeSetTurns]);
 
@@ -257,16 +239,16 @@ export default function ChatPage() {
     [],
   );
 
-  // Resolve the selected model per conversation, else the default.
-  useEffect(() => {
+  // The selected model per conversation, else the default — derived, not synced into state.
+  const model = useMemo<ChatModel | null>(() => {
     const models = modelsQuery.data;
-    if (!models?.length) return;
+    if (!models?.length) return null;
     const conv = activeId ? conversations[activeId] : null;
-    const resolved =
+    return (
       (conv?.modelId && models.find((m) => m.id === conv.modelId)) ||
       models.find((m) => m.default) ||
-      models[0];
-    setModel(resolved);
+      models[0]
+    );
   }, [activeId, conversations, modelsQuery.data]);
 
   const started = turns.length > 0;
@@ -322,7 +304,6 @@ export default function ChatPage() {
   }
 
   function handleModel(m: ChatModel) {
-    setModel(m);
     if (activeId) storeSetModel(activeId, m.id);
   }
 
@@ -472,6 +453,20 @@ export default function ChatPage() {
         const next = modelsQuery.data?.find((m) => m.id === modelId);
         if (next) handleModel(next);
       },
+      // What tasks of this kind have cost before — shown only once there's enough history to mean
+      // something (the predictor reports "low" confidence until then).
+      onPredictedBudget: (b: PredictedBudget) => {
+        if (controller.signal.aborted || b.confidence === "low") return;
+        const note =
+          `Tasks like this have used about ${b.predicted_tokens.toLocaleString()} tokens ` +
+          `(average of ${b.based_on_samples} past runs, plus a safety margin).`;
+        setTurns((prev) => {
+          if (prev.some((t) => t.notice === note)) return prev;
+          const next = [...prev];
+          next.splice(next.length - 1, 0, { role: "assistant", notice: note });
+          return next;
+        });
+      },
       // Execution-plan snapshot. Stored on the turn exactly like `status` — each event is complete
       // in itself and simply replaces the last, so there is nothing to merge.
       onPlan: (plan: PlanSnapshot) =>
@@ -512,26 +507,72 @@ export default function ChatPage() {
   // Trims any partial turns left over from a previous, now-stale local view of that same response
   // before rebuilding it purely from the job's replayed event log, so nothing gets duplicated.
   async function attachToJob(jobId: string, controller: AbortController) {
-    setTurns((prev) => {
-      let lastUserIdx = -1;
-      prev.forEach((t, i) => {
-        if (t.role === "user") lastUserIdx = i;
+    const resetTurn = (status?: string) =>
+      setTurns((prev) => {
+        let lastUserIdx = -1;
+        prev.forEach((t, i) => {
+          if (t.role === "user") lastUserIdx = i;
+        });
+        return [...prev.slice(0, lastUserIdx + 1), { role: "assistant", content: "", status }];
       });
-      return [...prev.slice(0, lastUserIdx + 1), { role: "assistant", content: "" }];
-    });
+    resetTurn();
     setStreaming(true);
     abortRef.current = controller;
     jobIdRef.current = jobId;
+    // A reattached job is still the running job (after a reload, or returning to the conversation).
+    if (useJobStore.getState().jobId !== jobId) useJobStore.getState().start(jobId);
 
-    await subscribeAgentJob(jobId, agentHandlers(controller));
-
-    if (!controller.signal.aborted && activeId) storeSetJobId(activeId, null);
-    if (!controller.signal.aborted) {
+    // A dropped connection doesn't stop the job. Reconnect a few times, each replaying the job's
+    // full event log into a fresh turn, before telling the user anything went wrong.
+    let end = await subscribeAgentJob(jobId, agentHandlers(controller));
+    for (let attempt = 1; end === "network" && attempt <= 5 && !controller.signal.aborted; attempt++) {
+      resetTurn(`Connection lost — reconnecting (attempt ${attempt} of 5)…`);
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
+      if (controller.signal.aborted) break;
+      resetTurn();
+      end = await subscribeAgentJob(jobId, agentHandlers(controller));
+    }
+    if (controller.signal.aborted) return;
+    if (end === "network") {
+      // Leave pendingJobId set, so reopening the conversation reattaches once the backend is back.
+      setTurns((prev) => {
+        const next = [...prev];
+        next[next.length - 1] = {
+          role: "assistant",
+          error: true,
+          jobId,
+          content: "Lost the connection to the backend. The job keeps running there — reopen this conversation to catch up.",
+        };
+        return next;
+      });
       setStreaming(false);
       abortRef.current = null;
       jobIdRef.current = null;
+      return;
     }
+    if (activeId) storeSetJobId(activeId, null);
+    useJobStore.getState().stop();
+    setStreaming(false);
+    abortRef.current = null;
+    jobIdRef.current = null;
   }
+
+  // Reattach to an agent job that was left running when this conversation was last visited — the
+  // job keeps working on the backend regardless of tab switches, navigation, or even a backend
+  // restart (checkpointed to disk), so reopening the conversation should catch up on it rather than
+  // silently showing a stale, incomplete response.
+  useEffect(() => {
+    if (!activeId || streaming) return;
+    const jobId = useChatStore.getState().conversations[activeId]?.pendingJobId;
+    if (!jobId) return;
+    // Own controller per effect run (not the shared abortRef) so React StrictMode's dev-mode
+    // double-invoke of this effect can't open two concurrent subscriptions to the same job: the
+    // first run's cleanup aborts its controller before the second run starts its own.
+    const controller = new AbortController();
+    attachToJob(jobId, controller);
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
 
   async function runCompletion(history: ChatMessage[], systemNote?: string) {
     setTurns((prev) => [...prev, { role: "assistant", content: "" }]);
@@ -585,10 +626,16 @@ export default function ChatPage() {
 
     if (controller.signal.aborted) return;
 
-    await subscribeAgentJob(jobId, agentHandlers(controller));
+    const end = await subscribeAgentJob(jobId, agentHandlers(controller));
+    if (end === "network" && !controller.signal.aborted) {
+      await attachToJob(jobId, controller); // reconnect and replay; it also handles the ending
+      return;
+    }
 
     if (!controller.signal.aborted && activeId) storeSetJobId(activeId, null);
-    useJobStore.getState().stop();
+    // Only a job that actually finished clears the shared job state. Leaving the page aborts this
+    // subscription, and clearing it then is what kept Strata's agent halo from ever appearing.
+    if (!controller.signal.aborted) useJobStore.getState().stop();
     setStreaming(false);
     abortRef.current = null;
     jobIdRef.current = null;
@@ -612,6 +659,29 @@ export default function ChatPage() {
     setTurns((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
     setAttachments([]);
+
+    if (phasedMode) {
+      // A large spec, split into up to 8 phases that each run as their own fresh job.
+      setTurns((prev) => [...prev, { role: "assistant", analyzing: true }]);
+      try {
+        const build = await startPhasedBuild(outgoing, activeRepo, model?.id ?? null);
+        setTurns((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = { role: "assistant", phasedBuildId: build.phased_build_id };
+          return next;
+        });
+      } catch (err) {
+        setTurns((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = {
+            role: "assistant", error: true,
+            content: `Couldn't start the phased build: ${err instanceof Error ? err.message : String(err)}`,
+          };
+          return next;
+        });
+      }
+      return;
+    }
 
     if (quorumMode) {
       setTurns((prev) => [...prev, { role: "assistant", analyzing: true }]);
@@ -784,8 +854,16 @@ export default function ChatPage() {
       contextWindow={contextWindow}
       usedPct={usedPct}
       quorumMode={quorumMode}
-      onToggleQuorum={() => setQuorumMode((v) => !v)}
-      liveImpact={liveImpact}
+      onToggleQuorum={() => {
+        setQuorumMode((v) => !v);
+        setPhasedMode(false);
+      }}
+      phasedMode={phasedMode}
+      onTogglePhased={() => {
+        setPhasedMode((v) => !v);
+        setQuorumMode(false);
+      }}
+      liveImpact={input.trim().length >= 12 && CHANGE_INTENT.test(input.trim()) ? liveImpact : null}
     />
   );
 
@@ -897,6 +975,8 @@ export default function ChatPage() {
                       onProceed={() => proceedImpact(i)}
                       onCancel={() => cancelImpact(i)}
                     />
+                  ) : turn.phasedBuildId ? (
+                    <PhasedCard key={i} buildId={turn.phasedBuildId} />
                   ) : turn.quorum ? (
                     <QuorumCard key={i} quorum={turn.quorum} />
                   ) : turn.analyzing ? (
@@ -1187,23 +1267,21 @@ function CopyButton({ text }: { text: string }) {
 }
 
 function ThinkingPanel({ text, live }: { text: string; live: boolean }) {
-  const [open, setOpen] = useState(live);
+  // Open while thinking, collapsed once the answer streams — unless the reader toggled it during
+  // the current phase. The override remembers which phase it was made in, so the "thought, now
+  // answering" collapse still happens without an effect resetting state.
+  const [override, setOverride] = useState<{ live: boolean; open: boolean } | null>(null);
+  const open = override && override.live === live ? override.open : live;
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (live && open) bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
   }, [text, live, open]);
 
-  // Once the answer starts streaming, collapse automatically — matches the "thought, now
-  // answering" transition rather than leaving a wall of reasoning text pinned open.
-  useEffect(() => {
-    if (!live) setOpen(false);
-  }, [live]);
-
   return (
     <div className="mb-3">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOverride({ live, open: !open })}
         className="flex items-center gap-1.5 text-xs font-medium text-faint transition-colors hover:text-muted"
       >
         <BrainCircuit size={12} className={live ? "animate-pulse text-signal" : ""} />
@@ -1218,6 +1296,61 @@ function ThinkingPanel({ text, live }: { text: string; live: boolean }) {
           {text}
         </div>
       )}
+    </div>
+  );
+}
+
+const PHASE_TONE: Record<string, string> = {
+  done: "text-signal",
+  running: "text-ink",
+  error: "text-[var(--color-danger)]",
+  pending: "text-faint",
+  planning: "text-faint",
+};
+
+function PhasedCard({ buildId }: { buildId: string }) {
+  const q = useQuery({
+    queryKey: ["phased-build", buildId],
+    queryFn: () => phasedBuildStatus(buildId),
+    // Poll while it's working; stop once the build has ended.
+    refetchInterval: (query) => {
+      const s = query.state.data?.status;
+      return s === "done" || s === "error" ? false : 5000;
+    },
+  });
+  const build = q.data;
+  return (
+    <div className="mb-6 ml-9 max-w-2xl rounded-2xl border border-line bg-panel p-4">
+      <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted">
+        <Layers size={13} className="text-signal" />
+        <span>Phased build</span>
+        {build ? (
+          <span className="rounded-full border border-line px-2 py-0.5 text-[10px] text-faint">
+            {build.phases.length} phases · {build.status}
+          </span>
+        ) : null}
+      </div>
+      {q.isError ? (
+        <p className="text-sm text-ink-soft">Couldn&apos;t load this build&apos;s status.</p>
+      ) : !build ? (
+        <p className="text-sm text-muted">Planning the phases…</p>
+      ) : (
+        <ol className="space-y-2">
+          {build.phases.map((p, i) => (
+            <li key={i} className="flex items-baseline gap-3 text-sm">
+              <span className="num w-5 shrink-0 text-right text-[11px] text-faint">{i + 1}</span>
+              <span className="min-w-0 flex-1 text-ink-soft">
+                {p.title}
+                {p.detail ? <span className="block text-[11px] text-faint">{p.detail}</span> : null}
+              </span>
+              <span className={`num shrink-0 text-[11px] ${PHASE_TONE[p.status] ?? "text-faint"}`}>{p.status}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="mt-3 border-t border-line pt-2 text-[11px] text-faint">
+        Each phase runs as its own job with a fresh history — follow it live in the Agent network.
+      </p>
     </div>
   );
 }
@@ -1238,7 +1371,7 @@ function QuorumCard({ quorum }: { quorum: QuorumRunResult }) {
         <MarkdownView markdown={quorum.winning_answer ?? ""} />
       ) : (
         <div className="rounded-lg border border-line-strong bg-panel-2 p-3 text-sm text-ink-soft">
-          Panel couldn't reach a graph-grounded consensus — surfacing every surviving answer instead
+          Panel couldn&apos;t reach a graph-grounded consensus — surfacing every surviving answer instead
           of guessing at one:
           <ul className="mt-2 space-y-2">
             {quorum.cards.map((c) => (
@@ -1318,6 +1451,8 @@ function Composer(props: {
   usedPct: number;
   quorumMode: boolean;
   onToggleQuorum: () => void;
+  phasedMode: boolean;
+  onTogglePhased: () => void;
   liveImpact: ImpactResult | null;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -1410,13 +1545,9 @@ function Composer(props: {
             <GitBranch size={15} />
             <span className="num max-w-[120px] truncate">{props.activeRepo}</span>
           </button>
-          {/* Progressive disclosure: Quorum is a deliberate choice about HOW to answer, which is
-              only a meaningful choice once there is something to answer. Shown from the first
-              keystroke; hidden on an empty composer, where it was one of six equal-weight controls
-              ringing an empty text box. Stays visible while it is switched on, so it can be
-              switched back off. */}
-          {props.input.trim().length > 0 || props.quorumMode ? (
-            <button
+          {/* Always visible: hiding Quorum until the first keystroke made the mode undiscoverable
+              (it read as removed). */}
+          <button
               onClick={props.onToggleQuorum}
               aria-pressed={props.quorumMode}
               title="Quorum: answer with a panel of agents that cross-check each other against the real codebase before responding"
@@ -1429,7 +1560,17 @@ function Composer(props: {
               <Users size={15} />
               Quorum
             </button>
-          ) : null}
+          <button
+            onClick={props.onTogglePhased}
+            aria-pressed={props.phasedMode}
+            title="Phased build: split a large spec into up to 8 phases, each run as its own fresh job"
+            className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
+              props.phasedMode ? "bg-signal/15 text-signal" : "text-muted hover:bg-paper-sunk hover:text-ink"
+            }`}
+          >
+            <Layers size={15} />
+            Phased
+          </button>
         </div>
 
         <div className="flex items-center gap-2">

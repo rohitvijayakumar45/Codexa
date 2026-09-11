@@ -56,5 +56,32 @@ Root causes found live:
 - Fix: `_TABLE_RE` in backend/repository/intent.py (key must be followed by `:` + a handler; runs before the framework-hint gate). BarbellHub now 38 routes; Exam-Proctoring 24 / Auralis 25 unchanged. Test: test_plain_http_route_tables. Full suite 982 passed.
 - Not extractable (honest gap): fullstack-bench dispatches by URL segments (`seg[1] === 'health' && method === 'GET'`) — no path literals to read.
 
+## Round 6 (2026-09-11): Strata line colour, Noir time machine, Codebase editing
+- Structural edges teal: --color-g-edge Noir #3a8fa0 (worst CVD dE 8.5, normal 19.3 vs gold/lilac/claret), Blueprint #2e8a80 (clear of blue signal, normal dE 17). Validator "reads gray" is intended for the quiet structural layer.
+- `.themed-range` slider (signal-colour fill + ringed thumb) used by time machine + Strata TimeBar; active ledger chip signal-tinted; score bars muted; cursor lines signal.
+- Codebase editing: FileContent.sha; POST /files/save (409 on stale sha, force overwrite, 403 codexa-os, refuses binary/oversized/folders/path escape, keeps CRLF) + background reindex via on_saved in main.py. tests/test_files_save.py (11). Frontend: components/ide/CodeEditor.tsx (transparent textarea over Shiki, gutter, Tab/Shift-Tab/auto-indent via execCommand for undo, Ctrl/Cmd+S, Esc), ide page Edit/Save/Discard, drafts per repo:path, conflict banner, beforeunload guard. Full suite 993 passed.
+
+## Round 7 (2026-09-11): memory-first claim tested live (httpx, GLM 5.3 free, with vs without memory context)
+- Harness: scratchpad memory_ab.py (replicates the chat UI's system message; control = no injected context, same tools). Results ab_results.json / ab_rerun.json.
+- Found + fixed: (1) plan_builder — questions (ANALYZE/EXPLAIN) were planned as exploration (LLM proposal gave 6 tasks incl. run_python + write analysis.txt; template ANALYZE required list_directory+search_code+read_file). Now one task, no required tools, no proposal call. (2) verification — qualified names (Client.send, path.py:Name) rejected true claims; _bare_symbol. (3) semantic — annotation order: library > tests, public > private, callers (+3 for class). (4) analyze — methods keyed file#Class.method (Symbol.qualname, symbol_key), calls resolve within caller's class, ambiguous left unresolved; api/intent/context/tools/semantic use qualname. (5) clone — 5s/10s backoff, silent failure = transient, last attempt HTTP/1.1.
+- After fixes, 4 questions: with memory 12 rounds / 15 tools / 28k tokens / 560s vs without 17 / 23 / 48k / 697s. Brief artifact updated with the table.
+- Tests: tests/test_question_plans.py, tests/test_memory_first_fixes.py. Full suite 1013 passed.
+
+## Round 8 (2026-09-11): brief verified claim by claim; gaps fixed
+- Six read-only subagents verified ~130 claims in "Inside Codexa" (artifact 5a9821a6…) with file:line / command proofs; brief rewritten to match, with an Evidence ledger section.
+- Fixed: (1) security — run_command/run_python/start_dev_server refuse commands naming credential files (_command_touches_secret), child processes get _scrubbed_env() (no *KEY/TOKEN/SECRET/PASSWORD/CREDENTIAL/BEARER, no AWS_*), search_code skips secret files; browser tool outputs go through the trust boundary (_screen_untrusted). (2) Strata halo — components/shell/JobWatcher.tsx in WorkspaceShell follows the running job; chat page stops job state only when the job truly ends, start()s on reattach. Verified live on Auralis ("Agent 8" mid-job, cleared after). (3) ImpactCard High/Critical tints via color-mix of theme tokens (verified in Noir). (4) reindex_repository(llm=...) refreshes meanings in the background after agent turns and editor saves; semantic drops hash-mismatched meanings; non-Gemini models first.
+- Tests: tests/test_security_guards.py (10). Full suite 1028 passed.
+- Not changed (config): .env CODEXA_ROUND_BUDGET=0 / CODEXA_ROUND_SECONDS=0 disable job round cap and 9-min backstop.
+
+## Round 9 (2026-09-11): remaining follow-ups (everything except "thin features")
+- .env: CODEXA_ROUND_BUDGET=0 / CODEXA_ROUND_SECONDS=0 commented out → job round cap and 9-min backstop active again.
+- llm.py: MiniMax M3 removed (no longer free); DeepSeek V4 Pro + Mistral Nemotron out of automatic rotation; _MODEL_KEY_LIMIT keeps gemini-2.5-flash on key 1; worker-ring comment corrected to 20 req/day/model/key. verification.py claim extraction non-Gemini first.
+- Caps: analyze 1500 files / 4000 symbols / 8000 edges; graph 800 files / 3000 symbols (httpx 324 → 1,193 symbols; Strata renders 1,296 nodes fine). Rehydrate moved to a background thread (startup 130s → 14s).
+- Reliability: job event log persisted (<id>.events.jsonl, flushed at checkpoints + final event — per-event writes made the suite 14x slower); resume replays it; stream loads it for finished jobs; receipts verify_chain on resume. Frontend: subscribeAgentJob returns ended/network/aborted; chat attachToJob reconnects 5x with backoff; JobWatcher reconnects too.
+- Surfaced: Phased mode in chat (startPhasedBuild + PhasedCard polling); predicted_budget shown as a notice when confidence ≥ medium.
+- Cleanup: 7 chat-page lint errors fixed (derived model, render-time hydration, ThinkingPanel override, effect ordering, apostrophe) + api.ts warning; TaskPlanCard deleted; 230 fixture rows removed from usage.jsonl (backup kept).
+- Tests: tests/test_followups.py. Full suite 1035 passed in 46s. Brief republished.
+- Still for the user: Bedrock token renewal, Cerebras account, Pulse-Benchmark URL.
+
 ## Log
 - 2026-09-11: Strata built — lib/strata/{geometry,model,layout}.ts, components/strata/{Glyph,Inspector,TimeBar,Matrix,StrataView}.tsx, app/(workspace)/strata/page.tsx, rail entry (Layers icon, above Knowledge graph), --color-g-* tokens + scoped .strata CSS in globals.css, job-store `touched` + chat onToolCall feeds it (agent halo). tsc + eslint clean. Browser: Blueprint + Noir render, Strata 28 nodes/24 edges, Focus opens on GraphService, Matrix 73 cells. Frontend dev server is an external node on :3000 (not a preview server) — use tab "seed".

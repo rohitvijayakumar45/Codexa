@@ -19,6 +19,7 @@ from backend.memory.store import MemoryStore
 from backend.repository.analyze import Symbol
 
 _MAX_ANNOTATE_PER_RUN = 80
+_CLASS_WEIGHT = 3  # see _priority
 _SOURCE = "symbol_annotations"
 _TITLE = "Symbol semantic annotations"
 
@@ -58,10 +59,38 @@ def _annotate_one(llm: LLMClient, models: list[str], prompt: str) -> str | None:
     return None
 
 
+def _priority(symbols: list[Symbol], calls: list[tuple[str, str]] | None) -> list[Symbol]:
+    """Order symbols so the per-run cap is spent on the ones questions are actually about.
+
+    In file order, the first 80 of httpx's 324 symbols were mostly private helpers and dunder
+    methods; `Client` and `Client.send` — the subject of the first question anyone asks — had no
+    meaning at all, so the agent read the file to find out. Ranking classes strictly first was the
+    next mistake: httpx has 87 of them, which used the whole second pass and still left `send`
+    without a meaning, and nine slots went to test fixtures.
+
+    So: library code before tests, public before private, then by how many call sites point at the
+    symbol, with a class counted as if three things called it.
+    """
+    callers: dict[str, int] = {}
+    for _src, dst in calls or []:
+        name = dst.rsplit("#", 1)[-1].rsplit(".", 1)[-1]
+        callers[name] = callers.get(name, 0) + 1
+
+    def score(sym: Symbol) -> tuple[int, int, int]:
+        in_tests = sym.file.startswith(("tests/", "test/")) or "/tests/" in sym.file or sym.file.rsplit("/", 1)[-1].startswith("test_")
+        public = not sym.name.startswith("_")
+        weight = callers.get(sym.name, 0) + (_CLASS_WEIGHT if sym.kind == "class" else 0)
+        return (0 if in_tests else 1, 1 if public else 0, weight)
+
+    return sorted(symbols, key=score, reverse=True)
+
+
 def annotate_repository_symbols(
     repository: str, dest: Path, symbols: list[Symbol], *, store: MemoryStore, llm: LLMClient,
+    calls: list[tuple[str, str]] | None = None,
 ) -> dict[str, int]:
-    """Annotate up to _MAX_ANNOTATE_PER_RUN symbols whose content hash changed (or is new).
+    """Annotate up to _MAX_ANNOTATE_PER_RUN symbols whose content hash changed (or is new), most
+    important first (see _priority).
 
     Returns {"annotated": n, "reused": n, "skipped": n} for observability.
     """
@@ -69,9 +98,12 @@ def annotate_repository_symbols(
     stats = {"annotated": 0, "reused": 0, "skipped": 0}
     file_cache: dict[str, list[str]] = {}
     models = llm.models_for_task("summary") or [llm.default_model]
+    # Non-Gemini first. This runs in the background after every edit; Gemini's free tier allows 20
+    # requests per model per key per day, and the task planner and delegated workers need them.
+    models = sorted(models, key=lambda m: m.startswith("gemini/"))
 
-    for sym in symbols:
-        stable_id = f"symbol://{repository}/{sym.file}#{sym.name}"
+    for sym in _priority(symbols, calls):
+        stable_id = f"symbol://{repository}/{sym.file}#{sym.qualname or sym.name}"
         prior = blob.get(stable_id)
         if prior and prior.get("hash") == sym.content_hash:
             stats["reused"] += 1
@@ -94,7 +126,7 @@ def annotate_repository_symbols(
             continue
 
         prompt = (
-            f"Describe what this {sym.kind} named `{sym.name}` does in ONE short sentence — its "
+            f"Describe what this {sym.kind} named `{sym.qualname or sym.name}` does in ONE short sentence — its "
             "purpose and any notable side effects. Be concrete and specific, no filler, no preamble.\n\n"
             f"```\n{snippet}\n```"
         )
@@ -103,12 +135,15 @@ def annotate_repository_symbols(
             stats["skipped"] += 1
             continue
 
-        blob[stable_id] = {"hash": sym.content_hash, "summary": summary, "file": sym.file, "name": sym.name}
+        blob[stable_id] = {"hash": sym.content_hash, "summary": summary, "file": sym.file, "name": sym.name,
+                           "qualname": sym.qualname or sym.name}
         stats["annotated"] += 1
 
-    # Drop entries for symbols that no longer exist in this ingest.
-    live_ids = {f"symbol://{repository}/{s.file}#{s.name}" for s in symbols}
-    blob = {k: v for k, v in blob.items() if k in live_ids}
+    # Keep only meanings that still describe the code: drop symbols that no longer exist, and any
+    # whose code changed but wasn't re-annotated this run (cap reached, model unavailable). A missing
+    # meaning makes the agent read the code; a stale one tells it something untrue.
+    current = {f"symbol://{repository}/{s.file}#{s.qualname or s.name}": s.content_hash for s in symbols}
+    blob = {k: v for k, v in blob.items() if k in current and v.get("hash") == current[k]}
 
     _save_blob(store, repository, blob)
     return stats

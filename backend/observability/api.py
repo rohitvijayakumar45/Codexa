@@ -72,23 +72,36 @@ _AGENTS: list[dict[str, Any]] = [
 ]
 
 
+def _clip(text: Any, limit: int = 64) -> str:
+    """Shorten for a one-line ledger entry at a word boundary, marking the cut. A hard slice produced
+    entries like "declared in frontend/package.j", which read as broken rather than shortened."""
+    text = " ".join(str(text).split())
+    if len(text) <= limit:
+        return text
+    cut = text[:limit].rsplit(" ", 1)[0].rstrip(",.;:—-")
+    return f"{cut or text[:limit]}…"
+
+
 def _summary(event_type: str, payload: dict[str, Any]) -> str:
     if event_type == "graph.node.created":
         node_type = payload.get("node_type", "node")
         props = payload.get("properties", {}) or {}
-        label = props.get("name") or props.get("path") or props.get("summary") or props.get("repository") or props.get("module_path") or ""
-        label = str(label)[:48]
+        # A title names a node better than its summary sentence (a Decision's title is
+        # "React for the UI"; its summary is the evidence behind it).
+        label = (props.get("title") or props.get("name") or props.get("path") or props.get("summary")
+                 or props.get("repository") or props.get("module_path") or "")
+        label = _clip(label, 60)
         return f"{node_type}{f' · {label}' if label else ''}"
     if event_type == "graph.edge.created":
-        return f"{payload.get('edge_type', 'edge')} relation formed"
+        return f"{str(payload.get('edge_type', 'edge')).replace('_', ' ')} relation formed"
     if event_type == "artifact.ingested":
         return f"Ingested {payload.get('kind', 'artifact')} ({payload.get('trust_level', 'unknown')})"
     if event_type == "planner.blast_radius.computed":
         return "Blast radius computed"
     if event_type == "planner.plan.created":
-        return f"Plan synthesized: {str(payload.get('goal', ''))[:48]}"
+        return f"Plan synthesized: {_clip(payload.get('goal', ''), 60)}"
     if event_type == "coder.change_proposal.created":
-        return f"Proposed change: {str(payload.get('objective', ''))[:48]}"
+        return f"Proposed change: {_clip(payload.get('objective', ''), 60)}"
     if event_type == "retrieval.context.assembled":
         return f"Context assembled ({payload.get('estimated_tokens', 0)} tok)"
     if event_type == "repository.ingested":

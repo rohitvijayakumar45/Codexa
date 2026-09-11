@@ -85,7 +85,9 @@ def extract_claims(answer_text: str, llm: Any) -> list[Claim]:
     if not answer_text or not answer_text.strip():
         return []
     try:
-        worker_models = llm.models_for_tier("light")
+        # Non-Gemini first: this runs on every final answer, and Gemini's free tier is 20 requests
+        # per model per key per day — the task planner and delegated workers depend on that quota.
+        worker_models = sorted(llm.models_for_tier("light"), key=lambda m: m.startswith("gemini/"))
         model = worker_models[0] if worker_models else None
         raw = llm.complete(
             [{"role": "user", "content": _extract_prompt(answer_text[:6000])}],
@@ -139,9 +141,20 @@ def _in_repo(node: Any, repository: str) -> bool:
 
 
 _USAGE_EDGE_TYPES = ("calls", "imports", "depends_on", "flows_into")  # matches tools.py's _get_dependencies
+_QUALIFIER = re.compile(r"[.:#/\\]")
+
+
+def _bare_symbol(name: str) -> str:
+    """The graph stores methods by their bare name (`send`), but answers name them the way people do
+    (`Client.send`, `Client::send`, `httpx/_auth.py:DigestAuth`, `send()`). Measured on httpx: every
+    claim rejected across an eight-run test was a true claim in one of those forms, each costing a
+    correction round."""
+    name = name.strip().strip("`").removesuffix("()")
+    return _QUALIFIER.split(name)[-1] if name else name
 
 
 def _count_symbol_usages(graph: Any, symbol: str, repository: str) -> int:
+    symbol = _bare_symbol(symbol)
     edges = [e for e in graph.list_edges_at() if e.edge_type in _USAGE_EDGE_TYPES]
     nodes_by_id = {n.id: n for n in graph.list_nodes()}
     count = 0
@@ -177,8 +190,9 @@ def _resolve_claim(claim: Claim, *, graph: Any, repository: str) -> tuple[bool, 
     nodes = graph.list_nodes()
 
     if claim.type == ClaimType.SYMBOL_EXISTS:
+        bare = _bare_symbol(claim.target)
         found = any(
-            n.node_type == "CodeSymbol" and _in_repo(n, repository) and n.properties.get("name") == claim.target
+            n.node_type == "CodeSymbol" and _in_repo(n, repository) and n.properties.get("name") == bare
             for n in nodes
         )
         return found, ("symbol found in graph" if found else f"no symbol named '{claim.target}' in the graph")

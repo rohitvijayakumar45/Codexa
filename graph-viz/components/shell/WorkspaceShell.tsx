@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { Rail } from "./Rail";
+import { JobWatcher } from "./JobWatcher";
 
 type Theme = "blueprint" | "noir";
 const STORAGE_KEY = "codexa-theme";
@@ -53,6 +54,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       style={{ fontFamily: "var(--font-sans)" }}
       className="workspace-ambient relative flex h-[100dvh] overflow-hidden"
     >
+      <JobWatcher />
       <Rail theme={theme} onToggleTheme={toggle} />
       {/* Fully opaque, unlike the Rail's glass-panel — this card carries real reading text (chat
           bubbles, the composer), so it can't let the ground bleed through and soften contrast. */}

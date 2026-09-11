@@ -9,8 +9,10 @@ const RISK: Record<string, { color: string; bg: string; fill: number }> = {
   None: { color: "var(--color-muted)", bg: "var(--color-paper-sunk)", fill: 0.08 },
   Low: { color: "var(--color-signal)", bg: "var(--color-signal-wash)", fill: 0.3 },
   Medium: { color: "var(--color-gold)", bg: "var(--color-gold-wash)", fill: 0.55 },
-  High: { color: "var(--color-warn)", bg: "#f7ece2", fill: 0.8 },
-  Critical: { color: "var(--color-danger)", bg: "#f7e6e6", fill: 1 },
+  // Tinted from the theme's own colour, so both themes get a readable badge (hex light tints stayed
+  // light in Noir).
+  High: { color: "var(--color-warn)", bg: "color-mix(in srgb, var(--color-warn) 15%, transparent)", fill: 0.8 },
+  Critical: { color: "var(--color-danger)", bg: "color-mix(in srgb, var(--color-danger) 15%, transparent)", fill: 1 },
 };
 
 export function ImpactCard({
@@ -31,6 +33,7 @@ export function ImpactCard({
   const couplingPairs = Math.round((impact.coupling_edges ?? 0) / 2);
   const maxDepthReached = impact.max_depth_reached ?? 0;
   const breakdown = impact.breakdown ?? {};
+  const composes = impact.composes ?? 0;
 
   return (
     <motion.div
@@ -50,6 +53,7 @@ export function ImpactCard({
       </div>
 
       <div className="px-5 py-4">
+        {impact.risk_reason ? <p className="mb-4 text-[13px] leading-relaxed text-ink-soft">{impact.risk_reason}</p> : null}
         <div className="flex items-end gap-6">
           <div>
             <span className="num text-4xl font-medium leading-none text-ink">{impact.affected_count}</span>
@@ -72,9 +76,10 @@ export function ImpactCard({
           </div>
         </div>
 
-        {(filesTouched > 0 || callEdges > 0 || importEdges > 0 || couplingPairs > 0) && (
+        {(filesTouched > 0 || callEdges > 0 || importEdges > 0 || couplingPairs > 0 || composes > 0) && (
           <div className="mt-4 flex flex-wrap gap-4 border-t border-line pt-3">
             {filesTouched > 0 && <Metric value={filesTouched} label="files" />}
+            {composes > 0 && <Metric value={composes} label={impact.root_component ? "files it renders" : "files it imports"} />}
             {callEdges > 0 && <Metric value={callEdges} label="function calls" />}
             {importEdges > 0 && <Metric value={importEdges} label="imports" />}
             {couplingPairs > 0 && <Metric value={couplingPairs} label="hidden coupling" />}
@@ -126,7 +131,10 @@ export function ImpactCard({
         )}
 
         {impact.coupling_risks.length > 0 && (
-          <div className="mt-4 rounded-lg border border-line-strong bg-[#f7ece2] p-3">
+          <div
+            className="mt-4 rounded-lg border border-line-strong p-3"
+            style={{ background: "color-mix(in srgb, var(--color-warn) 12%, transparent)" }}
+          >
             <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-warn)]">
               <AlertTriangle size={12} />
               Historically risky — coupled with a real incident

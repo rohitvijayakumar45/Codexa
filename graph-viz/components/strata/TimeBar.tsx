@@ -97,7 +97,7 @@ export function StrataTimeBar({
                 width={22}
                 height={(v / max) * 26}
                 rx={2}
-                style={{ fill: i * 30 <= cursor ? "var(--ink-soft)" : "var(--line-strong)" }}
+                style={{ fill: i * 30 <= cursor ? "var(--muted)" : "var(--line-strong)" }}
               />
             ) : null,
           )}
@@ -105,10 +105,12 @@ export function StrataTimeBar({
             <rect key={`e${i}`} x={x - 1} y={30} width={2} height={4} style={{ fill: "var(--faint)" }} />
           ))}
           <line x1={0} x2={900} y1={30.5} y2={30.5} style={{ stroke: "var(--line)" }} />
-          <line x1={cursor} x2={cursor} y1={0} y2={34} style={{ stroke: "var(--ink)", strokeWidth: 2 }} />
+          <line x1={cursor} x2={cursor} y1={0} y2={34} style={{ stroke: "var(--agent)", strokeWidth: 2 }} />
         </svg>
         <input
           type="range"
+          className="themed-range"
+          style={{ "--p": `${((total - daysAgo) / total) * 100}%` } as React.CSSProperties}
           min={0}
           max={total}
           step={1}

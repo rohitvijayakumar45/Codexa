@@ -55,13 +55,15 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     # /v1/models endpoint, same "trust a real call over the docs" rule this registry already
     # follows for NVIDIA NIM's fast-churning catalog.
     "cerebras/qwen-3.8-27b": ("Qwen 3.8 27B (Cerebras)", 128000, "balanced", "cerebras"),
-    "openrouter/minimax/minimax-m3:free": ("MiniMax M3 (free)", 1048576, "balanced", "openrouter"),
     "nvidia_nim/mistralai/mistral-nemotron": ("Mistral Nemotron", 128000, "balanced", "nvidia"),
     # Verified against Mistral's own /v1/models (mistral-large-latest isn't on the free tier —
     # "tier_not_allowed" — this one is, confirmed by a real call reaching a rate-limit response
     # rather than an access-denied one).
     "mistral/mistral-medium-latest": ("Mistral Medium (free)", 128000, "balanced", "mistral"),
     # Light tier
+    # Verified 2026-09-11 with a real call on all four configured keys (~2s each). Google's own 404
+    # for 2.5-flash on newer keys ("no longer available to new users") names this as the successor.
+    "gemini/gemini-3.6-flash": ("Gemini 3.6 Flash", 1048576, "light", "gemini"),
     "groq/openai/gpt-oss-20b": ("GPT-OSS 20B (Groq)", 131072, "light", "groq"),
     "gemini/gemini-2.5-flash": ("Gemini 2.5 Flash", 1048576, "light", "gemini"),
     "openrouter/nvidia/nemotron-3.5-lightning:free": ("Nemotron 3.5 Lightning (free)", 1000000, "light", "openrouter"),
@@ -135,7 +137,6 @@ _TIER_ORDER: dict[str, list[str]] = {
         # stalled and timed out instead of recovering. GLM 5.3 (already verified working, already
         # praised for output quality in this session's own model comparisons) takes its slot.
         "tokenrouter/z-ai/glm-5.3-free",
-        "nvidia_nim/deepseek-ai/deepseek-v4-pro-0813",
         "nvidia_nim/nvidia/nemotron-3-super-120b-a12b",
         "groq/openai/gpt-oss-120b",
     ],
@@ -144,9 +145,7 @@ _TIER_ORDER: dict[str, list[str]] = {
         "gemini/gemini-3.8-flash",
         "groq/qwen/qwen3.6-27b",
         "cerebras/qwen-3.8-27b",
-        "openrouter/minimax/minimax-m3:free",
         "groq/openai/gpt-oss-120b",
-        "nvidia_nim/mistralai/mistral-nemotron",
         "tokenrouter/z-ai/glm-5.3-free",
         "mistral/mistral-medium-latest",
     ],
@@ -156,6 +155,10 @@ _TIER_ORDER: dict[str, list[str]] = {
         # function-calling, so a heavy/slow-reasoning orchestrator model can plan once and let this
         # one do the actual write_file/verification legwork instead of burning its own slow
         # reasoning pass on every single tool round of a multi-file build.
+        # 3.6 leads: the only Gemini model answering on every configured key (2.5 is gone for newer
+        # keys, 3.7 regularly returns 503 "high demand"), and the fastest. Planning takes its
+        # candidates from the front of this list, so this is also what makes the planner use Gemini.
+        "gemini/gemini-3.6-flash",
         "gemini/gemini-3.7-flash",
         "groq/openai/gpt-oss-20b",
         "gemini/gemini-2.5-flash",
@@ -208,8 +211,16 @@ _FAILOVER_RING: dict[str, list[str]] = {
 # Order is 3.8, then 3.7, then 2.5 deliberately (strongest first). Combined with per-model key
 # rotation this produces one cycle: 3.8[key1..keyN] -> 3.7[key1..keyN] -> 2.5[key1..keyN] -> wrap
 # to 3.8[key1]. Level 1 (keys, inside _with_key_failover) exhausts every key of the current model
-# before level 2 (this ring) advances the model, so with four Gemini keys configured that's twelve
-# independent 5-req/min buckets walked strongest-model-first.
+# before level 2 (this ring) advances the model. On Google's free tier each (model, key) bucket is
+# 20 requests PER DAY (quota "GenerateRequestsPerDayPerProjectPerModel-FreeTier", seen live on
+# 2026-09-11), not a per-minute window, so an exhausted bucket stays exhausted until midnight
+# Pacific — the ring's value is breadth (models x keys), not waiting for a window to roll.
+#
+# Some keys can't serve some models at all: gemini-2.5-flash answers 404 "no longer available to
+# new users" on every key except the first. _MODEL_KEY_LIMIT stops rotation from wasting calls there.
+_MODEL_KEY_LIMIT: dict[str, int] = {
+    "gemini/gemini-2.5-flash": 1,
+}
 #
 # 2.5-flash used to be deliberately excluded ("the two-model rotation is the requested shape") —
 # reversed after a real, observed failure: _WorkerSession.complete() used to only rotate on a
@@ -222,6 +233,7 @@ _FAILOVER_RING: dict[str, list[str]] = {
 _WORKER_RING: list[str] = [
     "gemini/gemini-3.8-flash",
     "gemini/gemini-3.7-flash",
+    "gemini/gemini-3.6-flash",
     "gemini/gemini-2.5-flash",
 ]
 
@@ -545,7 +557,7 @@ class LLMClient:
         if not keys:
             return False
         idx = self._active_key_index.get(model, 0)
-        if idx + 1 >= len(keys):
+        if idx + 1 >= min(len(keys), _MODEL_KEY_LIMIT.get(model, len(keys))):
             return False
         self._active_key_index[model] = idx + 1
         logger.warning("model %s: key %d rate-limited, failing over to key %d", model, idx + 1, idx + 2)

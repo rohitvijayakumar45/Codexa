@@ -76,6 +76,10 @@ class ImpactResult(BaseModel):
     import_edges: int  # IMPORTS edges crossing the target/affected subgraph
     coupling_edges: int  # CORRELATES_WITH edges — hidden, git-mined coupling with no code reference
     coupling_risks: list[CouplingRisk] = Field(default_factory=list)
+    change_kind: str = "code"  # "cosmetic" (comment/docs/formatting) | "code"
+    risk_reason: str = ""  # one sentence saying why the level is what it is
+    composes: int = 0  # files the target itself imports — what a root component renders
+    root_component: bool = False  # target is mounted by the app's entry file and renders many others
 
 
 def _label(node: GraphNode) -> str:
@@ -109,21 +113,65 @@ def _candidates(node: GraphNode) -> list[str]:
 _TARGETABLE = {"File", "CodeSymbol", "ApiRoute", "SchemaField", "Repository"}
 
 
+_PATH_MENTION = re.compile(r"[\w@./-]+\.[A-Za-z]{1,5}\b")
+
+
 def _resolve_targets(description: str, nodes: list[GraphNode]) -> list[GraphNode]:
     text = description.lower()
+
+    # A file named explicitly is the target — that file, not every file whose name overlaps it.
+    # Measured on Auralis: "add a comment in src/App.tsx" also targeted server/src/app.ts (because
+    # "app.ts" is a substring of "app.tsx"), which put server/src/index.ts and the /health route
+    # into the blast radius of a frontend comment.
+    mentioned = {m.lower().lstrip("./") for m in _PATH_MENTION.findall(description)}
+    if mentioned:
+        files = [n for n in nodes if n.node_type == "File" and isinstance(n.properties.get("path"), str)]
+        exact = [n for n in files if n.properties["path"].lower() in mentioned]
+        if not exact:
+            exact = [n for n in files if n.properties["path"].lower().rsplit("/", 1)[-1] in mentioned]
+        if exact:
+            return exact[:6]
+
     matched: dict[str, GraphNode] = {}
     for node in nodes:
         if node.node_type not in _TARGETABLE:
             continue
         for cand in _candidates(node):
             token = cand.lower()
-            # Match on a whole word / path segment so "graph" doesn't match everything.
-            if re.search(rf"(?<![\w/]){re.escape(token)}(?![\w])", text) or token in text:
+            # Whole word / path segment only. The old `or token in text` fallback let any substring
+            # match ("app.ts" inside "app.tsx").
+            if re.search(rf"(?<![\w/]){re.escape(token)}(?![\w])", text):
                 matched[str(node.id)] = node
                 break
     # Prefer the most specific matches (symbols/files) and cap the set.
     ordered = sorted(matched.values(), key=lambda n: (n.node_type != "CodeSymbol", n.node_type != "File"))
     return ordered[:6]
+
+
+# Edits that cannot change what the program does. Checked against behaviour words so "rename the
+# handler and update its comment" is still a code change.
+_COSMETIC = re.compile(
+    r"\b(comments?|docstrings?|jsdoc|typos?|spelling|whitespace|indentation|formatting|reformat|"
+    r"todo|license header|copyright)\b", re.I)
+_BEHAVIOUR = re.compile(
+    r"\b(logic|behaviou?r|routes?|endpoints?|api|state|handlers?|props?|refactor|rename|rewrite|"
+    r"implement|feature|functionality|import|export|return|condition|query|schema)\b", re.I)
+_ENTRY_NAMES = ("main", "index")
+_ROOT_MIN_COMPOSES = 5
+_ROOT_HIGH_COMPOSES = 10
+
+
+def _change_kind(description: str) -> str:
+    """"cosmetic" for a comment/docs/formatting-only edit, else "code"."""
+    without_quotes = re.sub(r"\"[^\"]*\"|'[^']*'|`[^`]*`", " ", description)
+    if _COSMETIC.search(without_quotes) and not _BEHAVIOUR.search(without_quotes):
+        return "cosmetic"
+    return "code"
+
+
+def _is_entry(path: str) -> bool:
+    stem = path.rsplit("/", 1)[-1].split(".", 1)[0].lower()
+    return stem in _ENTRY_NAMES
 
 
 def _edge_confidence(edge) -> float:
@@ -278,13 +326,51 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
             )
 
         target_ids = {t.id for t in targets}
-        radius = blast_radius_ids(target_ids, graph=graph, max_depth=request.max_depth)
+        # A file's own functions and classes change with it: whatever calls them is downstream too,
+        # not only whatever imports the file.
+        target_paths = {t.properties.get("path") for t in targets if t.node_type == "File"}
+        traversal_ids = target_ids | {
+            n.id for n in nodes if n.node_type == "CodeSymbol" and n.properties.get("file") in target_paths
+        }
+        radius = blast_radius_ids(traversal_ids, graph=graph, max_depth=request.max_depth)
         affected_ids, parent, best_depth = radius.affected_ids, radius.parent, radius.best_depth
         min_conf = min(radius.path_confidence.values(), default=1.0)
 
         affected_nodes = [by_id[nid] for nid in affected_ids if nid in by_id]
         confidence = round(min_conf if affected_nodes else 1.0, 3)
         level, score = _grade(len(affected_nodes), confidence)
+        order = ["None", "Low", "Medium", "High", "Critical"]
+        risk_reason = f"{len(affected_nodes)} component{'s' if len(affected_nodes) != 1 else ''} depend on this."
+
+        # Root component: mounted by the entry file (main.tsx / index.ts) and rendering many others.
+        # Reverse dependencies alone call Auralis' App.tsx a one-dependent file (only main.tsx
+        # imports it), but App renders fourteen pages and a mistake there takes every one down.
+        edges_now = list(graph.list_edges_at())
+        composes = 0
+        root_component = False
+        for t in targets:
+            if t.node_type != "File":
+                continue
+            outgoing = {e.to_node_id for e in edges_now if e.edge_type == "imports" and e.from_node_id == t.id}
+            importers = [by_id[e.from_node_id] for e in edges_now
+                         if e.edge_type == "imports" and e.to_node_id == t.id and e.from_node_id in by_id]
+            mounted = _is_entry(str(t.properties.get("path", ""))) or any(
+                _is_entry(str(n.properties.get("path", ""))) for n in importers)
+            composes = max(composes, len(outgoing))
+            if mounted and len(outgoing) >= _ROOT_MIN_COMPOSES:
+                root_component = True
+        change_kind = _change_kind(request.description)
+        if root_component and change_kind == "code":
+            floor = "High" if composes >= _ROOT_HIGH_COMPOSES else "Medium"
+            if order.index(level) < order.index(floor):
+                level = floor
+                score = max(score, 0.6 if floor == "High" else 0.4)
+            risk_reason = (f"Root component: the app's entry mounts it and it renders {composes} files, "
+                           "so a mistake here reaches every one of them.")
+        if change_kind == "cosmetic":
+            level, score = "None", 0.0
+            risk_reason = ("Comment or formatting only — no runtime effect. "
+                           f"{len(affected_nodes)} dependent{'s' if len(affected_nodes) != 1 else ''} listed for reference.")
 
         # Reconstruct a few representative dependency chains, deepest first.
         preview: list[list[str]] = []
@@ -381,6 +467,10 @@ def create_impact_router(*, graph: GraphService, planner: PlannerService) -> API
             import_edges=import_edges,
             coupling_edges=coupling_edges,
             coupling_risks=coupling_risks,
+            change_kind=change_kind,
+            risk_reason=risk_reason,
+            composes=composes,
+            root_component=root_component,
         )
 
     return router

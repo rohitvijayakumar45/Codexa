@@ -68,6 +68,8 @@ MAX_TASKS = 12
 # than an honest read of a small request. "Explain decorators" legitimately needs one task; "build a
 # polished interactive page" does not.
 _SUBSTANTIAL_INTENTS = frozenset({TaskIntent.CREATE, TaskIntent.MODIFY})
+# Read-only questions. Planned deterministically as a single answer task (see build_plan).
+_QUESTION_INTENTS = frozenset({TaskIntent.ANALYZE, TaskIntent.EXPLAIN})
 
 # Every tool name that actually exists. A required_tool the executor has never heard of can never be
 # called, so a task requiring one can never satisfy its own completion condition — it sits at the
@@ -1073,16 +1075,17 @@ def _specs_for(request: str, contract: TaskContract) -> list[dict[str, Any]]:
             },
         ]
     if intent is TaskIntent.ANALYZE:
+        # One task and no mandatory tools. This used to require list_directory + search_code +
+        # read_file (a task's required tools must ALL be called), which forced a full exploration
+        # on every question — measured on httpx: "what does Client.send do?" read all of
+        # _client.py in five windows even though the graph context already named send's callees,
+        # and lookup_symbol answered them in one call each. The model still has every tool and the
+        # context tells it to check the live filesystem; it just isn't made to re-walk the repo.
         return [
             {
-                "objective": "Gather the relevant code and structure",
-                "required_tools": ["list_directory", "search_code", "read_file"],
-                "completion_criteria": ["The files that answer the question have been read"],
-            },
-            {
-                "objective": "Answer the question from what was actually read",
-                "completion_criteria": ["The analysis cites real files, not assumed ones"],
-            },
+                "objective": "Answer the question from the knowledge graph and memory, reading files only where they add something",
+                "completion_criteria": ["The answer cites real files or symbols, not assumed ones"],
+            }
         ]
     if intent is TaskIntent.EXPLAIN:
         # One task, no tools, no artifacts. An explanation is finished by being written; wrapping it
@@ -1139,6 +1142,15 @@ def build_plan(
     try:
         if contract.intent is TaskIntent.CONVERSATION:
             return ExecutionPlan()
+        if contract.intent in _QUESTION_INTENTS:
+            # A question has one proportionate shape, so asking a model to propose one only costs a
+            # call and invites a build plan. Observed: "what does Client.send do?" came back as six
+            # tasks — read the whole file, "extract calls with Python AST" via a tool the model
+            # doesn't have, then write analysis.txt into the repository.
+            plan = fallback_plan(request, contract)
+            plan.source = "template"
+            plan.source_detail = "a question is answered from the graph and memory; no proposal requested"
+            return plan
         why = "no model available for planning"
         if llm is not None and model:
             try:

@@ -199,6 +199,12 @@ export interface ImpactResult {
   import_edges: number;
   coupling_edges: number;
   coupling_risks: CouplingRisk[];
+  change_kind?: "cosmetic" | "code";
+  /** One sentence saying why the risk level is what it is. */
+  risk_reason?: string;
+  /** Files the target itself imports — what a root component renders. */
+  composes?: number;
+  root_component?: boolean;
 }
 
 // --- Observability ----------------------------------------------------------
@@ -397,6 +403,8 @@ export interface FileContent {
   language: string;
   content: string;
   truncated: boolean;
+  /** sha256 of the bytes on disk when read — sent back on save to detect conflicting edits. */
+  sha: string;
 }
 export interface FileSearchHit {
   path: string;
@@ -448,7 +456,51 @@ export interface StreamHandlers {
   onToolResult?: (result: { name: string; result: string }) => void;
   onRepoSwitched?: (repository: string) => void;
   onModelSwitched?: (modelId: string) => void;
+  // What tasks of this classified kind have cost before (backend/agents/token_budget.py).
+  onPredictedBudget?: (budget: PredictedBudget) => void;
   signal?: AbortSignal;
+}
+
+export interface PredictedBudget {
+  intent: string;
+  predicted_tokens: number;
+  based_on_samples: number;
+  confidence: "low" | "medium" | "high";
+}
+
+/** How a job subscription ended: the job's stream closed normally, the connection broke, or the
+ *  caller aborted it. "network" is what a caller retries on — the job itself keeps running. */
+export type SubscriptionEnd = "ended" | "network" | "aborted";
+
+export interface PhasedBuildPhase {
+  title: string;
+  job_id: string | null;
+  status: string;
+  detail: string;
+}
+
+export interface PhasedBuildStatus {
+  phased_build_id: string;
+  status: string;
+  current_phase: number;
+  phases: PhasedBuildPhase[];
+}
+
+/** Splits a large spec into up to 8 phases, each run as its own fresh job (backend/agents/phased_build.py). */
+export async function startPhasedBuild(spec: string, repository: string, model: string | null) {
+  const res = await fetch(`${API_BASE}/chat/agent/phased`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ spec, repository, model }),
+  });
+  if (!res.ok) throw new ApiError(await failureMessage(res, "/chat/agent/phased"), res.status);
+  return (await res.json()) as { phased_build_id: string; phases: { title: string; prompt: string }[] };
+}
+
+export async function phasedBuildStatus(buildId: string): Promise<PhasedBuildStatus> {
+  const res = await fetch(`${API_BASE}/chat/agent/phased/${buildId}`);
+  if (!res.ok) throw new ApiError(await failureMessage(res, `/chat/agent/phased/${buildId}`), res.status);
+  return (await res.json()) as PhasedBuildStatus;
 }
 
 /** Starts the tool-calling agent loop as a background job on the backend and returns its id.
@@ -495,17 +547,18 @@ export async function continueAgentJob(jobId: string): Promise<string> {
  *  reattaching after a dropped connection catches up on what was missed) then tails new events
  *  live until the job finishes. Safe to call more than once for the same job_id — each call is an
  *  independent replay-from-start subscription. */
-export async function subscribeAgentJob(jobId: string, handlers: StreamHandlers): Promise<void> {
+export async function subscribeAgentJob(jobId: string, handlers: StreamHandlers): Promise<SubscriptionEnd> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE}/chat/agent/stream/${jobId}`, { signal: handlers.signal });
-  } catch {
-    handlers.onError(`Can't reach the Codexa backend at ${API_BASE}.`);
-    return;
+  } catch (err) {
+    // No onError here: a broken connection is the caller's to retry (the job keeps running), and
+    // an error bubble flashed before a successful reconnect is noise.
+    return err instanceof DOMException && err.name === "AbortError" ? "aborted" : "network";
   }
   if (!res.ok || !res.body) {
     handlers.onError(`Backend responded ${res.status}.`);
-    return;
+    return "ended";
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -532,6 +585,7 @@ export async function subscribeAgentJob(jobId: string, handlers: StreamHandlers)
           else if (evt.tool_result) handlers.onToolResult?.(evt.tool_result);
           else if (evt.repo_switched) handlers.onRepoSwitched?.(evt.repo_switched);
           else if (evt.model_switched) handlers.onModelSwitched?.(evt.model_switched);
+          else if (evt.predicted_budget) handlers.onPredictedBudget?.(evt.predicted_budget as PredictedBudget);
         } catch {
           /* ignore */
         }
@@ -539,11 +593,10 @@ export async function subscribeAgentJob(jobId: string, handlers: StreamHandlers)
     }
   } catch (err) {
     // Only this SUBSCRIPTION dies on abort/disconnect — the job itself keeps running on the
-    // backend regardless, so this is never a real failure worth surfacing.
-    if (!(err instanceof DOMException && err.name === "AbortError")) {
-      handlers.onError(err instanceof Error ? err.message : String(err));
-    }
+    // backend regardless. Report which, so the caller can reconnect after a network drop.
+    return err instanceof DOMException && err.name === "AbortError" ? "aborted" : "network";
   }
+  return handlers.signal?.aborted ? "aborted" : "ended";
 }
 
 /** Streams a completion over SSE from the real backend chat endpoint. */
@@ -560,7 +613,7 @@ export async function streamChat(
       body: JSON.stringify({ messages, model }),
       signal: handlers.signal,
     });
-  } catch (cause) {
+  } catch {
     handlers.onError(`Can't reach the Codexa backend at ${API_BASE}.`);
     return;
   }
@@ -649,6 +702,9 @@ export const api = {
     get<FileContent>(`/files/read?repository=${encodeURIComponent(repository)}&path=${encodeURIComponent(path)}`),
   fileSearch: (repository: string, q: string) =>
     get<FileSearchHit[]>(`/files/search?repository=${encodeURIComponent(repository)}&q=${encodeURIComponent(q)}`),
+  /** The Codebase editor's save: 409 if the file changed on disk since `baseSha` was read. */
+  saveFile: (repository: string, path: string, content: string, baseSha: string | null, force = false) =>
+    post<{ ok: boolean; path: string; sha: string }>("/files/save", { repository, path, content, base_sha: baseSha, force }),
   repoDocs: (repository: string) =>
     get<RepoDocs>(`/repository/docs?repository=${encodeURIComponent(repository)}`),
   regenerateRepoDocs: (repository: string) =>

@@ -22,9 +22,11 @@ from tree_sitter import Language, Node, Parser, Query, QueryCursor
 _SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next", ".agents", "coverage"}
 _SRC_EXT = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".py"}
 
-_MAX_FILES = 300
-_MAX_SYMBOLS = 700
-_MAX_EDGES = 1200
+# Raised from 300 / 700 / 1200: httpx alone defines 1,131 symbols in 126 files, so the old caps
+# silently left a third of a mid-sized library out of the map.
+_MAX_FILES = 1500
+_MAX_SYMBOLS = 4000
+_MAX_EDGES = 8000
 _MAX_FILE_BYTES = 200_000
 _MAX_CALLS_PER_SYMBOL = 12
 
@@ -93,6 +95,35 @@ class Symbol:
     line: int
     end_line: int = 0
     content_hash: str = ""  # sha256 of the symbol's source span — drives staleness detection
+    # "Client.send" for a method, "" for a top-level definition. Without it httpx's Client.send and
+    # AsyncClient.send shared one graph node, one memory entry and one merged call list.
+    qualname: str = ""
+
+
+def symbol_key(sym: "Symbol") -> str:
+    """The identity used for graph nodes, call edges and memory entries: file#Class.method."""
+    return f"{sym.file}#{sym.qualname or sym.name}"
+
+
+_CLASS_NODES = {"class_definition", "class_declaration", "class"}
+_FUNCTION_NODES = {"function_definition", "function_declaration", "method_definition", "arrow_function",
+                   "function_expression", "generator_function_declaration"}
+
+
+def _qualify(def_node: Node, name: str) -> str:
+    """Prefix a definition with its enclosing class, stopping at a function boundary so a helper
+    nested inside a method stays a plain function rather than posing as a method."""
+    parent = def_node.parent
+    while parent is not None:
+        if parent.type in _CLASS_NODES:
+            cname = parent.child_by_field_name("name")
+            if cname is not None and cname.text:
+                return f"{cname.text.decode('utf-8', errors='ignore')}.{name}"
+            return name
+        if parent.type in _FUNCTION_NODES:
+            return name
+        parent = parent.parent
+    return name
 
 
 @dataclass
@@ -261,12 +292,13 @@ def analyze_repo(root: Path) -> Analysis:
                 line = nn.start_point[0] + 1
                 end_line = dn.end_point[0] + 1
                 content_hash = hashlib.sha256(source[dn.start_byte:dn.end_byte]).hexdigest()[:16]
+                qual = _qualify(dn, name)
                 sym = Symbol(
                     name=name, kind=_kind(name, dn.type), file=rel, line=line,
-                    end_line=end_line, content_hash=content_hash,
+                    end_line=end_line, content_hash=content_hash, qualname=qual if qual != name else "",
                 )
                 result.symbols.append(sym)
-                key = f"{rel}#{name}"
+                key = f"{rel}#{qual}"
                 defs.append((dn.start_byte, dn.end_byte, key, dn))
                 name_to_keys.setdefault(name, []).append(key)
             call_name_nodes = captures.get("call.name")
@@ -313,15 +345,27 @@ def analyze_repo(root: Path) -> Analysis:
                 if start <= pos <= end:
                     from_key = key
                     break
-            if not from_key or called == from_key.split("#", 1)[-1]:
+            if not from_key:
+                continue
+            from_qual = from_key.split("#", 1)[-1]
+            if called == from_qual.rsplit(".", 1)[-1]:
                 continue
             if per_symbol_count.get(from_key, 0) >= _MAX_CALLS_PER_SYMBOL:
                 continue
-            to_key = f"{rel}#{called}" if f"{rel}#{called}" in name_to_keys.get(called, []) else None
-            if not to_key:
-                keys = name_to_keys.get(called)
-                if keys and len(keys) == 1:
-                    to_key = keys[0]
+            # Same file first. Several same-named candidates there (Client._send_handling_auth and
+            # AsyncClient._send_handling_auth) resolve to the caller's own class, or not at all —
+            # an unresolved call is better than an edge into the wrong class.
+            candidates = name_to_keys.get(called, [])
+            same_file = [k for k in candidates if k.startswith(f"{rel}#")]
+            to_key = None
+            if len(same_file) == 1:
+                to_key = same_file[0]
+            elif len(same_file) > 1:
+                owner = from_qual.rsplit(".", 1)[0] if "." in from_qual else ""
+                preferred = f"{rel}#{owner}.{called}" if owner else f"{rel}#{called}"
+                to_key = preferred if preferred in same_file else None
+            elif len(candidates) == 1:
+                to_key = candidates[0]
             if to_key and to_key != from_key:
                 edge = (from_key, to_key)
                 if edge not in call_set:
