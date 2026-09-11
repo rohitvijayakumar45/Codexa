@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { codeToHtml } from "shiki";
 import { codexaDark, codexaLight } from "@/lib/code-theme";
 
-const LANG: Record<string, string> = {
+export const LANG: Record<string, string> = {
   tsx: "tsx", typescript: "typescript", javascript: "javascript", jsx: "jsx", python: "python",
   json: "json", markdown: "markdown", css: "css", html: "html", yaml: "yaml", toml: "toml",
   bash: "bash", sql: "sql", go: "go", rust: "rust", java: "java", ruby: "ruby", text: "text",

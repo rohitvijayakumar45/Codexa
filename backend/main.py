@@ -33,7 +33,7 @@ from backend.docs_gen.api import create_docs_router
 from backend.memory.records_api import create_memory_store_router
 from backend.memory.context import create_context_router
 from backend.memory.store import MemoryStore
-from backend.repository.api import create_repository_router, rehydrate_repositories
+from backend.repository.api import create_repository_router, rehydrate_repositories, reindex_repository
 from backend.files.api import create_files_router
 from backend.graph.api import create_graph_router
 from backend.graph.causal import CausalGraphService
@@ -255,8 +255,25 @@ def create_app() -> FastAPI:
     # eight failures that looked like unrelated product bugs and were really one environment leak.
     # Defaults to on, so production behaviour is unchanged; the test suite opts out (tests/conftest.py).
     if os.getenv("CODEXA_REHYDRATE", "1").strip().lower() not in {"0", "false", "no", "off"}:
-        rehydrate_repositories(store=memory_store, graph=graph_service)
-    app.include_router(create_files_router())
+        # In the background: with the larger mapping caps, rebuilding every saved repository took
+        # over two minutes, and the whole server stayed unreachable until it finished. Each
+        # repository's graph now appears as soon as it is rebuilt.
+        import threading
+
+        threading.Thread(
+            target=rehydrate_repositories, kwargs={"store": memory_store, "graph": graph_service},
+            name="rehydrate", daemon=True,
+        ).start()
+    def _reindex_after_save(repository: str) -> None:
+        # A hand edit in the Codebase tab re-parses the repository, like an agent edit does.
+        try:
+            reindex_repository(repository, store=memory_store, graph=graph_service, llm=llm_client)
+        except Exception:  # noqa: BLE001 - a failed refresh must not surface as a failed save
+            import logging
+
+            logging.getLogger(__name__).exception("re-index after save failed for %s", repository)
+
+    app.include_router(create_files_router(on_saved=_reindex_after_save))
     app.include_router(create_chat_router(llm=llm_client, graph=graph_service, store=memory_store))
     app.include_router(create_observability_router(event_writer=event_writer, llm=llm_client))
     app.include_router(create_docs_router(llm=llm_client))

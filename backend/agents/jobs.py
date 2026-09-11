@@ -39,7 +39,7 @@ from backend.agents.design_intent import DesignIntent, brief as design_brief, de
 from backend.agents.llm import LLMClient, is_rate_limit_error
 from backend.agents.plan import ExecutionPlan, TaskStatus, ValidationState, summarize_for_event
 from backend.agents.plan_builder import build_plan
-from backend.agents.receipts import ActionReceipt, already_performed, record_receipt
+from backend.agents.receipts import ActionReceipt, already_performed, record_receipt, verify_chain
 from backend.agents import round_telemetry as telemetry
 from backend.agents.task import (
     TaskContract,
@@ -711,6 +711,9 @@ class Job:
     # (it's an explicit choice, not automatic), which is why it's a separate counter from that.
     auto_continues: int = 0
     events: list[dict] = field(default_factory=list)
+    # How many of `events` are already in the on-disk log (<id>.events.jsonl). Events are written in
+    # batches — at each checkpoint and on the final event — not one file open per streamed chunk.
+    events_persisted: int = 0
     # Hash-chained log of every mutating tool call this job has made (backend/agents/receipts.py) —
     # tamper-evident (each entry commits to the previous one's result hash), and lets a resumed round
     # recognize a mutating call it already performed instead of repeating it (see `already_performed`).
@@ -778,6 +781,49 @@ class Job:
         return cls(**data)
 
 
+def _events_path(job_id: str) -> Path:
+    return JOBS_DIR / f"{job_id}.events.jsonl"
+
+
+def _read_events(job_id: str) -> list[dict]:
+    """The job's full event log from disk. The checkpoint deliberately leaves events out (it must stay
+    small and is rewritten every round), so this append-only file is what lets a subscriber after a
+    server restart replay the whole run instead of a single synthesized ending."""
+    path = _events_path(job_id)
+    if not path.exists():
+        return []
+    events: list[dict] = []
+    try:
+        with path.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue  # a line cut off by a crash mid-write
+    except OSError as exc:
+        logger.warning("job event log unreadable for %s: %s", job_id, exc)
+    return events
+
+
+def _flush_events(job: Any) -> None:
+    """Append the events emitted since the last flush to the on-disk log. Called at every checkpoint
+    and on a job's final event, so the log on disk always covers at least what the checkpoint can
+    resume from. Opening the file once per streamed chunk instead made the test suite 14x slower."""
+    start = getattr(job, "events_persisted", 0)
+    fresh = job.events[start:]
+    if not fresh:
+        return
+    try:
+        with _events_path(job.id).open("a", encoding="utf-8") as fh:
+            fh.writelines(json.dumps(e, default=str) + "\n" for e in fresh)
+        job.events_persisted = len(job.events)
+    except OSError:
+        pass  # the in-memory log still serves live subscribers; only post-restart replay loses it
+
+
 class JobManager:
     def __init__(self, *, llm: LLMClient, graph: GraphService | None, store: MemoryStore | None) -> None:
         self._llm = llm
@@ -810,6 +856,7 @@ class JobManager:
         into what it actually is: a write that needs to happen a few milliseconds later.
         """
         job.updated_at = time.time()
+        _flush_events(job)
         path = JOBS_DIR / f"{job.id}.json"
         tmp = path.with_suffix(".tmp")
         payload = json.dumps(job.to_disk())
@@ -1027,6 +1074,11 @@ class JobManager:
         # running again. The frontend already holds onto the prior thinking/content client-side
         # before calling continue, so nothing is visually lost - just not replayed twice.
         job.events = []
+        job.events_persisted = 0
+        try:
+            _events_path(job_id).write_text("", encoding="utf-8")  # same reset for the on-disk log
+        except OSError:
+            pass
         if rotated_model:
             self._emit(job, {"model_switched": rotated_model})
         with self._lock:
@@ -1044,22 +1096,35 @@ class JobManager:
         job = self._load_from_disk(job_id)
         if job is None:
             return None
+        stored = _read_events(job_id)
         if job.status in ("done", "error"):
-            # Already finished before the disconnect — nothing to resume, just replay what's stored.
-            # Re-synthesize a terminal event so a stream subscriber that only has the checkpoint
-            # (events log isn't persisted) still sees a clean ending.
-            job.events = [{
-                "done": job.status == "done",
+            # Already finished before the disconnect — nothing to resume, just replay the stored log.
+            # If the log is missing or was cut before its ending, add a terminal event so a subscriber
+            # still sees a clean finish.
+            terminal = {
+                "done": True,
                 "usage": {
                     "prompt_tokens": job.prompt_tokens,
                     "completion_tokens": job.completion_tokens,
                     "context_window": 0,
                     "model": job.model,
                 },
-            }] if job.status == "done" else [{"error": "Job did not complete before the server restarted."}]
+            } if job.status == "done" else {"error": "Job did not complete before the server restarted."}
+            ended = bool(stored) and any(k in stored[-1] for k in ("done", "error"))
+            job.events = stored if ended else stored + [terminal]
+            job.events_persisted = len(stored)
             with self._lock:
                 self._jobs[job_id] = job
             return job
+        # Mid-flight: replay everything it had emitted, then continue appending live.
+        job.events = stored
+        job.events_persisted = len(stored)
+        if job.receipts and not verify_chain(job.receipts):
+            # The chain links each receipt to the previous result's hash; a break means the on-disk
+            # record was edited or truncated, so "never repeat a write" can't be trusted for this job.
+            logger.warning("job %s: action receipt chain is broken on resume", job_id)
+            self._emit(job, {"status": "Warning: this job's action receipts don't chain — its saved "
+                                       "record was altered, so repeat-write protection may be unreliable."})
         job.status = "running"
         with self._lock:
             self._jobs[job_id] = job
@@ -1087,6 +1152,8 @@ class JobManager:
     # --- the loop itself ---------------------------------------------------------
     def _emit(self, job: Job, payload: dict) -> None:
         job.events.append(payload)
+        if "done" in payload or "error" in payload:
+            _flush_events(job)  # the ending must reach disk even if no checkpoint follows
 
     def _run(self, job: Job, *, resuming: bool = False) -> None:
         while True:
@@ -1983,7 +2050,7 @@ class JobManager:
             if any(t in GRAPH_DIRTYING_TOOLS for t in tools_called):
                 try:
                     self._emit(job, {"tool_call": {"name": "_graph_reindex", "args": {"repository": working_repo}}})
-                    reindex_repository(working_repo, store=self._store, graph=self._graph)
+                    reindex_repository(working_repo, store=self._store, graph=self._graph, llm=self._llm)
                     self._emit(job, {"tool_result": {"name": "_graph_reindex", "result": "Graph reindexed."}})
                 except Exception as exc:  # noqa: BLE001 - never fail the turn over a stale graph
                     logger.warning("post-turn graph reindex failed for %s: %s", working_repo, exc)

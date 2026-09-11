@@ -491,7 +491,8 @@ def add_intent_to_graph(
         imported_by.setdefault(a, set()).add(b)
     by_name: dict[str, list[str]] = {}
     for key in sym_nodes:
-        by_name.setdefault(key.split("#", 1)[1], []).append(key)
+        # Keys are file#Class.method for methods; a route handler names the bare function.
+        by_name.setdefault(key.split("#", 1)[1].rsplit(".", 1)[-1], []).append(key)
     for r in routes:
         node = graph.add_node(GraphNodeCreate(
             node_type=GraphNodeType.API_ROUTE, stable_id=f"route://{name}/{r.method}{r.path}",

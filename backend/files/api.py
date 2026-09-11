@@ -7,9 +7,11 @@ repository root. Writes are real and auditable (logged), not a staged copy.
 
 from __future__ import annotations
 
+import hashlib
+from collections.abc import Callable
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from backend.memory.store import DATA_DIR
@@ -38,6 +40,9 @@ class FileContent(BaseModel):
     language: str
     content: str
     truncated: bool
+    # sha256 of the file's bytes on disk when it was read. The editor sends it back on save, so a
+    # file that changed underneath it (an agent edit, another tab) is never silently overwritten.
+    sha: str = ""
 
 
 class SearchHit(BaseModel):
@@ -50,6 +55,16 @@ class WriteRequest(BaseModel):
     repository: str = Field(default="codexa-os")
     path: str
     content: str
+
+
+class SaveRequest(BaseModel):
+    repository: str = Field(default="codexa-os")
+    path: str
+    content: str
+    # The sha the editor read; None for a file that did not exist yet.
+    base_sha: str | None = None
+    # The user saw the conflict and chose to overwrite what is on disk.
+    force: bool = False
 
 
 class MkdirRequest(BaseModel):
@@ -167,7 +182,41 @@ def read_file(root: Path, rel: str) -> FileContent:
     raw = target.read_bytes()
     truncated = len(raw) > _MAX_READ
     text = raw[:_MAX_READ].decode("utf-8", errors="replace")
-    return FileContent(path=rel, language=_language(target), content=text, truncated=truncated)
+    return FileContent(path=rel, language=_language(target), content=text, truncated=truncated,
+                       sha=hashlib.sha256(raw).hexdigest())
+
+
+def save_file(root: Path, rel: str, content: str, base_sha: str | None, force: bool) -> str:
+    """Write a human edit to disk and return the new sha. Refuses — rather than corrupts — anything
+    the editor could not have shown faithfully, and anything that changed since it was opened."""
+    target = _safe(root, rel)
+    if target == root or (target.exists() and not target.is_file()):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That path is a folder, not a file.")
+    newline = "\n"
+    if target.is_file():
+        raw = target.read_bytes()
+        if len(raw) > _MAX_READ:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "This file is too large to edit here.")
+        if b"\x00" in raw[:8192]:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "This looks like a binary file, so it can't be saved as text.")
+        if not force and base_sha != hashlib.sha256(raw).hexdigest():
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "This file changed on disk since you opened it — the agent or another editor saved it.",
+            )
+        if b"\r\n" in raw:
+            newline = "\r\n"
+    elif base_sha and not force:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This file was deleted on disk since you opened it.")
+    # Browsers hand textarea text back with bare \n; keep the file's own line endings so a one-word
+    # edit doesn't rewrite every line of a CRLF file.
+    text = content.replace("\r\n", "\n")
+    if newline != "\n":
+        text = text.replace("\n", newline)
+    data = text.encode("utf-8")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    return hashlib.sha256(data).hexdigest()
 
 
 def search_files(root: Path, query: str, limit: int = 120) -> list[SearchHit]:
@@ -238,8 +287,25 @@ def edit_file(root: Path, rel: str, old_text: str, new_text: str) -> None:
     target.write_text(text.replace(old_text, new_text, 1), encoding="utf-8")
 
 
-def create_files_router() -> APIRouter:
+def create_files_router(on_saved: Callable[[str], None] | None = None) -> APIRouter:
+    """`on_saved(repository)` runs after an IDE save, in the background — the app wires it to the
+    graph re-index, so Strata, the graph and architecture reflect a hand edit without a reload."""
     router = APIRouter(prefix="/files", tags=["files"])
+
+    @router.post("/save")
+    def save(request: SaveRequest, background_tasks: BackgroundTasks) -> dict:
+        """The Codebase editor's save. Unlike /write (the agents' raw write) it refuses Codexa's own
+        source, and it will not overwrite a file that changed since the editor read it unless the user
+        explicitly chose to."""
+        if is_platform_repo(request.repository):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "codexa-os is Codexa's own source code and is read-only here — edit it in your code editor.",
+            )
+        sha = save_file(repo_root(request.repository), request.path, request.content, request.base_sha, request.force)
+        if on_saved is not None:
+            background_tasks.add_task(on_saved, request.repository)
+        return {"ok": True, "path": request.path, "sha": sha}
 
     @router.get("/tree", response_model=list[TreeNode])
     def tree(repository: str = Query(default="codexa-os")) -> list[TreeNode]:

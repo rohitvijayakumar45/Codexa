@@ -32,6 +32,8 @@ export interface StoredTurn {
   jobId?: string;
   impact?: ImpactResult;
   quorum?: QuorumRunResult;
+  // A phased build started from this turn; the card polls its live status by id.
+  phasedBuildId?: string;
   pending?: boolean;
   history?: ChatMessage[];
   tool?: { name: string; args: Record<string, unknown>; result?: string };

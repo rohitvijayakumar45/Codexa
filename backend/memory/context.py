@@ -107,7 +107,7 @@ def _candidates(node: GraphNode) -> list[str]:
 
 def _label(node: GraphNode) -> str:
     props = node.properties
-    value = props.get("name") or props.get("path") or node.stable_id.split("://")[-1]
+    value = props.get("qualname") or props.get("name") or props.get("path") or node.stable_id.split("://")[-1]
     return str(value)[:64]
 
 
@@ -152,7 +152,8 @@ def create_context_router(*, store: MemoryStore, graph: GraphService) -> APIRout
                 title = _label(node)
                 entry = None
                 if node.node_type == "CodeSymbol":
-                    key = f"symbol://{repository}/{node.properties.get('file')}#{node.properties.get('name')}"
+                    qual = node.properties.get("qualname") or node.properties.get("name")
+                    key = f"symbol://{repository}/{node.properties.get('file')}#{qual}"
                     entry = annotations.get(key)
                 content = entry["summary"] if entry else (
                     f"{node.node_type} at {node.properties.get('path') or node.properties.get('file')}"

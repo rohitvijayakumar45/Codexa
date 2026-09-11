@@ -208,8 +208,10 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
         job = job_manager.get(job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="No such job.")
-        if job.status in ("interrupted",):
-            job = job_manager.resume(job_id)
+        # Resume a job left mid-flight by a restart, and load the stored event log for one that
+        # finished before it (an in-memory job with events is returned unchanged).
+        if job.status in ("interrupted",) or not job.events:
+            job = job_manager.resume(job_id) or job
 
         async def event_stream():
             index = 0

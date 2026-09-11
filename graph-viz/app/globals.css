@@ -64,7 +64,9 @@
   --color-g-reason-wash: #f7ede2;
   --color-g-sig: #9b3aa6;
   --color-g-sig-wash: #f5eaf7;
-  --color-g-edge: #8797a8;
+  /* Structural edges: a quiet teal, not grey — reads as "code wiring" without competing with the
+     family hues; stays clear of the blue signal (normal-vision ΔE 17). */
+  --color-g-edge: #2e8a80;
 
   --font-display: var(--font-funnel), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
@@ -162,7 +164,8 @@
   --color-g-reason-wash: #1e1a0c;
   --color-g-sig: #b377d9;
   --color-g-sig-wash: #1d1424;
-  --color-g-edge: #6f6f76;
+  /* Teal wiring on black: distinct from claret, gold and lilac (worst CVD ΔE 8.5, normal ΔE 19). */
+  --color-g-edge: #3a8fa0;
 
   --font-display: var(--font-funnel), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
@@ -581,7 +584,7 @@ body {
 .strata .play:hover { background: var(--sunk); }
 .strata .track { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .strata .track svg { display: block; width: 100%; height: 34px; }
-.strata .track input { width: 100%; margin: 0; accent-color: var(--ink); }
+.strata .track input { width: 100%; margin: 0; }
 .strata .track .ends { display: flex; justify-content: space-between; font: 11px var(--f-mono); color: var(--faint); }
 .strata .readout { font: 12px/1.45 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .strata .readout b { display: block; color: var(--ink); font: 500 15px var(--font-sans); }
@@ -676,3 +679,46 @@ body {
   .strata * { transition: none !important; }
   .strata .agent-pulse { animation: none; opacity: 0; }
 }
+
+/*
+  Themed range slider. The native control painted its track and thumb in the ink colour — a solid
+  bone-white bar in Noir. This one is the theme's own: the travelled part of the track in the signal
+  colour (claret in Noir, blue in Blueprint), the rest a hairline, the thumb a ringed dot.
+  Set `--p` (0%–100%) inline to the current position.
+*/
+.themed-range { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; background: transparent; cursor: pointer; margin: 0; }
+.themed-range:focus { outline: none; }
+.themed-range::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 999px;
+  background: linear-gradient(to right, var(--color-signal) 0 var(--p, 100%), var(--color-line-strong) var(--p, 100%) 100%);
+}
+.themed-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+  background: var(--color-panel); border: 2px solid var(--color-signal); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s var(--ease-out);
+}
+.themed-range:active::-webkit-slider-thumb { transform: scale(1.15); }
+.themed-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--color-signal-wash); }
+.themed-range::-moz-range-track { height: 4px; border-radius: 999px; background: var(--color-line-strong); }
+.themed-range::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--color-signal); }
+.themed-range::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%; background: var(--color-panel); border: 2px solid var(--color-signal);
+}
+
+/*
+  Codebase editor (components/ide/CodeEditor.tsx): a transparent textarea over the Shiki layer. The
+  two MUST share font, size, line height, padding, tab size and white-space, or the caret drifts off
+  the glyphs — which is why every metric here is explicit and in px.
+*/
+.code-editor { display: flex; min-height: 100%; height: 100%; overflow: auto; background: var(--code-bg); font-family: var(--font-mono); font-size: 12.5px; line-height: 20px; font-variant-ligatures: none; overscroll-behavior: contain; }
+.code-editor .ce-gutter { position: sticky; left: 0; z-index: 2; flex: none; min-height: 100%; height: max-content; padding: 12px 0; text-align: right; color: var(--color-faint); background: var(--code-gutter); border-right: 1px solid var(--code-rule); user-select: none; font-variant-numeric: tabular-nums; }
+.code-editor .ce-gutter div { padding: 0 12px 0 14px; height: 20px; }
+.code-editor .ce-body { position: relative; flex: 1 0 auto; min-width: 0; }
+.code-editor .ce-hl, .code-editor .ce-input { position: absolute; inset: 0; margin: 0; padding: 12px 16px; border: 0; font: inherit; line-height: 20px; white-space: pre; tab-size: 2; letter-spacing: 0; overflow: hidden; background: transparent; }
+.code-editor .ce-hl { pointer-events: none; color: var(--color-ink); }
+.code-editor .ce-hl.stale { visibility: hidden; }
+.code-editor .ce-hl span { color: var(--shiki-light); }
+[data-theme="noir"] .code-editor .ce-hl span { color: var(--shiki-dark); }
+.code-editor .ce-input { resize: none; outline: none; color: var(--color-ink); caret-color: var(--color-signal); }
+.code-editor .ce-input.painted { color: transparent; }
+.code-editor .ce-input::selection { background: color-mix(in srgb, var(--color-signal) 30%, transparent); }

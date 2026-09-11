@@ -113,6 +113,8 @@ def _repo_name(url: str) -> str:
 # groups arbitrarily deep, so there the repository path ends where its UI's "/-/" separator begins.
 _OWNER_REPO_HOSTS = ("github.com", "bitbucket.org")
 _CLONE_TIMEOUT = 600
+_GRAPH_MAX_FILES = 800
+_GRAPH_MAX_SYMBOLS = 3000
 _CLONE_ATTEMPTS = 3
 # Failures that are about the DOWNLOAD, not the repository: the connection dropped, or the pack git
 # was indexing came out truncated/disturbed ("fetch-pack: invalid index-pack output", seen live on a
@@ -205,11 +207,14 @@ def _git_clone(url: str, dest: Path) -> None:
     """
     env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}
     # Depth 250, not 1 — change-coupling mining and commit history need real history to work from.
-    cmd = ["git", "-c", "core.longpaths=true", "-c", "credential.interactive=never",
-           "clone", "--depth", "250", url, str(dest)]
+    base = ["git", "-c", "core.longpaths=true", "-c", "credential.interactive=never"]
+    tail = ["clone", "--depth", "250", url, str(dest)]
     for attempt in range(1, _CLONE_ATTEMPTS + 1):
         if dest.exists():
             _discard(dest)  # a failed attempt leaves a partial checkout behind
+        # The last try drops to HTTP/1.1: "unexpected disconnect while reading sideband packet" on
+        # HTTP/2 was one of the failures seen live on encode/httpx, twice in a row.
+        cmd = base + (["-c", "http.version=HTTP/1.1"] if attempt == _CLONE_ATTEMPTS else []) + tail
         try:
             subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
                            timeout=_CLONE_TIMEOUT, check=True, env=env)
@@ -220,11 +225,18 @@ def _git_clone(url: str, dest: Path) -> None:
             raise CloneError(f"The clone took longer than {_CLONE_TIMEOUT // 60} minutes and was stopped — the repository may be very large.") from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr or ""
-            transient = any(k in stderr.lower() for k in _TRANSIENT_MARKERS)
+            # No reason at all is treated as transient too: seen live as the second of three failed
+            # attempts on a repository that then cloned fine ("git exited with an error and gave no
+            # reason"). A real refusal (not found, private) always says so.
+            silent = not any(line.strip() and not line.lower().startswith("cloning into")
+                             for line in stderr.splitlines())
+            transient = silent or any(k in stderr.lower() for k in _TRANSIENT_MARKERS)
             if transient and attempt < _CLONE_ATTEMPTS:
                 logging.getLogger(__name__).warning("clone attempt %d of %s failed transiently: %s",
                                                     attempt, url, stderr.strip().splitlines()[-1:] or "")
-                time.sleep(2 * attempt)
+                # Longer than the 2s/4s it was: GitHub's flaky spells last several seconds, and all
+                # three attempts on httpx landed inside one.
+                time.sleep(5 * attempt)
                 continue
             raise CloneError(_clone_error_message(stderr)) from exc
 
@@ -729,7 +741,7 @@ def _run_annotation(repository: str, dest: Path, store: MemoryStore, llm: LLMCli
     from backend.repository.analyze import analyze_repo as _analyze_repo
 
     code = _analyze_repo(dest)
-    return annotate_repository_symbols(repository, dest, code.symbols, store=store, llm=llm)
+    return annotate_repository_symbols(repository, dest, code.symbols, store=store, llm=llm, calls=code.calls)
 
 
 def _ingest(
@@ -780,7 +792,9 @@ def _ingest(
         provenance=GraphNodeProvenance.INTERNAL_CODE,
     ))
     file_nodes = {}
-    for rel in code.files[:180]:
+    # Graph caps (were 180 files / 450 symbols, which left a third of httpx unmapped). Sized for
+    # mid-sized repositories; the parser's own caps are in analyze.py.
+    for rel in code.files[:_GRAPH_MAX_FILES]:
         file_nodes[rel] = graph.add_node(GraphNodeCreate(
             node_type=GraphNodeType.FILE, stable_id=f"file://{name}/{rel}",
             properties={"path": rel, "repository": name},
@@ -794,11 +808,12 @@ def _ingest(
                 source_type=GraphEdgeSourceType.STATIC_ANALYSIS,
             ))
     sym_nodes = {}
-    for s in code.symbols[:450]:
-        key = f"{s.file}#{s.name}"
+    for s in code.symbols[:_GRAPH_MAX_SYMBOLS]:
+        key = f"{s.file}#{s.qualname or s.name}"
         sym_nodes[key] = graph.add_node(GraphNodeCreate(
             node_type=GraphNodeType.CODE_SYMBOL, stable_id=f"symbol://{name}/{key}",
-            properties={"name": s.name, "kind": s.kind, "file": s.file, "line": s.line, "repository": name},
+            properties={"name": s.name, "qualname": s.qualname or s.name, "kind": s.kind, "file": s.file,
+                        "line": s.line, "repository": name},
             provenance=GraphNodeProvenance.INTERNAL_CODE,
         ))
     for a, b in code.calls:
@@ -906,7 +921,34 @@ def rehydrate_repositories(*, store: MemoryStore, graph: GraphService) -> int:
     return rebuilt
 
 
-def reindex_repository(name: str, *, store: MemoryStore, graph: GraphService) -> RepositoryInfo | None:
+_ANNOTATING: set[str] = set()
+_ANNOTATING_GUARD = threading.Lock()
+
+
+def _refresh_annotations_async(name: str, dest: Path, store: MemoryStore, llm: LLMClient) -> None:
+    """Re-explain only the functions an edit changed, in the background (unchanged ones are reused by
+    fingerprint). One pass per repository at a time; an edit arriving mid-pass is picked up by the
+    next edit's pass."""
+    with _ANNOTATING_GUARD:
+        if name in _ANNOTATING:
+            return
+        _ANNOTATING.add(name)
+
+    def run() -> None:
+        try:
+            _run_annotation(name, dest, store, llm)
+        except Exception:  # noqa: BLE001 - a failed refresh leaves the graph correct, meanings sparser
+            logging.getLogger(__name__).exception("annotation refresh failed for %s", name)
+        finally:
+            with _ANNOTATING_GUARD:
+                _ANNOTATING.discard(name)
+
+    threading.Thread(target=run, name=f"annotate-{name}", daemon=True).start()
+
+
+def reindex_repository(
+    name: str, *, store: MemoryStore, graph: GraphService, llm: LLMClient | None = None,
+) -> RepositoryInfo | None:
     """Re-parses a repository from disk and rebuilds its graph/memory footprint.
 
     Before this, the graph was only ever built once, at initial load (`_ingest`, above) or an
@@ -933,7 +975,12 @@ def reindex_repository(name: str, *, store: MemoryStore, graph: GraphService) ->
     except (json.JSONDecodeError, OSError):
         meta = {}
     graph.remove_repository(name)
-    return _ingest(name, meta.get("url", ""), dest, True, store=store, graph=graph, invalidate_docs=True)
+    info = _ingest(name, meta.get("url", ""), dest, True, store=store, graph=graph, invalidate_docs=True)
+    # Function meanings follow edits too: without this they were refreshed only on a full reload, and
+    # context served the old sentence for a function whose code had changed.
+    if llm is not None:
+        _refresh_annotations_async(name, dest, store, llm)
+    return info
 
 
 def _load_persisted_docs(store: MemoryStore, repository: str) -> RepoDocs | None:

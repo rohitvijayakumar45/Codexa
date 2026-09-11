@@ -98,7 +98,7 @@ const FALLBACK: Record<ThemeName, GraphPalette> = {
   blueprint: {
     family: { structure: "#4b5767", reasoning: "#a8551f", signals: "#9b3aa6" },
     canvas: "#fbfcfe",
-    edge: "#8797a8",
+    edge: "#2e8a80",
     accent: "#0f6fd4",
     accentSoft: "#57a0e8",
     fog: "#eef1f5",
@@ -106,7 +106,7 @@ const FALLBACK: Record<ThemeName, GraphPalette> = {
   noir: {
     family: { structure: "#a9a6a0", reasoning: "#b08a1c", signals: "#b377d9" },
     canvas: "#0c0c0d",
-    edge: "#6f6f76",
+    edge: "#3a8fa0",
     accent: "#c2415a",
     accentSoft: "#d77a8c",
     fog: "#0a0a0b",
