@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, HTTPException, status
 
 from backend.agents.coder import (
     ChangeProposalRequest,
@@ -10,7 +10,7 @@ from backend.agents.coder import (
     ProposeChangeResult,
 )
 from backend.agents.planner import BlastRadiusRequest, BlastRadiusResult, PlanRequest, PlanResult, PlannerService
-from backend.agents.quorum import QuorumRunRequest, QuorumRunResult, QuorumService
+from backend.agents.quorum import QuorumRunRequest, QuorumRunResult, QuorumService, QuorumUnavailableError
 from backend.agents.research import (
     ResearchAgentService,
     ResearchAskRequest,
@@ -86,7 +86,10 @@ def create_agents_router(
         claims deterministically against the real graph before any of them sees a peer's answer, and
         only falls back to a structured (belief-card, not free-text) debate round for whatever the
         graph genuinely can't resolve either way."""
-        return quorum.run(request)
+        try:
+            return quorum.run(request)
+        except QuorumUnavailableError as exc:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
     @router.post(
         "/retrieval/context",

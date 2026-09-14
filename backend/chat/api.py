@@ -62,6 +62,7 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
     job_manager = JobManager(llm=llm, graph=graph, store=store)
     job_manager.load_interrupted_ids()
     phased_build_manager = PhasedBuildManager(llm=llm, job_manager=job_manager)
+    phased_build_manager.resume_unfinished()
 
     @router.get("/models", response_model=list[ModelInfo])
     def list_models() -> list[ModelInfo]:
@@ -254,6 +255,12 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
             "phased_build_id": build.id,
             "phases": [{"title": p.title, "prompt": p.prompt} for p in build.phases],
         }
+
+    @router.post("/agent/phased/{build_id}/cancel")
+    def cancel_phased_build(build_id: str) -> dict:
+        if not phased_build_manager.cancel(build_id):
+            raise HTTPException(status_code=404, detail="No such phased build.")
+        return {"cancelled": True}
 
     @router.get("/agent/phased/{build_id}")
     def phased_build_status(build_id: str) -> dict:

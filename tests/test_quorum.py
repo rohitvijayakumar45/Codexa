@@ -21,7 +21,10 @@ class FakeLLM:
         return self._panel if tier == "balanced" else []
 
     def complete(self, messages, *, model=None, agent="generate", **kwargs) -> str:
-        return self._scripts[(agent, model)]
+        reply = self._scripts[(agent, model)]
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
 
 
 def _graph_with_symbol(name: str, repository: str = "demo-repo") -> GraphService:
@@ -145,6 +148,84 @@ class TestQuorumDebateRound:
         assert result.resolved is False
         assert result.winning_answer is None
         assert len(result.cards) == 3  # every agent's final position still surfaced to the user
+
+
+class TestPanelMemberFailures:
+    """One provider failing (a disabled Cerebras account, a Gemini region block behind a VPN) used
+    to fail the whole Quorum run with a 500."""
+
+    def test_a_failing_member_is_replaced_by_a_reserve_from_another_provider(self):
+        models = ["gemini/a", "groq/b", "cerebras/c", "gemini/d", "mistral/e"]
+        scripts = {("quorum", m): _card("foo exists", 0.9, "foo") for m in models}
+        scripts[("quorum", "cerebras/c")] = RuntimeError("organization disabled")
+        service = QuorumService(llm=FakeLLM(models, scripts), graph=_graph_with_symbol("foo"))
+
+        result = service.run(QuorumRunRequest(repository="demo-repo", query="q"))
+
+        assert sorted(c.model for c in result.cards) == ["gemini/a", "groq/b", "mistral/e"]
+        assert result.unavailable_models == ["cerebras/c: organization disabled"]
+        assert result.resolved is True
+
+    def test_a_failed_provider_is_not_retried_through_its_other_models(self):
+        models = ["gemini/a", "groq/b", "cerebras/c", "gemini/d"]
+        scripts = {("quorum", m): _card("foo exists", 0.9, "foo") for m in models}
+        scripts[("quorum", "gemini/a")] = RuntimeError("User location is not supported")
+        service = QuorumService(llm=FakeLLM(models, scripts), graph=_graph_with_symbol("foo"))
+
+        result = service.run(QuorumRunRequest(repository="demo-repo", query="q"))
+
+        assert [c.model for c in result.cards] == ["groq/b", "cerebras/c"]
+        assert len(result.unavailable_models) == 1
+
+    def test_a_panel_where_nobody_answers_raises_a_clear_error(self):
+        import pytest
+
+        from backend.agents.quorum import QuorumUnavailableError
+
+        scripts = {("quorum", m): RuntimeError(f"{m} down") for m in _PANEL}
+        service = QuorumService(llm=FakeLLM(_PANEL, scripts), graph=_graph_with_symbol("foo"))
+
+        with pytest.raises(QuorumUnavailableError, match="groq/modelA down"):
+            service.run(QuorumRunRequest(repository="demo-repo", query="q", models=_PANEL))
+
+    def test_a_model_with_a_small_output_cap_is_retried_with_a_smaller_budget(self):
+        class CappedLLM(FakeLLM):
+            def complete(self, messages, *, model=None, agent="generate", max_tokens=None, **kwargs):
+                if model == _PANEL[0] and max_tokens > 1000:
+                    raise RuntimeError("Request too large ... Limit 1000, Requested 2000 ... reduce max_tokens")
+                return super().complete(messages, model=model, agent=agent, **kwargs)
+
+        scripts = {("quorum", m): _card("foo exists", 0.9, "foo") for m in _PANEL}
+        service = QuorumService(llm=CappedLLM(_PANEL, scripts), graph=_graph_with_symbol("foo"))
+
+        result = service.run(QuorumRunRequest(repository="demo-repo", query="q", models=_PANEL))
+
+        assert [c.model for c in result.cards] == _PANEL
+        assert result.unavailable_models == []
+
+    def test_provider_errors_are_shortened_to_their_message(self):
+        from backend.agents.quorum import _short_error
+
+        groq = RuntimeError('litellm.RateLimitError: GroqException - {"error":{"message":"Request too large","type":"tokens"}}')
+        wrapped = RuntimeError("OpenAIException - {\n  boom happened\n}")
+        assert _short_error(groq) == "Request too large"
+        assert _short_error(wrapped) == "boom happened"
+
+    def test_a_failed_debate_call_keeps_that_agents_first_round_card(self):
+        scripts = {
+            ("quorum", _PANEL[0]): _card("A's answer", 0.8, "foo"),
+            ("quorum", _PANEL[1]): _card("B's answer", 0.8, "foo"),
+            ("quorum", _PANEL[2]): _card("C's answer", 0.3, None),
+            ("quorum_debate", _PANEL[0]): RuntimeError("rate limited"),
+            ("quorum_debate", _PANEL[1]): _card("B's answer", 0.8, "foo"),
+        }
+        service = QuorumService(llm=FakeLLM(_PANEL, scripts), graph=_graph_with_symbol("foo"))
+
+        result = service.run(QuorumRunRequest(repository="demo-repo", query="q", models=_PANEL))
+
+        assert result.debated is True
+        card_a = next(c for c in result.cards if c.model == _PANEL[0])
+        assert card_a.round == 1 and card_a.answer == "A's answer"
 
 
 class TestQuorumAuditTrail:

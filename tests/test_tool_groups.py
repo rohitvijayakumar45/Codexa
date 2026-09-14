@@ -22,12 +22,16 @@ def test_all_groups_are_subsets_of_tool_schemas():
 
 
 def test_all_tools_covered_by_at_least_one_group():
-    """No tool should be orphaned — every tool must appear in at least one group."""
+    """No tool should be orphaned — every tool must appear in at least one group, unless it is
+    listed as deliberately switched off (and then it must really be in no group)."""
+    from backend.agents.tools import DISABLED_TOOLS
+
     covered = set()
     for group_tools in tool_groups.values():
         covered.update(group_tools)
-    orphaned = ALL_TOOL_NAMES - covered
+    orphaned = ALL_TOOL_NAMES - covered - DISABLED_TOOLS
     assert not orphaned, f"Tools not in any group: {orphaned}"
+    assert not (DISABLED_TOOLS & covered), f"Disabled tools still offered: {DISABLED_TOOLS & covered}"
 
 
 def test_repo_group_included_for_code_questions():

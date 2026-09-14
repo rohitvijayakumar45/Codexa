@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import type { GraphEdge, GraphNode } from "@/lib/api";
-import { EDGE_LABEL, NODE_STYLE, SOURCE_LABEL, nodeLabel, typeColorCss } from "@/lib/graph-visual";
+import { EDGE_LABEL, SOURCE_LABEL, nodeLabel, styleOf, typeColorCss } from "@/lib/graph-visual";
 
 interface Props {
   node: GraphNode | null;
@@ -33,7 +33,7 @@ export function Inspector({ node, edges, nodesById, onClose }: Props) {
                   aria-hidden
                 />
                 <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
-                  {NODE_STYLE[node.node_type].label}
+                  {styleOf(node.node_type).label}
                 </span>
               </div>
               <h2 className="display mt-1 truncate text-[15px] font-semibold text-ink" title={nodeLabel(node.properties, node.stable_id)}>

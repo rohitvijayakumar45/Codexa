@@ -48,7 +48,9 @@ _MAX_ROUTES = 150
 _MAX_COMMITS = 40
 _MAX_FILES_PER_COMMIT = 40
 _MAX_FILES_PER_DECISION = 60
-_MAX_READ = 200_000
+# Raised from 200 KB: gods-eye-view keeps its whole API (26 Vite middleware mounts) in one 342 KB
+# vite.config.js, which the old limit silently skipped. Build output is excluded by _SKIP_DIRS.
+_MAX_READ = 2_000_000
 
 
 @dataclass
@@ -153,6 +155,16 @@ _TABLE_RE = re.compile(
     r"['\"`](GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|ALL)\s+(/[^'\"`\s]*)['\"`]\s*:\s*"
     r"(async\s+)?(function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>|[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)"
 )
+# Vite dev-server / Connect middleware: `server.middlewares.use('/api/cctv', async (req, res) => ...)`
+# or `middlewares.use('/api/radio', middleware)`. The `middlewares.use` form is specific to Vite and
+# Connect servers, so it needs no framework hint. Group 2 is a named handler, when there is one.
+_MIDDLEWARE_RE = re.compile(r"\bmiddlewares\.use\(\s*['\"`](/[^'\"`]*)['\"`]\s*,\s*([A-Za-z_$][\w$]*)?")
+# Sub-paths a mounted middleware dispatches on: `url.pathname === '/health'`, `subPath === '/x'`.
+# Only comparisons on path-like variables count, so an upstream URL built for a proxied fetch doesn't.
+_SUBPATH_RE = re.compile(
+    r"\b(?:[\w$]*[pP]ath(?:name)?|req\.url|url)\s*===\s*['\"`](/[\w\-./:]*)['\"`]"
+)
+_MIDDLEWARE_BLOCK_CHARS = 20_000
 _PY_DECO_RE = re.compile(
     r"@([A-Za-z_]\w*)\.(get|post|put|patch|delete|route|api_route)\(\s*['\"]([^'\"]*)['\"]([^)]*)\)\s*\n(?:\s*@[^\n]*\n)*\s*(?:async\s+)?def\s+([A-Za-z_]\w*)"
 )
@@ -212,6 +224,21 @@ def extract_routes(root: Path, files: list[str]) -> list[Route]:
                 value = m.group(4)
                 named = value if re.fullmatch(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?", value) and value != "function" else None
                 add("ANY" if m.group(1) == "ALL" else m.group(1), m.group(2), f, _line_of(text, m.start()), named)
+            mounts = list(_MIDDLEWARE_RE.finditer(text))
+            for i, m in enumerate(mounts):
+                base = m.group(1)
+                # `async (req, res) =>` / `function (...)` is an inline handler, not a named one.
+                named = m.group(2) if m.group(2) not in ("async", "function") else None
+                add("ANY", base, f, _line_of(text, m.start()), named)
+                # The mount's own block: up to the next mount, bounded, scanned for the sub-paths it
+                # dispatches on (`/api/cctv` + `pathname === '/health'` -> /api/cctv/health).
+                end = mounts[i + 1].start() if i + 1 < len(mounts) else len(text)
+                block_start = m.end()
+                block = text[block_start:min(end, block_start + _MIDDLEWARE_BLOCK_CHARS)]
+                for s in _SUBPATH_RE.finditer(block):
+                    sub = s.group(1)
+                    if sub != "/":
+                        add("ANY", _join(base, sub), f, _line_of(text, block_start + s.start()), None)
             if not _SERVER_HINT_RE.search(text):
                 continue  # an HTTP *client* (axios.get('/api/...')) is not a route definition
             pre = prefix.get(f, "")

@@ -30,6 +30,11 @@
   /* Ink — near-black navy, never pure #000, never soft grey either. */
   --color-ink: #1b2430;
   --color-ink-soft: #35404f;
+
+  /* The user's own chat bubble. Its own token (not just inverted ink) so each theme can tune it:
+     inverted ink reads well on Blueprint's light ground, but on Noir it became a near-white slab. */
+  --color-bubble: #1b2430;
+  --color-bubble-ink: #ffffff;
   --color-muted: #5c6a7b;
   --color-faint: #8797a8;
   --color-line: #dde4ed;
@@ -130,6 +135,11 @@
   /* Bone, never white — #ffffff on near-black halates and softens every glyph edge. */
   --color-ink: #eae7e1;
   --color-ink-soft: #c5c2bc;
+
+  /* User bubble: a warm charcoal lifted off the panel, with soft bone text (about 11:1), instead
+     of the inverted near-white block that glared through long sessions. */
+  --color-bubble: #28262a;
+  --color-bubble-ink: #d9d4cd;
   --color-muted: #84848a;
   --color-faint: #63636a;
   --color-line: #242427;

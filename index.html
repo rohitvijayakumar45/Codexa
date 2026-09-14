@@ -1,0 +1,3046 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS — The Architectural &amp; Cultural Cartography System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+:root {
+  --bg-parchment: #FBF9F5;
+  --bg-surface: #F5F2EB;
+  --bg-surface-elevated: #EFEBE0;
+  --bg-card: #FFFFFF;
+  --bg-subtle: #F3EFE6;
+  --border-subtle: #E6E1D5;
+  --border-medium: #D5CEBF;
+  --border-strong: #A8A090;
+  --ink-primary: #181716;
+  --ink-secondary: #4A4641;
+  --ink-tertiary: #7D776E;
+  --ink-muted: #A8A296;
+  --sanguine: #B83B26;
+  --sanguine-light: #FBF0ED;
+  --sanguine-border: #E8B4A8;
+  --sepia: #8A6436;
+  --sepia-light: #F8F4EE;
+  --cyanotype: #26547C;
+  --cyanotype-light: #EBF3F8;
+  --gold: #C29B38;
+  --gold-light: #FDF9EE;
+  --bone: #EAE6DB;
+  
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-display: 'Cinzel', serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --shadow-subtle: 0 1px 2px rgba(24, 23, 22, 0.04);
+  --shadow-medium: 0 4px 16px rgba(24, 23, 22, 0.06), 0 1px 3px rgba(24, 23, 22, 0.04);
+  --shadow-elevated: 0 12px 36px rgba(24, 23, 22, 0.09), 0 2px 6px rgba(24, 23, 22, 0.05);
+  --shadow-deep: 0 24px 64px rgba(24, 23, 22, 0.12), 0 4px 12px rgba(24, 23, 22, 0.06);
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-parchment);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  opacity: 0.028;
+  z-index: 9999;
+  background-image: radial-gradient(#181716 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 1.5px solid var(--sanguine);
+  outline-offset: 2px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-parchment);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-tertiary);
+}
+
+/* Top Masthead */
+.masthead {
+  border-bottom: 1px solid var(--border-medium);
+  background: var(--bg-parchment);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.masthead-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 24px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.masthead-top-left, .masthead-top-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.masthead-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  color: var(--ink-secondary);
+}
+
+.masthead-badge.sanguine {
+  color: var(--sanguine);
+  border-color: var(--sanguine-border);
+  background: var(--sanguine-light);
+}
+
+.pulse-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--sanguine);
+  animation: pulseDot 2.2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.4); opacity: 1; }
+}
+
+.masthead-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  gap: 24px;
+}
+
+.brand-section {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.brand-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--ink-primary);
+}
+
+.brand-subtitle {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-tertiary);
+}
+
+/* Main Navigation */
+.view-nav {
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  position: relative;
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+  padding: 7px 14px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--duration-fast) var(--ease-smooth);
+  position: relative;
+  white-space: nowrap;
+}
+
+.nav-btn:hover {
+  color: var(--ink-primary);
+}
+
+.nav-btn.active {
+  background: var(--bg-card);
+  color: var(--ink-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-subtle);
+}
+
+.nav-btn .key-hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 4px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  color: var(--ink-muted);
+}
+
+/* Action Controls */
+.masthead-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.action-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.action-btn:hover {
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+  border-color: var(--border-strong);
+}
+
+.action-btn.active {
+  background: var(--ink-primary);
+  color: var(--bg-parchment);
+  border-color: var(--ink-primary);
+}
+
+.action-btn.icon-only {
+  padding: 6px 8px;
+}
+
+/* App Container */
+.app-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: calc(100vh - 96px);
+}
+
+.view-pane {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  animation: fadeIn 220ms var(--ease-spring);
+}
+
+.view-pane.active {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Utility classes */
+.mono { font-family: var(--font-mono); }
+.serif { font-family: var(--font-serif); }
+.display { font-family: var(--font-display); }
+
+
+/* ==========================================================================
+   VIEW 1: FOLIO ARCHIVE (PLATES CANVAS)
+   ========================================================================== */
+.folio-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  flex: 1;
+  min-height: calc(100vh - 96px);
+  background: var(--bg-parchment);
+}
+
+.folio-sidebar {
+  border-right: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.folio-sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-parchment);
+}
+
+.folio-sidebar-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: var(--ink-primary);
+  margin-bottom: 4px;
+}
+
+.folio-sidebar-sub {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ink-tertiary);
+}
+
+.folio-search-wrap {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.folio-search-input {
+  width: 100%;
+  padding: 7px 12px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  color: var(--ink-primary);
+  outline: none;
+}
+
+.folio-search-input:focus {
+  border-color: var(--ink-primary);
+}
+
+.folio-plate-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.plate-item-group-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+  padding: 12px 20px 4px;
+}
+
+.plate-item {
+  padding: 12px 20px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.plate-item:hover {
+  background: var(--bg-surface-elevated);
+}
+
+.plate-item.active {
+  background: var(--bg-card);
+  border-left-color: var(--sanguine);
+  box-shadow: var(--shadow-subtle);
+}
+
+.plate-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.plate-item-code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--sanguine);
+  font-weight: 500;
+}
+
+.plate-item-era {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+}
+
+.plate-item-title {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-primary);
+  line-height: 1.25;
+}
+
+.plate-item-desc {
+  font-size: 11.5px;
+  color: var(--ink-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Canvas Area */
+.folio-main {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-parchment);
+  position: relative;
+  overflow: hidden;
+}
+
+.canvas-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 24px;
+  background: var(--bg-parchment);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 10;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+  margin-right: 4px;
+  letter-spacing: 0.05em;
+}
+
+.tool-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-secondary);
+  padding: 5px 10px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.tool-btn:hover {
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+  border-color: var(--border-strong);
+}
+
+.tool-btn.active {
+  background: var(--ink-primary);
+  color: var(--bg-parchment);
+  border-color: var(--ink-primary);
+}
+
+.ink-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+
+.ink-bone { background: #181716; }
+.ink-sanguine { background: #B83B26; }
+.ink-sepia { background: #8A6436; }
+.ink-cyanotype { background: #26547C; }
+
+/* Interactive Canvas Viewport */
+.canvas-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-parchment);
+  cursor: grab;
+  user-select: none;
+  min-height: 520px;
+}
+
+.canvas-viewport:active {
+  cursor: grabbing;
+}
+
+.canvas-stage {
+  transform-origin: center center;
+  transition: transform 60ms linear;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.plate-frame {
+  background: #FFFFFF;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-deep);
+  padding: 32px 36px 40px;
+  position: relative;
+  max-width: 960px;
+  width: 900px;
+  box-sizing: border-box;
+}
+
+/* Engraving decorative border */
+.plate-frame::before {
+  content: "";
+  position: absolute;
+  top: 8px; left: 8px; right: 8px; bottom: 8px;
+  border: 0.75px solid var(--border-medium);
+  pointer-events: none;
+}
+
+.plate-frame::after {
+  content: "";
+  position: absolute;
+  top: 12px; left: 12px; right: 12px; bottom: 12px;
+  border: 0.5px dashed var(--border-subtle);
+  pointer-events: none;
+}
+
+.plate-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1.5px solid var(--ink-primary);
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+}
+
+.plate-title-group h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink-primary);
+  margin-bottom: 2px;
+}
+
+.plate-title-group p {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13.5px;
+  color: var(--ink-tertiary);
+}
+
+.plate-meta-group {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-secondary);
+}
+
+.plate-svg-container {
+  width: 100%;
+  height: 480px;
+  position: relative;
+  background: #FCFBF9;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.plate-svg-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Ink color themes on SVG */
+.ink-mode-bone svg { --stroke-color: #181716; --fill-subtle: rgba(24,23,22,0.04); --accent-color: #B83B26; }
+.ink-mode-sanguine svg { --stroke-color: #962E1C; --fill-subtle: rgba(184,59,38,0.05); --accent-color: #181716; }
+.ink-mode-sepia svg { --stroke-color: #694C29; --fill-subtle: rgba(138,100,54,0.06); --accent-color: #962E1C; }
+.ink-mode-cyanotype svg { --stroke-color: #1D4363; --fill-subtle: rgba(38,84,124,0.06); --accent-color: #C29B38; }
+
+.plate-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-tertiary);
+}
+
+.plate-footer-left {
+  display: flex;
+  gap: 20px;
+}
+
+/* Floating Datum Callout Pins */
+.datum-pin {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--sanguine);
+  border-radius: 50%;
+  color: var(--sanguine);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: all var(--duration-fast) var(--ease-spring);
+  box-shadow: 0 2px 8px rgba(184,59,38,0.25);
+  z-index: 20;
+}
+
+.datum-pin:hover {
+  transform: translate(-50%, -50%) scale(1.25);
+  background: var(--sanguine);
+  color: #FFF;
+}
+
+.datum-pin.custom-pin {
+  border-color: var(--cyanotype);
+  color: var(--cyanotype);
+}
+.datum-pin.custom-pin:hover {
+  background: var(--cyanotype);
+  color: #FFF;
+}
+
+.datum-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink-primary);
+  color: var(--bg-parchment);
+  padding: 8px 12px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.35;
+  width: 200px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--duration-fast) var(--ease-smooth);
+  box-shadow: var(--shadow-medium);
+  z-index: 30;
+}
+
+.datum-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--ink-primary) transparent transparent transparent;
+}
+
+.datum-pin:hover .datum-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.datum-tooltip strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  margin-bottom: 2px;
+  color: #FFF;
+}
+
+/* Canvas Floating Overlay Controls */
+.canvas-floating-controls {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  box-shadow: var(--shadow-medium);
+  display: flex;
+  gap: 4px;
+  z-index: 15;
+}
+
+.floating-btn {
+  background: transparent;
+  border: none;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+
+.floating-btn:hover {
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+}
+
+
+/* ==========================================================================
+   VIEW 2: TYPOLOGY MATRIX & LEXICON
+   ========================================================================== */
+.matrix-container {
+  padding: 32px 48px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.matrix-header {
+  margin-bottom: 28px;
+  border-bottom: 1.5px solid var(--ink-primary);
+  padding-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.matrix-title h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink-primary);
+}
+
+.matrix-title p {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink-tertiary);
+  margin-top: 4px;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 24px;
+  background: var(--bg-surface);
+  padding: 12px 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+}
+
+.filter-select {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  padding: 5px 10px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-primary);
+  border-radius: var(--radius-xs);
+  outline: none;
+}
+
+.filter-search-input {
+  flex: 1;
+  min-width: 220px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  border-radius: var(--radius-xs);
+}
+
+.matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.typology-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  padding: 20px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-spring);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+
+.typology-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ink-primary);
+  box-shadow: var(--shadow-medium);
+}
+
+.typology-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.typology-code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--sanguine);
+}
+
+.typology-era {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+}
+
+.typology-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-primary);
+  margin-bottom: 6px;
+  line-height: 1.25;
+}
+
+.typology-archetype {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  color: var(--sepia);
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.typology-desc {
+  font-size: 12.5px;
+  color: var(--ink-secondary);
+  line-height: 1.45;
+  margin-bottom: 16px;
+  flex: 1;
+}
+
+.typology-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-tertiary);
+}
+
+.typology-metric-item span {
+  color: var(--ink-primary);
+  font-weight: 500;
+}
+
+/* Dense Ledger Table View */
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+}
+
+.ledger-table th {
+  background: var(--bg-surface);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-tertiary);
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-medium);
+}
+
+.ledger-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12.5px;
+}
+
+.ledger-table tr:hover td {
+  background: var(--bg-surface-elevated);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   VIEW 3: COMPARATIVE CALIPER STUDIO
+   ========================================================================== */
+.comparative-container {
+  padding: 32px 48px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.comparative-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin-top: 24px;
+}
+
+.compare-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  padding: 24px;
+  box-shadow: var(--shadow-subtle);
+}
+
+.compare-select-wrap {
+  margin-bottom: 18px;
+}
+
+.compare-select {
+  width: 100%;
+  padding: 8px 12px;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+  border-radius: var(--radius-xs);
+}
+
+.compare-drawing-box {
+  width: 100%;
+  height: 240px;
+  background: #FCFBF9;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.compare-drawing-box svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.compare-metric-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12.5px;
+}
+
+.compare-metric-row .metric-name {
+  color: var(--ink-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.compare-metric-row .metric-val {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--ink-primary);
+}
+
+.comparative-dialectic-summary {
+  margin-top: 28px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  padding: 24px 28px;
+  border-left: 4px solid var(--sanguine);
+}
+
+.comparative-dialectic-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  color: var(--ink-primary);
+}
+
+.comparative-dialectic-text {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-secondary);
+}
+
+/* ==========================================================================
+   VIEW 4: EXEGESIS & SCHOLARLY TREATISE
+   ========================================================================== */
+.exegesis-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr 320px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 32px 24px;
+  gap: 36px;
+}
+
+.exegesis-toc {
+  position: sticky;
+  top: 110px;
+  height: fit-content;
+}
+
+.toc-title {
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  color: var(--ink-muted);
+}
+
+.toc-link {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 13.5px;
+  color: var(--ink-tertiary);
+  padding: 6px 0;
+  border-left: 2px solid transparent;
+  padding-left: 10px;
+  text-decoration: none;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.toc-link:hover, .toc-link.active {
+  color: var(--ink-primary);
+  border-left-color: var(--sanguine);
+  font-weight: 600;
+}
+
+.exegesis-article {
+  background: var(--bg-card);
+  padding: 48px 56px;
+  border: 1px solid var(--border-medium);
+  box-shadow: var(--shadow-medium);
+  line-height: 1.75;
+}
+
+.article-header {
+  border-bottom: 1.5px solid var(--ink-primary);
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+}
+
+.article-category {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--sanguine);
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.article-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1.25;
+  color: var(--ink-primary);
+  margin-bottom: 12px;
+}
+
+.article-author {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14.5px;
+  color: var(--ink-tertiary);
+}
+
+.article-body p {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: var(--ink-secondary);
+  margin-bottom: 20px;
+}
+
+.article-body p.lead::first-letter {
+  font-family: var(--font-display);
+  font-size: 54px;
+  float: left;
+  line-height: 0.85;
+  padding-right: 12px;
+  padding-top: 4px;
+  color: var(--ink-primary);
+}
+
+.article-interactive-widget {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  padding: 20px;
+  margin: 28px 0;
+  border-radius: var(--radius-xs);
+}
+
+.widget-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-primary);
+  margin-bottom: 12px;
+}
+
+.marginalia-sidebar {
+  position: sticky;
+  top: 110px;
+  height: fit-content;
+}
+
+.marginalia-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.marginalia-box strong {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--sanguine);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.user-notes-textarea {
+  width: 100%;
+  height: 140px;
+  padding: 10px;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  resize: vertical;
+  color: var(--ink-primary);
+}
+
+/* ==========================================================================
+   VIEW 5: TECTONIC MATERIAL ASSAYS
+   ========================================================================== */
+.materials-container {
+  padding: 32px 48px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.materials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.material-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  padding: 24px;
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-subtle);
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+
+.material-card:hover {
+  border-color: var(--ink-primary);
+  box-shadow: var(--shadow-medium);
+}
+
+.material-swatch-box {
+  height: 100px;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 16px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   SIGNATURE INTERACTIVE PROPORTIONAL CALIPER
+   ========================================================================== */
+.caliper-tool-window {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  width: 320px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--ink-primary);
+  box-shadow: var(--shadow-deep);
+  border-radius: var(--radius-sm);
+  z-index: 1000;
+  display: none;
+  user-select: none;
+}
+
+.caliper-tool-window.open {
+  display: block;
+  animation: slideUp 240ms var(--ease-spring);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.caliper-tool-header {
+  padding: 10px 14px;
+  background: var(--ink-primary);
+  color: var(--bg-parchment);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  cursor: move;
+}
+
+.caliper-tool-body {
+  padding: 16px;
+}
+
+.caliper-readout {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-primary);
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.caliper-ratio-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: var(--sanguine-light);
+  color: var(--sanguine);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--sanguine-border);
+}
+
+.caliper-slider-wrap {
+  margin: 14px 0;
+}
+
+.caliper-slider-wrap label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-tertiary);
+  margin-bottom: 6px;
+}
+
+.caliper-range {
+  width: 100%;
+  accent-color: var(--sanguine);
+}
+
+/* ==========================================================================
+   OMNI COMMAND PALETTE (CMD+K)
+   ========================================================================== */
+.omni-modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(24, 23, 22, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+}
+
+.omni-modal-backdrop.open {
+  display: flex;
+}
+
+.omni-dialog {
+  width: 620px;
+  max-width: 92vw;
+  background: #FFFFFF;
+  border: 1.5px solid var(--ink-primary);
+  box-shadow: var(--shadow-deep);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  animation: modalScale 180ms var(--ease-spring);
+}
+
+@keyframes modalScale {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.omni-input-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-medium);
+  gap: 12px;
+}
+
+.omni-input {
+  flex: 1;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--ink-primary);
+  outline: none;
+}
+
+.omni-results-list {
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.omni-item {
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.omni-item:hover, .omni-item.selected {
+  background: var(--bg-surface-elevated);
+}
+
+.omni-item-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.omni-item-title {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-primary);
+}
+
+.omni-item-sub {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-tertiary);
+}
+
+.omni-item-badge {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  color: var(--ink-secondary);
+}
+
+/* ==========================================================================
+   INSPECTOR DRAWER
+   ========================================================================== */
+.inspector-drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 480px;
+  max-width: 90vw;
+  background: #FFFFFF;
+  border-left: 1.5px solid var(--ink-primary);
+  box-shadow: var(--shadow-deep);
+  z-index: 1500;
+  transform: translateX(100%);
+  transition: transform var(--duration-normal) var(--ease-spring);
+  display: flex;
+  flex-direction: column;
+}
+
+.inspector-drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-medium);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-surface);
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 3000;
+  pointer-events: none;
+}
+
+.toast-msg {
+  background: var(--ink-primary);
+  color: var(--bg-parchment);
+  padding: 10px 18px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  box-shadow: var(--shadow-elevated);
+  animation: toastIn 200ms var(--ease-spring);
+  pointer-events: auto;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsiveness */
+@media (max-width: 1024px) {
+  .folio-layout {
+    grid-template-columns: 1fr;
+  }
+  .folio-sidebar {
+    max-height: 240px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-medium);
+  }
+  .exegesis-layout {
+    grid-template-columns: 1fr;
+  }
+  .exegesis-toc, .marginalia-sidebar {
+    display: none;
+  }
+  .comparative-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   SUPPLEMENTARY STYLES (Part 4)
+   ========================================================================== */
+
+/* Masthead refinement */
+.masthead-top .masthead-badge + .masthead-badge { margin-left: 0; }
+
+.nav-ico {
+  font-size: 11px;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.masthead-main .view-nav { flex-wrap: nowrap; }
+
+/* Era badge */
+.era-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 7px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sanguine);
+  background: var(--sanguine-light);
+  border: 1px solid var(--sanguine-border);
+  border-radius: var(--radius-xs);
+}
+
+/* Plate description row */
+.plate-desc-row {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--ink-secondary);
+  line-height: 1.6;
+}
+
+/* Zoom indicator */
+.zoom-indicator {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-tertiary);
+  padding: 0 4px;
+  min-width: 42px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-medium);
+}
+
+/* Grid overlay and datum pins container */
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.datum-pins {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.datum-pins .datum-pin { pointer-events: auto; }
+
+.canvas-viewport.dragging { cursor: grabbing; }
+
+/* Matrix meta */
+.matrix-meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--ink-tertiary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Empty state */
+.empty-state {
+  grid-column: 1 / -1;
+  padding: 80px 24px;
+  text-align: center;
+  border: 1px dashed var(--border-medium);
+  background: var(--bg-surface);
+}
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  color: var(--ink-secondary);
+  margin-bottom: 6px;
+}
+.empty-sub {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+
+/* Comparative view extras */
+.comparative-metrics-wrap { margin-top: 28px; overflow-x: auto; }
+.compare-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+.compare-code { font-size: 10.5px; color: var(--sanguine); letter-spacing: 0.04em; }
+.ledger-table td.metric-name {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-tertiary);
+  width: 22%;
+  background: var(--bg-surface);
+  vertical-align: top;
+  padding-top: 14px;
+}
+.ledger-table td.metric-val {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--ink-primary);
+  width: 39%;
+  vertical-align: top;
+  padding-top: 14px;
+}
+
+/* Materials cards */
+.mat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.mat-code { color: var(--sanguine); font-weight: 600; }
+.mat-carbon { color: var(--ink-tertiary); }
+.mat-carbon.carbon-negative { color: #3E6B4F; }
+.mat-name {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink-primary);
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+.mat-origin {
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--sepia);
+  margin-bottom: 12px;
+}
+.mat-desc {
+  font-size: 12.5px;
+  color: var(--ink-secondary);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.mat-specs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+.mat-specs label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin-bottom: 3px;
+}
+.mat-specs span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-primary);
+}
+
+/* Material swatches (tactile surface textures via CSS gradients) */
+#materials-grid .material-card[data-mat="mat-pozzolana"] .material-swatch-box {
+  background:
+    radial-gradient(circle at 20% 30%, rgba(138,100,54,0.25) 0 6%, transparent 7%),
+    radial-gradient(circle at 68% 22%, rgba(24,23,22,0.2) 0 4%, transparent 5%),
+    radial-gradient(circle at 45% 70%, rgba(138,100,54,0.3) 0 8%, transparent 9%),
+    radial-gradient(circle at 82% 78%, rgba(24,23,22,0.15) 0 5%, transparent 6%),
+    linear-gradient(160deg, #C9BFA8 0%, #B5AB93 60%, #A39A85 100%);
+}
+#materials-grid .material-card[data-mat="mat-travertine"] .material-swatch-box {
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.25) 0 3px, rgba(138,100,54,0.1) 3px 5px, transparent 5px 14px),
+    linear-gradient(170deg, #E8DFC8 0%, #D9CCA9 50%, #C8B896 100%);
+}
+#materials-grid .material-card[data-mat="mat-corten"] .material-swatch-box {
+  background:
+    radial-gradient(circle at 30% 40%, rgba(74,46,26,0.35) 0 10%, transparent 12%),
+    radial-gradient(circle at 70% 65%, rgba(74,46,26,0.4) 0 8%, transparent 10%),
+    radial-gradient(circle at 50% 20%, rgba(196,94,44,0.3) 0 14%, transparent 16%),
+    linear-gradient(150deg, #9A5B33 0%, #834A28 55%, #6E3F22 100%);
+}
+#materials-grid .material-card[data-mat="mat-hinoki"] .material-swatch-box {
+  background:
+    repeating-linear-gradient(0deg, rgba(255,252,244,0.3) 0 2px, rgba(196,174,138,0.25) 2px 3px, transparent 3px 11px),
+    linear-gradient(100deg, #EFE3C8 0%, #E0D2B2 55%, #D3C4A3 100%);
+}
+#materials-grid .material-card[data-mat="mat-glulam"] .material-swatch-box {
+  background:
+    repeating-linear-gradient(0deg, #E5D8BE 0 14px, #D8C8A8 14px 15px, #CDBD9C 15px 16px, #E5D8BE 16px 30px),
+    linear-gradient(180deg, #EFE5D0, #DFD2B6);
+}
+#materials-grid .material-card[data-mat="mat-marble"] .material-swatch-box {
+  background:
+    radial-gradient(ellipse 120px 40px at 25% 60%, rgba(255,255,255,0.5), transparent 60%),
+    linear-gradient(115deg, #F7F5F1 0%, #EFECE6 40%, #E3DFD6 70%, #EDEAE3 100%);
+}
+
+/* Drawer refinements */
+.drawer-header-title { font-size: 10.5px; letter-spacing: 0.12em; color: var(--ink-tertiary); }
+.drawer-close {
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--ink-secondary);
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+.drawer-close:hover { background: var(--ink-primary); color: var(--bg-parchment); border-color: var(--ink-primary); }
+
+.drawer-tag {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--sanguine);
+  margin-bottom: 10px;
+}
+.drawer-title {
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.3;
+  color: var(--ink-primary);
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+}
+.drawer-sub {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13.5px;
+  color: var(--ink-tertiary);
+  margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.drawer-section { margin-bottom: 22px; }
+.drawer-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+.drawer-section p {
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink-secondary);
+}
+.drawer-table div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.drawer-table span {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-tertiary);
+}
+.drawer-table b {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-primary);
+  text-align: right;
+}
+.drawer-quote {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--ink-secondary);
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+  position: relative;
+}
+.drawer-quote::before {
+  content: "\201C";
+  position: absolute;
+  top: 0px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-serif);
+  font-size: 34px;
+  color: var(--border-medium);
+  line-height: 1;
+  background: #FFF;
+  padding: 0 10px;
+}
+.drawer-quote-author {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  text-align: right;
+  margin-top: 10px;
+}
+
+/* Omni palette refinements */
+.omni-icon { font-size: 17px; color: var(--ink-tertiary); line-height: 1; }
+.omni-kbd {
+  font-size: 9.5px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  color: var(--ink-muted);
+}
+.omni-footer {
+  display: flex;
+  gap: 16px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  font-size: 9.5px;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+}
+.omni-empty {
+  padding: 44px 18px;
+  text-align: center;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+/* Caliper refinements */
+.caliper-close, .caliper-close:active {
+  background: transparent;
+  border: none;
+  color: var(--bg-parchment);
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.8;
+  padding: 0 4px;
+}
+.caliper-close:hover { opacity: 1; }
+.caliper-ratio-line {
+  font-size: 10.5px;
+  color: var(--ink-tertiary);
+  letter-spacing: 0.04em;
+  padding-bottom: 2px;
+}
+.caliper-scale {
+  margin-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+.caliper-scale-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 9.5px;
+  color: var(--ink-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.caliper-scale-row:last-child { border-bottom: none; }
+.caliper-ratio-badge.congruent { background: #EAF3EC; color: #3E6B4F; border-color: #BCD3C2; }
+.caliper-ratio-badge.near { background: var(--gold-light); color: #8A6436; border-color: #E0CFA4; }
+.caliper-ratio-badge.dissonant { background: var(--sanguine-light); color: var(--sanguine); border-color: var(--sanguine-border); }
+
+/* Notes */
+.notes-block { margin-top: 8px; }
+.notes-status-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 9.5px;
+  color: var(--ink-muted);
+}
+
+/* Widget SVGs */
+.widget-svg { width: 100%; height: auto; display: block; }
+
+/* Responsive refinements */
+@media (max-width: 1200px) {
+  .masthead-main { flex-wrap: wrap; gap: 12px; }
+  .view-nav { order: 3; width: 100%; overflow-x: auto; }
+  .brand-section { width: 100%; }
+  .masthead-actions { margin-left: auto; }
+}
+@media (max-width: 1024px) {
+  .matrix-container, .comparative-container, .materials-container { padding: 24px 24px; }
+  .matrix-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .exegesis-article { padding: 32px 28px; }
+}
+@media (max-width: 768px) {
+  body { font-size: 13px; }
+  .plate-frame { width: 100%; padding: 20px; }
+  .plate-svg-container { height: 320px; }
+  .canvas-toolbar { padding: 10px 14px; }
+  .toolbar-group { flex-wrap: wrap; }
+  .masthead-top { display: none; }
+  .caliper-tool-window { left: 12px; right: 12px; width: auto; bottom: 12px; }
+  .inspector-drawer { width: 100vw; }
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .filter-search-input { min-width: 0; }
+  .materials-grid { grid-template-columns: 1fr; }
+  .matrix-grid { grid-template-columns: 1fr; }
+  .ledger-table td.metric-name { display: none; }
+  .ledger-table td { display: block; width: 100% !important; padding: 6px 16px; border-bottom: none; }
+  .ledger-table tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--border-medium); }
+  .omni-dialog { width: 94vw; }
+}
+
+@media print {
+  .masthead, .canvas-floating-controls, .caliper-tool-window, .omni-modal-backdrop,
+  .inspector-drawer, .toast-container, .folio-sidebar, .canvas-toolbar { display: none !important; }
+  body::before { display: none; }
+  .plate-frame { box-shadow: none; }
+}
+
+</style>
+</head>
+<body>
+<!-- ================= MASTHEAD ================= -->
+<header class="masthead">
+  <div class="masthead-top">
+    <div class="masthead-top-left">
+      <span class="masthead-badge sanguine"><span class="pulse-dot"></span> PLATE XIV ACTIVE</span>
+      <span class="masthead-badge">EPOCH: 438 BCE — 1972 CE</span>
+      <span class="masthead-badge">COORD: 41.8902° N, 12.4922° E</span>
+    </div>
+    <div class="masthead-top-right">
+      <span class="masthead-badge" id="clock-date">— — ——</span>
+      <span class="masthead-badge" id="clock-time">—:—</span>
+    </div>
+  </div>
+  <div class="masthead-main">
+    <div class="brand-section" id="brand-home">
+      <div class="brand-title">ATLAS</div>
+      <div class="brand-subtitle">The Architectural &amp; Cultural Cartography System</div>
+    </div>
+    <nav class="view-nav" aria-label="Primary views">
+      <button class="nav-btn active" data-view="folio"><span class="nav-ico">▲</span> Folio Plates <span class="key-hint">1</span></button>
+      <button class="nav-btn" data-view="matrix"><span class="nav-ico">◈</span> Typology Lexicon <span class="key-hint">2</Other-hint></button>
+      <button class="nav-btn" data-view="compare"><span class="nav-ico">⇔</span> Caliper Studio <span class="key-hint">3</span></button>
+      <button class="nav-btn" data-view="exegesis"><span class="nav-ico">❦</span> Exegesis <span class="key-hint">4</span></button>
+      <button class="nav-btn" data-view="materials"><span class="nav-ico">▤</span> Material Assays <span class="key-hint">5</span></button>
+    </nav>
+    <div class="masthead-actions">
+      <button class="action-btn" id="caliper-toggle-btn" title="Toggle Proportional Caliper (C)">⌖ Caliper</button>
+      <button class="action-btn" id="cmd-k-btn" title="Command Palette (Ctrl+K)">⌘ Search</button>
+      <button class="action-btn icon-only" id="print-btn" title="Compile Folio (Print)">⎙</button>
+    </div>
+  </div>
+</header>
+
+<div class="app-container">
+  <!-- VIEW 1: FOLIO -->
+  <section class="view-pane active" id="view-folio">
+    <div class="folio-layout">
+      <aside class="folio-sidebar">
+        <div class="folio-sidebar-header">
+          <div class="folio-sidebar-title">PLATE REGISTER</div>
+          <div class="folio-sidebar-sub">Twelve architectural studies spanning 2,400 years</div>
+        </div>
+        <div class="folio-search-wrap">
+          <input id="folio-search" class="folio-search-input" type="text" placeholder="Search plates, folios, keywords…" />
+        </div>
+        <div class="folio-plate-list" id="plate-list"></div>
+      </aside>
+      <main class="folio-main">
+        <div class="canvas-toolbar">
+          <div class="toolbar-group">
+            <span class="toolbar-label">VIEW</span>
+            <button class="tool-btn active" data-canvas="fit">FIT</button>
+            <button class="tool-btn" data-canvas="1:1">1:1</button>
+            <button class="tool-btn" data-canvas="detail">DETAIL</button>
+          </div>
+          <div class="toolbar-group">
+            <span class="toolbar-label">OVERLAYS</span>
+            <button class="tool-btn active" id="grid-toggle">GRID</button>
+            <button class="tool-btn active" id="pin-toggle">PINS</button>
+            <button class="tool-btn" data-canvas="hatch">HATCH</button>
+          </div>
+          <div class="toolbar-group">
+            <span class="toolbar-label">INK</span>
+            <button class="tool-btn active" data-ink="bone"><span class="ink-dot ink-bone"></span> Bone Black</button>
+            <button class="tool-btn" data-ink="sanguine"><span class="ink-dot ink-sanguine"></span> Sanguine</button>
+            <button class="tool-btn" data-ink="sepia"><span class="ink-dot ink-sepia"></span> Iron Gall</button>
+            <button class="tool-btn" data-ink="cyanotype"><span class="ink-dot ink-cyanotype"></span> Cyanotype</button>
+          </div>
+          <div class="toolbar-group">
+            <button class="action-btn" id="bookmark-btn">☆ Bookmark Plate</button>
+            <button class="action-btn" id="export-btn">↓ Export SVG</button>
+          </div>
+        </div>
+        <div class="canvas-viewport" id="canvas-viewport">
+          <div class="canvas-stage" id="canvas-stage">
+            <article class="plate-frame" id="plate-frame">
+              <div class="plate-header">
+                <div class="plate-title-group">
+                  <h2 id="plate-title">—</h2>
+                  <p id="plate-subtitle">—</p>
+                </div>
+                <div class="plate-meta-group">
+                  <div id="plate-code">PL. —</div>
+                  <div id="plate-era-badge" class="era-badge">—</div>
+                </div>
+              </div>
+              <div class="plate-svg-container">
+                <div class="plate-svg" id="plate-svg" style="width:100%;height:100%"></div>
+                <div class="grid-overlay" id="grid-overlay"></div>
+                <div class="datum-pins" id="datum-pins"></div>
+              </div>
+              <div class="plate-footer">
+                <div class="plate-footer-left">
+                  <span id="plate-dim">—</span>
+                  <span id="plate-modulus">—</span>
+                  <span id="plate-material">—</span>
+                </div>
+              </div>
+              <div class="plate-desc-row" id="plate-desc-full">—</div>
+            </article>
+          </div>
+          <div class="canvas-floating-controls">
+            <button class="floating-btn" id="zoom-out">−</button>
+            <span class="zoom-indicator" id="zoom-level-indicator">×1.00</span>
+            <button class="floating-btn" id="zoom-in">+</button>
+            <button class="floating-btn" id="zoom-reset">⌂</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- VIEW 2: MATRIX -->
+  <section class="view-pane" id="view-matrix">
+    <div class="matrix-container">
+      <header class="matrix-header">
+        <div class="matrix-title">
+          <h1>Lexicon of Structural Typologies</h1>
+          <p>A synoptic catalogue of load-bearing intelligences across six millennia.</p>
+        </div>
+        <div class="matrix-meta mono">12 ENTRIES · 5 ERAS · 4 MATERIAL CLASSES</div>
+      </header>
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label class="filter-label">ERA</label>
+          <select class="filter-select" id="filter-era">
+            <option value="all">All Eras</option>
+            <option>Classical Antiquity</option>
+            <option>Byzantine / Renaissance</option>
+            <option>High Gothic</option>
+            <option>Modern / Catalan</option>
+            <option>Modernist Rationalism</option>
+            <option>Mid-Century Modern</option>
+            <option>Contemporary High-Tech</option>
+            <option>Islamic Golden Age</option>
+            <option>Edo Period</option>
+            <option>Roman Baroque</option>
+            <option>Late Modernist</option>
+            <option>Industrial / Modern</option>
+            <option>Roman Empire</option>
+            <option>High Renaissance</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">SYSTEM</label>
+          <select class="filter-select" id="filter-system">
+            <option value="all">All Systems</option>
+            <option>Post &amp; Lintel</option>
+            <option>Curved Shell</option>
+            <option>Compressive Thrust</option>
+            <option>Pure Compression</option>
+            <option>Membrane Shear</option>
+            <option>Point-Load Frame</option>
+            <option>Pre-stressed Shell</option>
+            <option>Spatial Truss</option>
+            <option>Corbelled Squinch</option>
+            <option>Peristyle Colonnade</option>
+            <option>Tension-Compression Pair</option>
+            <option>3D Space Frame</option>
+          </select>
+        </div>
+        <input class="filter-search-input" id="filter-search" placeholder="Filter by name, archetype, principle…" />
+      </div>
+      <div class="matrix-grid" id="typology-grid"></div>
+    </div>
+  </section>
+
+  <!-- VIEW 3: COMPARE -->
+  <section class="view-pane" id="view-compare">
+    <div class="comparative-container">
+      <header class="matrix-header">
+        <div class="matrix-title">
+          <h1>Comparative Caliper Studio</h1>
+          <p>Juxtapose any two plates to expose the structural dialectic.</p>
+        </div>
+        <div class="matrix-meta mono">SYNCED CALIPERS · Δ-RATIO ENGINE</div>
+      </header>
+      <div class="comparative-grid">
+        <div class="compare-card">
+          <div class="compare-select-wrap">
+            <select class="compare-select" id="compare-select-a"></select>
+          </div>
+          <div class="compare-drawing-box" id="compare-svg-a"></div>
+          <div class="compare-meta-row">
+            <span class="compare-code mono" id="compare-a-code">—</span>
+          </div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-select-wrap">
+            <select class="compare-select" id="compare-select-b"></select>
+          </div>
+          <div class="compare-drawing-box" id="compare-svg-b"></div>
+          <div class="compare-meta-row">
+            <span class="compare-code mono" id="compare-b-code">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="comparative-metrics-wrap">
+        <table class="ledger-table" id="compare-metrics"></table>
+      </div>
+      <div class="comparative-dialectic-summary">
+        <div class="comparative-dialectic-title">SYNTHESIS — THE STRUCTURAL DIALECTIC</div>
+        <div class="comparative-dialectic-text" id="compare-synthesis">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW 4: EXEGESIS -->
+  <section class="view-pane" id="view-exegesis">
+    <div class="exegesis-layout">
+      <aside class="exegesis-toc">
+        <div class="toc-title">CONTENTS</div>
+        <a class="toc-link active" href="#sec-1">I. — Proportion as Natural Law</a>
+        <a class="toc-link" href="#sec-2">II. — The Vitruvian Triad</a>
+        <a class="toc-link" href="#sec-3">III. — Light as Structural Material</a>
+        <a class="toc-link" href="#sec-4">IV. — Tectonic Truth &amp; Honesty</a>
+        <a class="toc-link" href="#sec-5">V. — Synthesis: The ATLAS Method</a>
+      </aside>
+      <article class="exegesis-article">
+        <header class="article-header">
+          <div class="article-category">DISSERTATION · FOLIO IV</div>
+          <h1 class="article-title">On Proportion, Gravity, and Light: An Exegesis of the Architectural Mind</h1>
+          <div class="article-author">Compiled by the ATLAS Commission, Office of the Surveyor-General · MMXXIV</div>
+        </header>
+        <div class="article-body">
+          <p class="lead">Architecture is not about space, but about the <em>inhabitation of time</em>. Every building is a bet placed against gravity, and every proportion is a wager that the human eye will find resonance in the intervals we choose.</p>
+          <p id="sec-1">Long before the drawing board, proportion governed the world. Phyllotaxis in sunflowers, the nautilus shell, the branching of rivers — all adhere to the golden section with an insistence that borders on the theological. When Iktinos set out the stylobate of the Parthenon at a 4:9 ratio — column diameter to interaxial spacing, facade to flank — he was not decorating. He was aligning a man-made object with the deep mathematics of the natural world, ensuring the temple would feel <em>inevitable</em> rather than designed.</p>
+          <div class="article-interactive-widget" id="widget-phi">
+            <div class="widget-title">INTERACTIVE FIGURE — THE GOLDEN RECTANGLE CONSTRUCTION</div>
+            <svg viewBox="0 0 800 300" class="widget-svg">
+              <rect x="40" y="60" width="323.6" height="200" fill="none" stroke="var(--stroke-color, #181716)" stroke-width="1.5"/>
+              <rect x="40" y="60" width="123.6" height="200" fill="rgba(184,59,38,0.05)" stroke="var(--stroke-color, #181716)" stroke-width="1"/>
+              <rect x="163.6" y="60" width="200" height="123.6" fill="none" stroke="var(--stroke-color, #181716)" stroke-width="1"/>
+              <path d="M 40,60 A 50,50 0 0,1 90,110" fill="none" stroke="var(--accent-color, #B83B26)" stroke-width="1.5"/>
+              <circle cx="65" cy="85" r="1.5" fill="var(--accent-color, #B83B26)"/>
+              <text x="50" y="50" font-family="'JetBrains Mono', monospace" font-size="10" fill="var(--ink-tertiary)">1</text>
+              <text x="190" y="50" font-family="'JetBrains Mono', monospace" font-size="10" fill="var(--ink-tertiary)">φ − 1 = 0.618…</text>
+              <text x="700" y="50" font-family="'JetBrains Mono', monospace" font-size="10" fill="var(--ink-tertiary)">φ = 1.618…</text>
+              <text x="70" y="280" font-family="'JetBrains Mono', monospace" font-size="10" fill="var(--accent-color, #B83B26)">QUARTER-ARC SUBDIVISION</text>
+              <text x="330" y="280" font-family="'JetBrains Mono', monospace" font-size="10" fill="var(--ink-tertiary)">LOGARITHMIC SPIRAL APPROXIMATION</text>
+            </svg>
+          </div>
+          <p id="sec-2">Vitruvius, writing in the first century BCE, codified the triad — <strong>firmitas, utilitas, venustas</strong>: strength, utility, beauty. Yet the triad is not a checklist but a tension. The Pantheon resolves it: a 43.3-meter sphere of pozzolanic concrete where structure <em>is</em> the aesthetic, where the oculus is both the primary compression ring and the sole ornament. Nothing is added; everything works.</p>
+          <p id="sec-3">Kahn's cycloid vaults at Fort Worth extend this logic into the modern century. The vault is a "shell-beam" carrying its own thrust; the light that enters through the slot at the crown is redirected by a curved aluminum reflector so that no painting is ever struck by direct sun. The result is silver light — the most flattering light in the history of art display — and it arrives through a structural necessity: the slot exists because the vault requires it.</p>
+          <div class="article-interactive-widget">
+            <div class="widget-title">INTERACTIVE FIGURE — SPAN-TO-DEPTH ACROSS HISTORY</div>
+            <svg viewBox="0 0 800 260" class="widget-svg">
+              <line x1="60" y1="220" x2="740" y2="220" stroke="var(--stroke-color, #181716)" stroke-width="1.5"/>
+              <line x1="60" y1="30" x2="60" y2="220" stroke="var(--stroke-color, #181716)" stroke-width="1.5"/>
+              <polyline points="60,210 110,195 170,180 240,160 320,130 410,95 500,70 590,50 740,25" fill="none" stroke="var(--accent-color, #B83B26)" stroke-width="1.8"/>
+              <circle cx="110" cy="195" r="4" fill="#fff" stroke="var(--stroke-color, #181716)" stroke-width="1"/>
+              <circle cx="240" cy="160" r="4" fill="#fff" stroke="var(--stroke-colo, #181716)" stroke-width="1"/>
+              <circle cx="410" cy="95" r="4" fill="#fff" stroke="var(--stroke-color, #181716)" stroke-width="1"/>
+              <circle cx="590" cy="50" r="4" fill="#fff" stroke="var(--stroke-color, #181716)" stroke-key-hint2="1"/>
+              <text x="80" y="205" font-family="'JetBrains Mono', monospace" font-size="9" fill="var(--ink-tertiary)">HYPPOSTYLE 3.5m</text>
+              <text x="250" y="150" font-family="'JetBrains Mono', monospace" font-size="9" fill="var(--ink-tertiary)">GOTHIC NAVE 12m</text>
+              <text x="420" y="85" font-family="'JetBrains Mono', monospace" font-size="9" fill="var(--ink-tertiary)">PANTHEON 43m</text>
+              <text x="600" y="45" font-family="'JetBrains Mono', monospace" font-size="9" fill="var(--ink-tertiary)">GEODESIC 120m</text>
+            </svg>
+          </div>
+          <p id="sec-4">Ruskin demanded "truth" in materials: no hidden iron, no pretend marble. The Gothic masters achieved honesty through necessity — the flying buttress <em>must</em> be outside because the thrust must go somewhere. Modernity's sin was not the machine but the lie: stucco pretending to be stone, drop ceilings concealing ducts. The best of the modern — Katsura's exposed hinoki frame, Corbusier's pilotis declared plainly — returns to the Gothic condition where every element earns its visibility.</p>
+          <p id="sec-5">ATLAS is a method, not a museum. The caliper does not judge; it measures. When two plates are juxtaposed, the instrument reveals not which is superior but <em>which problem each is solving</em>. The Parthenon answers the problem of perception; the Pantheon answers the problem of enclosure; Savoye answers the problem of the machine; Katsura answers the problem of impermanence. Together they form a grammar — and this journal is its syntax.</p>
+        </div>
+      </article>
+      <aside class="marginalia-sidebar">
+        <div class="marginalia-box">
+          <strong>MARGIN NOTE 14b</strong>
+          The 4:9 ratio recurs: stylobate plan, column spacing, facade width. Nine is four squared... no, twice four plus one. The Pythagorean tetractys: 1+2+3+4 = 10. Sacred.
+        </div>
+        <div class="marginalia-box">
+          <strong>MARGIN NOTE 27a</strong>
+          <em>Kahn's reflector</em> is the most overlooked element in 20th c. architecture. A bent piece of aluminum, yet it decides the entire section.
+        </div>
+        <div class="notes-block">
+          <div class="widget-title" style="margin-top:24px">RESEARCHER NOTES</div>
+          <textarea class="user-notes-textarea" id="notes-textarea" placeholder="Your annotations are saved locally to this device…"></textarea>
+          <div class="notes-status-row"><span class="mono" id="notes-status">Autosaved</span></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- VIEW 5: MATERIALS -->
+  <section class="view-pane" id="view-materials">
+    <div class="materials-container">
+      <header class="matrix-header">
+        <div class="matrix-title">
+          <h1>Tectonic Material Assays</h1>
+          <p>Six substances, six temperaments: from volcanic ash to sequestered timber.</p>
+        </div>
+        <div class="matrix-meta mono">6 ASSAYS · DENSITY / STRENGTH / CARBON</div>
+      </header>
+      <div class="materials-grid" id="materials-grid"></div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ INSPECTOR DRAWER ============ -->
+<aside class="inspector-drawer" id="inspector-drawer" aria-hidden="true">
+  <div class="drawer-header">
+    <span class="drawer-header-title mono">INSPECTOR · MONOGRAPH</span>
+    <button class="drawer-close" id="drawer-close" aria-label="Close inspector">✕ Close</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<!-- ============ CALIPER TOOL ============ -->
+<div class="caliper-tool-window" id="caliper-window">
+  <div class="caliper-tool-header" id="caliper-header">
+    <span>⌖ PROPORTIONAL CALIPER</span>
+    <button class="caliper-close" id="caliper-close" aria-label="Close caliper">✕</button>
+  </div>
+  <div class="caliper-tool-body">
+    <div class="caliper-readout">
+      <span class="caliper-readout-main" id="caliper-readout-main">1.618</span>
+      <span class="caliper-ratio-badge congruent" id="caliper-ratio-badge">φ CONGRUENT</span>
+    </div>
+    <div class="caliper-ratio-line mono" id="caliper-ratio-val">1 : 1.000</div>
+    <div class="caliper-slider-wrap">
+      <label><span>MODULE A</span><span>MODULE B</span></label>
+      <input type="range" id="caliper-range" class="caliper-range" min="0.5" max="3" step="0.001" value="1.618" />
+    </div>
+    <div class="caliper-scale mono">
+      <div class="caliper-scale-row"><span>PERFECT FIFTH</span><span>1.500</span></div>
+      <div class="caliper-scale-row"><span>GOLDEN φ</span><span>1.618</span></div>
+      <div class="caliper-scale-row"><span>MINOR 6th</span><span>1.600</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ OMNI PALETTE ============ -->
+<div class="omni-modal-backdrop" id="omni-backdrop">
+  <div class="omni-dialog" role="dialog" aria-modal="true">
+    <div class="omni-input-row">
+      <span class="omni-icon">⌕</span>
+      <input class="omni-input" id="omni-input" placeholder="Search plates, typologies, materials, actions…" autocomplete="off" />
+      <span class="omni-kbd mono">ESC</span>
+    </div>
+    <div class="omni-results-list" id="omni-results"></div>
+    <div class="omni-footer">
+      <span class="mono">↑↓ navigate</span>
+      <span class="mono">↵ select</span>
+      <span class="mono">ESC dismiss</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ===== ATLAS DATA LAYER =====
+const PLATES_DATA = [{"id": "plate-parthenon", "code": "PL. I / ATH-438", "era": "Classical Antiquity", "category": "Sacred Geometries", "title": "The Parthenon: Optical Refinements & Entablature", "subtitle": "Iktinos, Kallikrates & Phidias — Acropolis of Athens, 438 BCE", "description": "Systematic study of subtle non-linear optical corrections (entasis, stylobate curvature of 65mm, inward inclination of columns by 7cm) designed to counteract perceptual foreshortening and somatic sagging.", "dimensions": "Stylobate 30.88m × 69.54m (Ratio 4:9)", "modulus": "Golden Ratio Phi 1:1.618", "material": "Pentelic Marble & Lead Dowels", "svg_key": "parthenon", "hotspots": [{"x": 110, "y": 160, "label": "Doric Capital Echinus", "desc": "Cushion-like toroid moulding transferring 240 metric tonnes of horizontal entablature load to the fluted shaft."}, {"x": 400, "y": 55, "label": "Tympanum & Pediment Apex", "desc": "Triangular gable pitched at 13.5 degrees, enclosing the high-relief mythic birth of Athena."}, {"x": 400, "y": 395, "label": "Stylobate Convex Curvature", "desc": "Calculated 65mm upward rise along the 30.88m facade, preventing the optical illusion of center sagging."}, {"x": 685, "y": 280, "label": "Corner Column Inward Lean", "desc": "Corner columns are 2.5% thicker and tilted inward by 70mm to resist visual thinning against open sky."}]}, {"id": "plate-pantheon", "code": "PL. II / ROM-126", "era": "Roman Empire", "category": "Structural Engineering", "title": "The Pantheon: Oculated Monolithic Rotunda", "subtitle": "Emperor Hadrian & Apollodorus of Damascus — Rome, 126 CE", "description": "An unreinforced pozzolanic concrete dome spanning 43.30m, geometrically enclosing a perfect sphere where interior height equals diameter. Graded aggregate weight from dense travertine to light volcanic pumice.", "dimensions": "Span 43.30m (150 Roman Feet), Oculus Ø 8.95m", "modulus": "Vitruvian Sphere Ratio 1:1", "material": "Roman Pozzolana, Tufa & Pumice Concrete", "svg_key": "pantheon", "hotspots": [{"x": 400, "y": 35, "label": "The Open Oculus (9m)", "desc": "Uncovered cylindrical ring serving as primary structural compression ring and the sole daylight portal."}, {"x": 400, "y": 195, "label": "Inscribed Celestial Sphere", "desc": "A perfect 43.30m virtual sphere inscribed in the rotunda, unifying terrestrial cylinder with celestial dome."}, {"x": 180, "y": 300, "label": "Travertine & Tufa Stepped Rings", "desc": "Exterior ring buttresses providing massive hoop tension resistance around the dome haunch."}, {"x": 595, "y": 310, "label": "Wall Relieving Arches", "desc": "Embedded bipedales brick relieving arches channeling 5,000 tonnes of vault weight directly to 8 massive piers."}]}, {"id": "plate-rotonda", "code": "PL. III / VIC-1592", "era": "High Renaissance", "category": "Sacred Geometries", "title": "Villa Capra 'La Rotonda': Biaxial Symmetry", "subtitle": "Andrea Palladio — Vicenza, Republic of Venice, 1592", "description": "The quintessential embodiment of Renaissance harmonic proportion. A square plan oriented 45 degrees to the cardinal points, punctuated by four identical hexastyle Ionic porticos converging upon a central cupola.", "dimensions": "Central Hall Ø 11.0m, Exterior Cube 24m × 24m", "modulus": "Harmonic Musical Intervals (2:3:4)", "material": "Stuccoed Brickwork, Vicenza Stone", "svg_key": "rotonda", "hotspots": [{"x": 400, "y": 95, "label": "Central Hemisphere Cupola", "desc": "First domestic application of a sacral dome, crowning the central salon (Sala Centrale)."}, {"x": 400, "y": 210, "label": "Hexastyle Ionic Portico", "desc": "Grand temple front with six fluted columns framing sweeping vistas of the Venetian countryside."}, {"x": 250, "y": 350, "label": "Substructure Vaulted Podium", "desc": "Service baseline housing rustic kitchens, wine cellars, and thermal hypocaust flues."}]}, {"id": "plate-notredame", "code": "PL. IV / PAR-1163", "era": "High Gothic", "category": "Structural Engineering", "title": "Notre-Dame de Paris: Nave Flying Buttress", "subtitle": "Master Jean de Chelles & Pierre de Montreuil — Île de la Cité, Paris, 1163", "description": "Double-span external flying arches transmitting high-vault diagonal lateral thrust across outer side-aisles to perimeter buttress towers, freeing walls to become luminous stained-glass lancets.", "dimensions": "Clear Nave Height 33.0m, Pier Spacing 7.20m", "modulus": "Ad Triangulum Geometric Grid", "material": "Lutetian Limestone, Lead Roofing, Oak Timber", "svg_key": "notredame", "hotspots": [{"x": 400, "y": 145, "label": "Sexpartite Ribbed Vault", "desc": "Curved stone ribs focusing 80% of vault deadweight onto pointed corner springers."}, {"x": 250, "y": 175, "label": "Upper Flying Arch (Flyer)", "desc": "Diverts wind buffeting against high wooden timber roof truss down to exterior buttress."}, {"x": 640, "y": 165, "label": "Ballast Pinnacle", "desc": "Heavy stone pyramid adding vertical gravitational load to deflect horizontal shear stress downward."}]}, {"id": "plate-kahn", "code": "PL. V / TEX-1972", "era": "Modernist Rationalism", "category": "Modernist Tectonics", "title": "Kimbell Art Museum: Cycloid Light Vaults", "subtitle": "Louis I. Kahn & August E. Komendant — Fort Worth, Texas, 1972", "description": "Sixteen post-tensioned reinforced concrete cycloid vaults spanning 30.5m. A narrow continuous longitudinal skylight with micro-perforated curved aluminum reflectors casts silver natural daylight across curved concrete surfaces.", "dimensions": "16 Vault Units: 30.5m Length × 6.1m Width × 6.1m Height", "modulus": "Cycloid Rolling Circle Formula (x=r(t-sin t), y=r(1-cos t))", "material": "Cast-in-Place Architectural Concrete, Roman Travertine", "svg_key": "kahn", "hotspots": [{"x": 245, "y": 105, "label": "Natural Daylight Reflector", "desc": "Winged perforated aluminum fixture splitting harsh Texan sun into pure diffuse silver luminescence."}, {"x": 240, "y": 160, "label": "Post-Tensioned Cycloid Shell", "desc": "Behaves structurally as a beam rather than an arch, producing zero lateral outward thrust at column tops."}, {"x": 135, "y": 330, "label": "Travertine Infill Screen", "desc": "Non-structural unpolished travertine infill, clearly articulated with 20mm shadow reveals from concrete frame."}]}, {"id": "plate-savoye", "code": "PL. VI / POI-1931", "era": "Modernist Rationalism", "category": "Modernist Tectonics", "title": "Villa Savoye: The Five Points of Modernity", "subtitle": "Le Corbusier & Pierre Jeanneret — Poissy, France, 1931", "description": "Complete spatial realization of the 'Five Points for a New Architecture': Pilotis elevating structure, Flat Roof Garden, Free Plan layout, Horizontal Ribbon Window, and Non-load-bearing Free Facade.", "dimensions": "Grid 4.75m × 4.75m, Total Footprint 21.5m × 19.0m", "modulus": "Dom-Ino Modular Concrete Frame", "material": "Reinforced Concrete, Smooth Stucco, Steel Glazing", "svg_key": "savoye", "hotspots": [{"x": 270, "y": 340, "label": "Pilotis Reinforced Grid", "desc": "Slender cylindrical concrete columns freeing ground plane for automobile circulation and landscape."}, {"x": 400, "y": 210, "label": "Continuous Ribbon Window", "desc": "Uninterrupted perimeter glazing providing even horizontal light distribution regardless of internal partitions."}, {"x": 370, "y": 130, "label": "Roof Garden Solarium", "desc": "Restores the green footprint occupied by the building while protecting concrete slab from thermal expansion."}]}, {"id": "plate-katsura", "code": "PL. VII / KYO-1645", "era": "Edo Period", "category": "Domestic Typologies", "title": "Katsura Imperial Villa: Tatami Matrix", "subtitle": "Prince Toshihito & Kobori Enshu — Kyoto, Japan, 1645", "description": "Sublime masterpiece of Japanese sukiya-zukuri architecture. Staggered flock-of-geese (Ganko-kei) layout governed by the 1-Ken (1.91m) modular coordinate grid, unifying interior tatami mats with garden vistas.", "dimensions": "Modular 1 Ken = 6.3 Shaku (1.91m), Shoin Pavilion 163 tatami", "modulus": "Kiwari-jutsu Modular Proportion", "material": "Hinoki Cypress, Washi Paper, Bamboo, Cedar Shingles", "svg_key": "katsura", "hotspots": [{"x": 274, "y": 240, "label": "Hinoki Cypress Post (Hashira)", "desc": "Square planed timber columns left completely unvarnished to celebrate the natural grain and scent."}, {"x": 340, "y": 230, "label": "Sliding Shoji & Fusuma", "desc": "Movable lattice partitions allowing instantaneous spatial reconfiguration from intimate rooms to open pavilions."}, {"x": 400, "y": 130, "label": "Deep Overhanging Eaves (Noki)", "desc": "Broad pitched eaves casting meditative penumbral shadows while protecting delicate woodwork from rain."}]}, {"id": "plate-sancarlo", "code": "PL. VIII / ROM-1646", "era": "Roman Baroque", "category": "Sacred Geometries", "title": "San Carlo: Borromini Intersecting Ellipses", "subtitle": "Francesco Borromini — Rome, Papal States, 1646", "description": "A triumph of non-Euclidean spatial mechanics. An undulating concavo-convex facade concealing an extraordinary interior dome formed by two equilateral triangles joined at their bases to generate an elliptical perimeter.", "dimensions": "Dome 25.8m Major Axis × 16.2m Minor Axis", "modulus": "Trinitarian Tripartite Harmonic Ellipse", "material": "Roman Travertine, Stucco Lustro", "svg_key": "sancarlo", "hotspots": [{"x": 400, "y": 150, "label": "Honeycomb Elliptical Dome", "desc": "Intersecting geometric octagonal, hexagonal, and cross coffers diminishing in scale toward zenith to exaggerate height."}, {"x": 400, "y": 42, "label": "Lantern with Holy Spirit Dove", "desc": "Dedicated daylight source illuminating the complex geometric coffer relief from directly above."}, {"x": 400, "y": 280, "label": "Undulating Wave Entablature", "desc": "Continuous dynamic cornice rhythmically alternating between convex swelling and concave recession."}]}];
+const TYPOLOGIES_DATA = [{"code": "TYP-01", "name": "Hypostyle Hall", "archetype": "Columnar Trabeated Forest", "era": "Classical Antiquity", "system": "Post & Lintel", "material": "Sandstone & Granite", "span": "3.5m - 6.0m", "efficiency": "Moderate", "desc": "Densely packed grid of monumental columns supporting heavy stone architrave lintels, creating a rhythm of compressed spatial shadows."}, {"code": "TYP-02", "name": "Pendentive Dome", "archetype": "Spherical Transition Vault", "era": "Byzantine / Renaissance", "system": "Curved Shell", "material": "Brick & Hydraulic Lime", "span": "31.0m - 42.0m", "efficiency": "High", "desc": "Spherical triangular masonry infills resolving the geometrical collision between a circular dome drum and a square four-pier bay."}, {"code": "TYP-03", "name": "Flying Buttress", "archetype": "Exoskeletal Vector Arc", "era": "High Gothic", "system": "Compressive Thrust", "material": "Ashlar Limestone", "span": "12.0m - 18.0m", "efficiency": "Very High", "desc": "Inclined exterior masonry flyer channeling internal ceiling thrust away from delicate curtain walls onto massive ground towers."}, {"code": "TYP-04", "name": "Catenary Arch", "archetype": "Pure Inverted Hanging Chain", "era": "Modern / Catalan", "system": "Pure Compression", "material": "Thin Brick Tile & Mortar", "span": "15.0m - 40.0m", "efficiency": "Maximum (No Bending)", "desc": "The curve formed by a hanging flexible chain under uniform gravity, inverted to yield a structural vault devoid of tensile stress."}, {"code": "TYP-05", "name": "Hyperbolic Paraboloid", "archetype": "Doubly-Ruled Saddle Shell", "era": "Mid-Century Modern", "system": "Membrane Shear", "material": "Thin-shell Reinforced Concrete", "span": "20.0m - 50.0m", "efficiency": "Maximum", "desc": "Saddle-shaped anti-clastic surface generated purely from straight intersecting line segments, combining extreme stiffness with 40mm thickness."}, {"code": "TYP-06", "name": "Pilotis Grid & Free Plan", "archetype": "Elevated Reinforced Frame", "era": "Modernist Rationalism", "system": "Point-Load Frame", "material": "Reinforced Concrete & Steel", "span": "6.0m - 9.0m", "efficiency": "High", "desc": "Replacement of load-bearing perimeter walls with structural columns, freeing both the ground landscape and internal partitions."}, {"code": "TYP-07", "name": "Cycloid Post-Tensioned Vault", "archetype": "Parabolic Light Shell", "era": "Modernist Rationalism", "system": "Pre-stressed Shell", "material": "Post-Tensioned Concrete", "span": "30.5m", "efficiency": "Very High", "desc": "Continuous cycloidal curvature functioning as a self-supporting beam without horizontal outward thrust at column supports."}, {"code": "TYP-08", "name": "Diagrid Exoskeleton", "archetype": "Triangulated Spatial Cage", "era": "Contemporary High-Tech", "system": "Spatial Truss", "material": "Structural Steel Tubulars", "span": "45.0m+", "efficiency": "Maximum", "desc": "Perimeter network of intersecting diagonal steel beams carrying both vertical gravity loads and lateral wind/seismic shear loads."}, {"code": "TYP-09", "name": "Muqarnas Corbel Vault", "archetype": "Fractal Stalactite Tier", "era": "Islamic Golden Age", "system": "Corbelled Squinch", "material": "Plaster, Brick & Glazed Ceramic", "span": "8.0m - 22.0m", "efficiency": "High", "desc": "3D cellular corbelled niche arrays bridging rectangular walls to hemispherical domes through geometric subdivision."}, {"code": "TYP-10", "name": "Tholos Monopteros", "archetype": "Circular Peripteral Temple", "era": "Classical Antiquity", "system": "Peristyle Colonnade", "material": "Pentelic & Parian Marble", "span": "Ø 7.0m - 14.0m", "efficiency": "Moderate", "desc": "Cylindrical cella enclosed within a concentric ring of fluted columns with conical or hemispherical stone roofing."}, {"code": "TYP-11", "name": "Cantilever Truss Arm", "archetype": "Overhanging Moment Beam", "era": "Industrial / Modern", "system": "Tension-Compression Pair", "material": "Wrought Iron & Cast Steel", "span": "15.0m - 60.0m", "efficiency": "High", "desc": "Rigid structural element anchored at only one end, projecting horizontally into space to support suspended spans."}, {"code": "TYP-12", "name": "Geodesic Sphere Hexad", "archetype": "Polyhedral Icosahedral Shell", "era": "Late Modernist", "system": "3D Space Frame", "material": "Extruded Aluminum & ETFE", "span": "30.0m - 120.0m", "efficiency": "Maximum", "desc": "Triangular facets distributed along great circles of a sphere, distributing stresses omnidirectionally with minimal structural mass."}];
+const MATERIALS_DATA = [{"id": "mat-pozzolana", "name": "Roman Pozzolanic Concrete (Opus Caementicium)", "origin": "Pozzuoli / Bay of Naples, Italy", "density": "2,200 kg/m³", "compressive": "25 - 35 MPa", "carbon": "75 kg CO₂/tonne (Ultra Low)", "lifespan": "2,000+ Years", "formula": "Lime (CaO) + Volcanic Ash (SiO₂/Al₂O₃) + Seawater", "tactility": "Warm pitted stone with aggregate inclusions of tufa, brick shards, and porous volcanic pumice.", "description": "Self-healing volcanic hydraulic cement that reacts over millennia with penetrating moisture to precipitate crystalline stratlingite, actively strengthening the matrix against fracture."}, {"id": "mat-travertine", "name": "Tivoli Roman Travertine (Lapis Tiburtinus)", "origin": "Tivoli Quarries, Lazio, Italy", "density": "2,450 kg/m³", "compressive": "60 - 90 MPa", "carbon": "32 kg CO₂/tonne (Quarried)", "lifespan": "1,000+ Years", "formula": "Calcium Carbonate CaCO₃ (Sedimentary Limestone)", "tactility": "Creamy ivory to honey-gold striated grain with organic longitudinal voids and matte honed surface.", "description": "Precipitated around thermal sulfur springs; beloved from the Roman Colosseum to Louis Kahn's Kimbell Art Museum for its warmth, light refraction, and enduring dignified patina."}, {"id": "mat-corten", "name": "Weathering Corten Steel (ASTM A588)", "origin": "Industrial Metallurgy", "density": "7,850 kg/m³", "compressive": "485 - 620 MPa (Tensile)", "carbon": "1,850 kg CO₂/tonne", "lifespan": "120+ Years", "formula": "Fe + Cu + Cr + Ni + P Alloy", "tactility": "Velvety granular rust oxide layer developing from fiery orange-ochre into deep velvety chocolate bronze.", "description": "Copper-chromium alloy steel which eliminates painting by generating a stable, continuous, self-regenerating oxide passivation layer under natural atmospheric wetting cycles."}, {"id": "mat-hinoki", "name": "Hand-Hewn Hinoki Cypress (Chamaecyparis obtusa)", "origin": "Kiso Valley, Nagano, Japan", "density": "450 kg/m³", "compressive": "40 MPa (Parallel to Grain)", "carbon": "-800 kg CO₂/tonne (Carbon Negative)", "lifespan": "1,000+ Years (Horyu-ji Pagoda)", "formula": "Cellulose + Lignin + Hinokitiol Phytoalexins", "tactility": "Silken, straight grain with lustrous pearlescent sheen and soothing cedar aromatic terpenes.", "description": "The sacred timber of Japanese imperial shrines. Exceptional dimensional stability and natural insect/fungal immunity; plane-cut with yariganna spear planes to seal fiber ends."}, {"id": "mat-glulam", "name": "Mass Structural Glulam & CLT", "origin": "Alpine Forestry", "density": "480 - 550 kg/m³", "compressive": "28 - 42 MPa", "carbon": "-650 kg CO₂/tonne (Sequestered)", "lifespan": "100+ Years", "formula": "Laminated European Spruce / Douglas Fir + Melamine Adhesive", "tactility": "Warm linear grain with structural finger joints, sanded matte finish with breathable bio-wax seal.", "description": "High-performance engineered timber formed by parallel-bonding structural finger-jointed timber laminations, offering steel-equivalent strength-to-weight with carbon sequestration."}, {"id": "mat-marble", "name": "Pentelic & Carrara White Marble", "origin": "Mount Pentelikon, Greece & Carrara, Tuscany", "density": "2,700 kg/m³", "compressive": "110 - 140 MPa", "carbon": "45 kg CO₂/tonne", "lifespan": "2,500+ Years", "formula": "Metamorphic Calcite CaCO₃ (99% Pure)", "tactility": "Translucent fine-grained crystalline matrix scattering incident light up to 4mm beneath the surface.", "description": "Metamorphic limestone containing microscopic trace iron inclusions that oxidize over centuries under Athenian sunlight to acquire the warm, legendary honey-golden patina."}];
+const SVG_DEFS = {"parthenon": "<svg viewBox=\"0 0 800 450\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <pattern id=\"hatch-diag\" width=\"8\" height=\"8\" patternTransform=\"rotate(45 0 0)\" patternUnits=\"userSpaceOnUse\">\n      <line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"8\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\" stroke-opacity=\"0.25\"/>\n    </pattern>\n  </defs>\n  <!-- Background subtle grid -->\n  <line x1=\"40\" y1=\"400\" x2=\"760\" y2=\"400\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\" />\n  <line x1=\"40\" y1=\"410\" x2=\"760\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\" />\n  <line x1=\"40\" y1=\"420\" x2=\"760\" y2=\"420\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\" />\n  \n  <!-- Crepidoma / Stylobate with slight optical convex curvature -->\n  <path d=\"M 50,400 Q 400,396 750,400 L 750,420 L 50,420 Z\" fill=\"var(--fill-subtle, rgba(24,23,22,0.03))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\" />\n  <path d=\"M 70,388 Q 400,384 730,388 L 730,400 L 70,400 Z\" fill=\"var(--fill-subtle, rgba(24,23,22,0.03))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\" />\n  \n  <!-- 8 Doric Columns with slight entasis and inward inclination -->\n  <!-- Col 1 -->\n  <path d=\"M 85,388 L 96,170 L 126,170 L 137,388 Z\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <line x1=\"93\" y1=\"388\" x2=\"101\" y2=\"170\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\" stroke-dasharray=\"2,2\"/>\n  <line x1=\"107\" y1=\"388\" x2=\"111\" y2=\"170\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\"/>\n  <line x1=\"121\" y1=\"388\" x2=\"121\" y2=\"170\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\"/>\n  <line x1=\"129\" y1=\"388\" x2=\"123\" y2=\"170\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\" stroke-dasharray=\"2,2\"/>\n  <!-- Capital 1 -->\n  <polygon points=\"90,170 132,170 138,158 84,158\" fill=\"var(--fill-subtle, rgba(24,23,22,0.03))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <rect x=\"80\" y=\"148\" width=\"62\" height=\"10\" fill=\"var(--fill-subtle, rgba(24,23,22,0.03))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n\n  <!-- Col 2 -->\n  <path d=\"M 165,388 L 174,170 L 204,170 L 213,388 Z\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <!-- Capital 2 -->\n  <polygon points=\"168,170 210,170 216,158 162,158\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <rect x=\"158\" y=\"148\" width=\"62\" height=\"10\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n\n  <!-- Col 3 -->\n  <path d=\"M 245,388 L 253,170 L 283,170 L 291,388 Z\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <polygon points=\"247,170 289,170 295,158 241,158\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <rect x=\"237\" y=\"148\" width=\"62\" height=\"10\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n\n  <!-- Col 4 -->\n  <path d=\"M 325,388 L 332,170 L 362,170 L 369,388 Z\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <polygon points=\"326,170 368,170 374,158 320,158\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <rect x=\"316\" y=\"148\" width=\"62\" height=\"10\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n\n  <!-- Col 5 -->\n  <path d=\"M 431,388 L 438,170 L 468,170 L 475,388 Z\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <polygon points=\"432,170 474,170 480,158 426,158\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <rect x=\"422\" y=\"148\" width=\"62\" height=\"10\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n\n  <!-- Col 6 -->\n  <path d=\"M 509,388 L 517,170 L 547,170 L 555,388 Z\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <polygon points=\"511,170 553,170 559,158 505,158\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <rect x=\"501\" y=\"148\" width=\"62\" height=\"10\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n\n  <!-- Col 7 -->\n  <path d=\"M 587,388 L 596,170 L 626,170 L 635,388 Z\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <polygon points=\"590,170 632,170 638,158 584,158\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <rect x=\"580\" y=\"148\" width=\"62\" height=\"10\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n\n  <!-- Col 8 -->\n  <path d=\"M 663,388 L 674,170 L 704,170 L 715,388 Z\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <polygon points=\"668,170 710,170 716,158 662,158\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <rect x=\"658\" y=\"148\" width=\"62\" height=\"10\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n\n  <!-- Architrave -->\n  <path d=\"M 75,148 Q 400,144 725,148 L 725,124 Q 400,120 75,124 Z\" fill=\"var(--fill-subtle, rgba(24,23,22,0.03))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\" />\n  \n  <!-- Frieze (Triglyphs & Metopes) -->\n  <path d=\"M 75,124 Q 400,120 725,124 L 725,92 Q 400,88 75,92 Z\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\" />\n  \n  <!-- Pediment with Tympanum -->\n  <polygon points=\"70,92 400,24 730,92\" fill=\"url(#hatch-diag)\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\" />\n  <polygon points=\"85,88 400,28 715,88\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\" />\n  \n  <!-- Mathematical Axis Lines & Proportional Dimensions -->\n  <line x1=\"400\" y1=\"10\" x2=\"400\" y2=\"435\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.8\" stroke-dasharray=\"4,4\" />\n  <text x=\"408\" y=\"36\" font-family=\"'JetBrains Mono', monospace\" font-size=\"9\" fill=\"var(--accent-color, #B83B26)\">AXIS PRIMARIUS (1:1.618)</text>\n  \n  <line x1=\"50\" y1=\"400\" x2=\"50\" y2=\"440\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"750\" y1=\"400\" x2=\"750\" y2=\"440\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"50\" y1=\"435\" x2=\"750\" y2=\"435\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\" marker-start=\"url(#dot)\" marker-end=\"url(#dot)\"/>\n  <text x=\"360\" y=\"446\" font-family=\"'JetBrains Mono', monospace\" font-size=\"9\" fill=\"var(--stroke-color, #181716)\">30.88 METERS (STYLOBATE)</text>\n</svg>", "pantheon": "<svg viewBox=\"0 0 800 450\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <pattern id=\"hatch-pantheon\" width=\"6\" height=\"6\" patternTransform=\"rotate(30 0 0)\" patternUnits=\"userSpaceOnUse\">\n      <line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"6\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\" stroke-opacity=\"0.2\"/>\n    </pattern>\n  </defs>\n  <!-- Base Ground Level -->\n  <line x1=\"40\" y1=\"410\" x2=\"760\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\" />\n  \n  <!-- Rotunda Cylindrical Walls (Thickness 6m) -->\n  <!-- Left Wall Cross Section -->\n  <rect x=\"140\" y=\"195\" width=\"85\" height=\"215\" fill=\"url(#hatch-pantheon)\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\" />\n  <!-- Left Wall Niches -->\n  <path d=\"M 185,240 A 30,30 0 0,1 225,240 L 225,380 L 185,380 Z\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  \n  <!-- Right Wall Cross Section -->\n  <rect x=\"575\" y=\"195\" width=\"85\" height=\"215\" fill=\"url(#hatch-pantheon)\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\" />\n  <!-- Right Wall Niches -->\n  <path d=\"M 575,240 A 30,30 0 0,0 615,240 L 615,380 L 575,380 Z\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  \n  <!-- Hemispherical Dome (Exterior Stepped Rings) -->\n  <!-- Exterior Dome Stepped Profile -->\n  <path d=\"M 140,195 L 140,165 L 175,165 L 175,135 L 215,135 L 215,105 L 265,105 L 265,75 L 340,75 L 355,50 L 445,50 L 460,75 L 535,75 L 535,105 L 585,105 L 585,135 L 625,135 L 625,165 L 660,165 L 660,195\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.4\" />\n  \n  <!-- Interior Hemisphere Perfect Inscribed Circle (Radius = 175px, Diameter = 350px = 43.3m) -->\n  <path d=\"M 225,195 A 175,175 0 0,1 575,195\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.6\" />\n  <!-- Virtual lower hemisphere -->\n  <path d=\"M 225,195 A 175,175 0 0,0 575,195\" fill=\"none\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.9\" stroke-dasharray=\"5,5\" />\n  \n  <!-- The Oculus (9m open sky) -->\n  <line x1=\"365\" y1=\"20\" x2=\"435\" y2=\"20\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"2\" />\n  <line x1=\"365\" y1=\"20\" x2=\"365\" y2=\"50\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\" />\n  <line x1=\"435\" y1=\"20\" x2=\"435\" y2=\"50\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\" />\n  \n  <!-- Light Beam from Oculus -->\n  <polygon points=\"365,22 435,22 560,410 420,410\" fill=\"var(--accent-color, #B83B26)\" fill-opacity=\"0.08\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.5\" stroke-dasharray=\"2,2\"/>\n  \n  <!-- Portico on Left -->\n  <polygon points=\"30,410 30,230 140,230 140,410\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\" />\n  <polygon points=\"25,230 145,230 85,185\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\" />\n  \n  <!-- Dimension Lines & Inscribed Sphere Text -->\n  <circle cx=\"400\" cy=\"195\" r=\"4\" fill=\"var(--accent-color, #B83B26)\" />\n  <text x=\"410\" y=\"198\" font-family=\"'JetBrains Mono', monospace\" font-size=\"9\" fill=\"var(--accent-color, #B83B26)\">GEOMETRIC CENTROID (Ø 43.30m)</text>\n  \n  <!-- Vitruvian Radius line -->\n  <line x1=\"400\" y1=\"195\" x2=\"523\" y2=\"72\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.8\" stroke-dasharray=\"3,3\" />\n  <text x=\"470\" y=\"125\" font-family=\"'JetBrains Mono', monospace\" font-size=\"8\" fill=\"var(--accent-color, #B83B26)\">R = 21.65m</text>\n</svg>", "rotonda": "<svg viewBox=\"0 0 800 450\" xmlns=\"http://www.w3.org/2000/svg\">\n  <!-- Villa Rotonda: 4-fold Biaxial Symmetry and Central Dome -->\n  <line x1=\"40\" y1=\"410\" x2=\"760\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\" />\n  \n  <!-- Podium Stairs (Substructure) -->\n  <rect x=\"220\" y=\"320\" width=\"360\" height=\"90\" fill=\"var(--fill-subtle, rgba(24,23,22,0.02))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\" />\n  <line x1=\"280\" y1=\"340\" x2=\"520\" y2=\"340\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"280\" y1=\"360\" x2=\"520\" y2=\"360\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"280\" y1=\"380\" x2=\"520\" y2=\"380\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  \n  <!-- Piano Nobile Block -->\n  <rect x=\"240\" y=\"180\" width=\"320\" height=\"140\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.4\" />\n  \n  <!-- Portico Ionic Columns (Hexastyle) -->\n  <rect x=\"290\" y=\"210\" width=\"220\" height=\"110\" fill=\"var(--fill-subtle, rgba(24,23,22,0.02))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\" />\n  <!-- Ionic Capitals & Columns -->\n  <line x1=\"305\" y1=\"210\" x2=\"305\" y2=\"320\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\"/>\n  <line x1=\"345\" y1=\"210\" x2=\"345\" y2=\"320\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\"/>\n  <line x1=\"385\" y1=\"210\" x2=\"385\" y2=\"320\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\"/>\n  <line x1=\"415\" y1=\"210\" x2=\"415\" y2=\"320\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\"/>\n  <line x1=\"455\" y1=\"210\" x2=\"455\" y2=\"320\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\"/>\n  <line x1=\"495\" y1=\"210\" x2=\"495\" y2=\"320\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\"/>\n  \n  <!-- Portico Pediment with Statues -->\n  <polygon points=\"280,210 400,140 520,210\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.4\" />\n  \n  <!-- Central Cupola (Drum & Hemisphere Dome) -->\n  <rect x=\"340\" y=\"125\" width=\"120\" height=\"55\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\" />\n  <path d=\"M 345,125 A 55,55 0 0,1 455,125 Z\" fill=\"var(--fill-subtle, rgba(24,23,22,0.04))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.4\" />\n  <circle cx=\"400\" cy=\"70\" r=\"6\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\" />\n  \n  <!-- Biaxial Harmonic Proportions -->\n  <line x1=\"400\" y1=\"20\" x2=\"400\" y2=\"430\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.75\" stroke-dasharray=\"4,4\"/>\n  <line x1=\"160\" y1=\"250\" x2=\"640\" y2=\"250\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.75\" stroke-dasharray=\"4,4\"/>\n  \n  <text x=\"410\" y=\"45\" font-family=\"'JetBrains Mono', monospace\" font-size=\"9\" fill=\"var(--accent-color, #B83B26)\">PALLADIAN SYMMETRY AXIS</text>\n  <text x=\"250\" y=\"245\" font-family=\"'JetBrains Mono', monospace\" font-size=\"8\" fill=\"var(--accent-color, #B83B26)\">HARMONIC RATIO 12:12:6</text>\n</svg>", "kahn": "<svg viewBox=\"0 0 800 450\" xmlns=\"http://www.w3.org/2000/svg\">\n  <!-- Kimbell Art Museum: Louis Kahn Cycloid Vault & Reflected Light Slot -->\n  <line x1=\"40\" y1=\"410\" x2=\"760\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\" />\n  \n  <!-- Reinforced Concrete Columns (Square 60x60cm) -->\n  <rect x=\"120\" y=\"240\" width=\"30\" height=\"170\" fill=\"var(--fill-subtle, rgba(24,23,22,0.04))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <rect x=\"370\" y=\"240\" width=\"30\" height=\"170\" fill=\"var(--fill-subtle, rgba(24,23,22,0.04))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <rect x=\"620\" y=\"240\" width=\"30\" height=\"170\" fill=\"var(--fill-subtle, rgba(24,23,22,0.04))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  \n  <!-- Left Cycloid Vault (Post-tensioned curved shell span 30m) -->\n  <!-- Mathematical Cycloid curve -->\n  <path d=\"M 120,240 C 130,120 220,90 240,90 C 260,90 350,120 370,240\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"2\"/>\n  <path d=\"M 130,240 C 140,130 225,102 240,102 C 255,102 340,130 360,240\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  \n  <!-- Central Skylight & Winged Aluminum Reflector (Left) -->\n  <rect x=\"235\" y=\"85\" width=\"20\" height=\"8\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <path d=\"M 220,115 Q 245,125 270,115\" fill=\"none\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"1.5\"/>\n  <!-- Reflected Daylight rays -->\n  <line x1=\"245\" y1=\"90\" x2=\"230\" y2=\"115\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.75\" stroke-dasharray=\"2,2\"/>\n  <line x1=\"230\" y1=\"115\" x2=\"160\" y2=\"180\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.75\" stroke-dasharray=\"2,2\"/>\n  <line x1=\"260\" y1=\"115\" x2=\"330\" y2=\"180\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.75\" stroke-dasharray=\"2,2\"/>\n  \n  <!-- Right Cycloid Vault -->\n  <path d=\"M 370,240 C 380,120 470,90 490,90 C 510,90 600,120 620,240\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"2\"/>\n  <path d=\"M 380,240 C 390,130 475,102 490,102 C 505,102 590,130 610,240\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  \n  <!-- Central Skylight & Reflector (Right) -->\n  <rect x=\"485\" y=\"85\" width=\"20\" height=\"8\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <path d=\"M 470,115 Q 495,125 520,115\" fill=\"none\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"1.5\"/>\n  \n  <!-- Travertine Infills & Glazed Slots -->\n  <rect x=\"150\" y=\"280\" width=\"220\" height=\"130\" fill=\"var(--fill-subtle, rgba(24,23,22,0.02))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  <line x1=\"150\" y1=\"340\" x2=\"370\" y2=\"340\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\" stroke-dasharray=\"4,4\"/>\n  \n  <text x=\"175\" y=\"75\" font-family=\"'JetBrains Mono', monospace\" font-size=\"9\" fill=\"var(--accent-color, #B83B26)\">CYCLOID CURVATURE (NO LATERAL THRUST)</text>\n  <text x=\"180\" y=\"320\" font-family=\"'JetBrains Mono', monospace\" font-size=\"8\" fill=\"var(--ink-tertiary)\">TRAVERTINE CLADDING</text>\n</svg>", "savoye": "<svg viewBox=\"0 0 800 450\" xmlns=\"http://www.w3.org/2000/svg\">\n  <!-- Villa Savoye: Le Corbusier 5 Points of Architecture -->\n  <line x1=\"40\" y1=\"410\" x2=\"760\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\" />\n  \n  <!-- Point 1: Pilotis (Reinforced Concrete Grid Columns) -->\n  <line x1=\"140\" y1=\"280\" x2=\"140\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"3\"/>\n  <line x1=\"270\" y1=\"280\" x2=\"270\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"3\"/>\n  <line x1=\"400\" y1=\"280\" x2=\"400\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"3\"/>\n  <line x1=\"530\" y1=\"280\" x2=\"530\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"3\"/>\n  <line x1=\"660\" y1=\"280\" x2=\"660\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"3\"/>\n  \n  <!-- Ground Floor Curved Glazed Base (Turning radius for 1927 Citroën) -->\n  <path d=\"M 200,410 C 200,320 270,300 400,300 L 600,300 L 600,410 Z\" fill=\"var(--fill-subtle, rgba(24,23,22,0.03))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  \n  <!-- Point 2 & 3: Free Facade & Raised Piano Nobile Box -->\n  <rect x=\"110\" y=\"160\" width=\"580\" height=\"120\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\"/>\n  \n  <!-- Point 4: Ribbon Window (Fenêtre en longueur) continuous horizontal band -->\n  <rect x=\"110\" y=\"195\" width=\"580\" height=\"35\" fill=\"var(--fill-subtle, rgba(38,84,124,0.08))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <line x1=\"160\" y1=\"195\" x2=\"160\" y2=\"230\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"240\" y1=\"195\" x2=\"240\" y2=\"230\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"320\" y1=\"195\" x2=\"320\" y2=\"230\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"400\" y1=\"195\" x2=\"400\" y2=\"230\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"480\" y1=\"195\" x2=\"480\" y2=\"230\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"560\" y1=\"195\" x2=\"560\" y2=\"230\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  <line x1=\"640\" y1=\"195\" x2=\"640\" y2=\"230\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.6\"/>\n  \n  <!-- Point 5: Roof Garden & Solarium Sculptural Screen -->\n  <path d=\"M 280,160 C 280,110 320,100 370,100 C 420,100 450,130 500,130 L 500,160\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.4\"/>\n  <circle cx=\"370\" cy=\"120\" r=\"10\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  \n  <text x=\"120\" y=\"145\" font-family=\"'JetBrains Mono', monospace\" font-size=\"9\" fill=\"var(--accent-color, #B83B26)\">CINQ POINTS DE L'ARCHITECTURE MODERNE (1929)</text>\n  <text x=\"145\" y=\"360\" font-family=\"'JetBrains Mono', monospace\" font-size=\"8\" fill=\"var(--ink-tertiary)\">PILOTIS GRID: 4.75m x 4.75m</text>\n</svg>", "notredame": "<svg viewBox=\"0 0 800 450\" xmlns=\"http://www.w3.org/2000/svg\">\n  <!-- Notre-Dame de Paris: Flying Buttress Vector Equilibrium -->\n  <line x1=\"40\" y1=\"410\" x2=\"760\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\" />\n  \n  <!-- Central High Nave (33m Vault) -->\n  <rect x=\"310\" y=\"120\" width=\"180\" height=\"290\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  \n  <!-- Ribbed Quadripartite Vault Profile -->\n  <path d=\"M 310,180 Q 400,110 490,180\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.8\"/>\n  <path d=\"M 310,180 Q 400,140 490,180\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  \n  <!-- Clerestory Lancet Windows -->\n  <path d=\"M 360,260 A 20,40 0 0,1 400,260 L 400,200 A 20,40 0 0,0 360,200 Z\" fill=\"var(--fill-subtle, rgba(38,84,124,0.06))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  <path d=\"M 400,260 A 20,40 0 0,1 440,260 L 440,200 A 20,40 0 0,0 400,200 Z\" fill=\"var(--fill-subtle, rgba(38,84,124,0.06))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  \n  <!-- Exterior Massive Buttress Piers (Left & Right) -->\n  <rect x=\"130\" y=\"200\" width=\"60\" height=\"210\" fill=\"var(--fill-subtle, rgba(24,23,22,0.03))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.4\"/>\n  <!-- Pinnacle for vertical load ballast -->\n  <polygon points=\"130,200 160,130 190,200\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  \n  <rect x=\"610\" y=\"200\" width=\"60\" height=\"210\" fill=\"var(--fill-subtle, rgba(24,23,22,0.03))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.4\"/>\n  <polygon points=\"610,200 640,130 670,200\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  \n  <!-- Flying Arches (Flyers transferring lateral wind/vault thrust) -->\n  <!-- Left Fly 1 (Upper) -->\n  <path d=\"M 190,190 Q 250,140 310,160\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"2\"/>\n  <!-- Left Fly 2 (Lower) -->\n  <path d=\"M 190,250 Q 250,210 310,230\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.8\"/>\n  \n  <!-- Right Fly 1 (Upper) -->\n  <path d=\"M 610,190 Q 550,140 490,160\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"2\"/>\n  <!-- Right Fly 2 (Lower) -->\n  <path d=\"M 610,250 Q 550,210 490,230\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.8\"/>\n  \n  <!-- Thrust Vector Arrows -->\n  <line x1=\"310\" y1=\"180\" x2=\"210\" y2=\"235\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"1\" stroke-dasharray=\"3,3\"/>\n  <text x=\"215\" y=\"275\" font-family=\"'JetBrains Mono', monospace\" font-size=\"8\" fill=\"var(--accent-color, #B83B26)\">RESULTANT THRUST VECTOR</text>\n  <text x=\"355\" y=\"95\" font-family=\"'JetBrains Mono', monospace\" font-size=\"9\" fill=\"var(--accent-color, #B83B26)\">GOTHIC DIAGONAL EQUILIBRIUM</text>\n</svg>", "katsura": "<svg viewBox=\"0 0 800 450\" xmlns=\"http://www.w3.org/2000/svg\">\n  <!-- Katsura Imperial Villa: Modular Tatami & Post-and-Beam Coordination -->\n  <line x1=\"40\" y1=\"410\" x2=\"760\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\" />\n  \n  <!-- Wooden Foundation Pilings & Stones -->\n  <circle cx=\"160\" cy=\"380\" r=\"14\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <circle cx=\"280\" cy=\"380\" r=\"14\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <circle cx=\"400\" cy=\"380\" r=\"14\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <circle cx=\"520\" cy=\"380\" r=\"14\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <circle cx=\"640\" cy=\"380\" r=\"14\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  \n  <!-- Hinoki Cypress Posts (Hashira) -->\n  <rect x=\"154\" y=\"160\" width=\"12\" height=\"220\" fill=\"var(--fill-subtle, rgba(138,100,54,0.08))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <rect x=\"274\" y=\"160\" width=\"12\" height=\"220\" fill=\"var(--fill-subtle, rgba(138,100,54,0.08))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <rect x=\"394\" y=\"160\" width=\"12\" height=\"220\" fill=\"var(--fill-subtle, rgba(138,100,54,0.08))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <rect x=\"514\" y=\"160\" width=\"12\" height=\"220\" fill=\"var(--fill-subtle, rgba(138,100,54,0.08))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  <rect x=\"634\" y=\"160\" width=\"12\" height=\"220\" fill=\"var(--fill-subtle, rgba(138,100,54,0.08))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  \n  <!-- Raised Veranda (Engawa) & Tatami Grid Plane -->\n  <rect x=\"120\" y=\"320\" width=\"560\" height=\"20\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  \n  <!-- Sliding Shoji Screens with fine wooden lattice -->\n  <rect x=\"166\" y=\"180\" width=\"108\" height=\"140\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  <line x1=\"202\" y1=\"180\" x2=\"202\" y2=\"320\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\"/>\n  <line x1=\"238\" y1=\"180\" x2=\"238\" y2=\"320\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\"/>\n  <line x1=\"166\" y1=\"215\" x2=\"274\" y2=\"215\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\"/>\n  <line x1=\"166\" y1=\"250\" x2=\"274\" y2=\"250\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\"/>\n  <line x1=\"166\" y1=\"285\" x2=\"274\" y2=\"285\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.5\"/>\n  \n  <rect x=\"286\" y=\"180\" width=\"108\" height=\"140\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  \n  <!-- Gently pitched Ir Moya Overhanging Roof with Deep Eaves (Noki) -->\n  <path d=\"M 80,170 Q 400,135 720,170 L 680,130 Q 400,95 120,130 Z\" fill=\"var(--fill-subtle, rgba(24,23,22,0.04))\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\"/>\n  \n  <text x=\"140\" y=\"90\" font-family=\"'JetBrains Mono', monospace\" font-size=\"9\" fill=\"var(--accent-color, #B83B26)\">KIWARI-JUTSU PROPORTIONAL SYSTEM (1 KEN = 1.91m)</text>\n  <text x=\"430\" y=\"280\" font-family=\"'JetBrains Mono', monospace\" font-size=\"8\" fill=\"var(--ink-tertiary)\">SHIN-KABE EXPOSED TIMBER FRAME</text>\n</svg>", "sancarlo": "<svg viewBox=\"0 0 800 450\" xmlns=\"http://www.w3.org/2000/svg\">\n  <!-- San Carlo alle Quattro Fontane: Borromini Intersecting Ellipses & Dynamic Curvature -->\n  <line x1=\"40\" y1=\"410\" x2=\"760\" y2=\"410\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.5\" />\n  \n  <!-- Undulating Wave Facade (Concave - Convex - Concave) -->\n  <path d=\"M 160,390 C 220,360 280,415 400,415 C 520,415 580,360 640,390\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"2\"/>\n  \n  <!-- Entablature Band with Undulation -->\n  <path d=\"M 160,250 C 220,220 280,275 400,275 C 520,275 580,220 640,250\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"2\"/>\n  \n  <!-- Complex Oval / Elliptical Dome Cross-Section -->\n  <!-- Primary Geometric Ellipse -->\n  <ellipse cx=\"400\" cy=\"150\" rx=\"190\" ry=\"110\" fill=\"none\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"1.2\" stroke-dasharray=\"4,4\"/>\n  \n  <!-- Inscribed Borromini Triangles -->\n  <polygon points=\"400,40 235,205 565,205\" fill=\"none\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.8\" stroke-dasharray=\"2,2\"/>\n  <polygon points=\"400,260 235,95 565,95\" fill=\"none\" stroke=\"var(--accent-color, #B83B26)\" stroke-width=\"0.8\" stroke-dasharray=\"2,2\"/>\n  \n  <!-- Honeycomb Octagonal Coffers in Dome -->\n  <circle cx=\"400\" cy=\"150\" r=\"18\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1\"/>\n  <circle cx=\"340\" cy=\"150\" r=\"14\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  <circle cx=\"460\" cy=\"150\" r=\"14\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  <circle cx=\"400\" cy=\"100\" r=\"14\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  <circle cx=\"400\" cy=\"200\" r=\"14\" fill=\"none\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"0.8\"/>\n  \n  <!-- Lantern at the Zenith with Trinitarian Symbol -->\n  <polygon points=\"400,30 385,55 415,55\" fill=\"#FFFFFF\" stroke=\"var(--stroke-color, #181716)\" stroke-width=\"1.2\"/>\n  \n  <text x=\"210\" y=\"30\" font-family=\"'JetBrains Mono', monospace\" font-size=\"9\" fill=\"var(--accent-color, #B83B26)\">GEOMETRIA ELLITTICA TRINITARIA (BORROMINI 1646)</text>\n  <text x=\"230\" y=\"430\" font-family=\"'JetBrains Mono', monospace\" font-size=\"8\" fill=\"var(--ink-tertiary)\">CONCAVO-CONVEXA RHYTHM</text>\n</svg>"};
+
+
+// ATLAS Application JavaScript
+// State, Rendering, and Interaction Layer
+
+// --- Utilities ---
+const $ = (s, root = document) => root.querySelector(s);
+const $$ = (s, root = document) => Array.from(root.querySelectorAll(s));
+const svgNS = "http://www.w3.org/2000/svg";
+
+const PLATES = PLATES_DATA;
+const TYPOLOGIES = TYPOLOGIES_DATA;
+const MATERIALS = MATERIALS_DATA;
+const SVG_BLUEPRINTS = SVG_DEFS;
+
+// --- Application State ---
+const state = {
+  view: 'folio',
+  activePlateId: 'plate-parthenon',
+  activePlate: null,
+  bookmarkedPlates: [],
+  typologyFilters: { era: 'all', system: 'all', search: '' },
+  compareA: 'plate-parthenon',
+  compareB: 'plate-kahn',
+  inkMode: 'bone',
+  showGrid: true,
+  showPins: true,
+  userNotes: '',
+  customPins: [],
+  panZoom: { x: 0, y: 0, scale: 1 },
+  notesSynced: false
+};
+
+// --- Toast system ---
+const toastContainer = document.getElementById('toast-container');
+function showToast(message, sub) {
+  const el = document.createElement('div');
+  el.className = 'toast-msg';
+  el.innerHTML = `${message}${sub ? ' <span style="opacity:0.6">' + sub + '</span>' : ''}`;
+  toastContainer.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 300ms, transform 300ms';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(6px)';
+    setTimeout(() => el.remove(), 320);
+  }, 2600);
+}
+
+// --- Audio (subtle paper/click sounds) ---
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) { audioCtx = null; }
+  }
+  return audioCtx;
+}
+function playClick(freq = 2200, dur = 0.03, gain = 0.05) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(gain, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+  osc.connect(g).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + dur + 0.02);
+}
+function playChime() {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const freqs = [261.6, 392.0, 523.3];
+  freqs.forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = f;
+    const t = ctx.currentTime + i * 0.07;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 1.0);
+  });
+}
+
+// --- localStorage persistence ---
+const LS_KEY = 'atlas-state-v1';
+function saveState() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      bookmarked: state.bookmarkedPlates,
+      notes: state.userNotes,
+      pins: state.customPins,
+      compare: [state.compareA, state.compareB],
+      ink: state.inkMode
+    }));
+  } catch (e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.bookmarked) state.bookmarkedPlates = s.bookmarked;
+    if (s.notes) state.userNotes = s.notes;
+    if (s.pins) state.customPins = s.pins;
+    if (s.compare) { state.compareA = s.compare[0]; state.compareB = s.compare[1]; }
+    if (s.ink) state.inkMode = s.ink;
+  } catch (e) {}
+}
+
+// --- Plate SVG library ---
+function getPlateSVG(key) {
+  return SVG_BLUEPRINTS[key] || SVG_BLUEPRINTS['parthenon'];
+}
+
+// --- RENDER: Folio sidebar list ---
+function renderFolioList() {
+  const listEl = $('#plate-list');
+  const search = state.plateSearch || '';
+  const cats = {};
+  PLATES.forEach(p => {
+    if (search && !(p.title + p.subtitle + p.category + p.code).toLowerCase().includes(search.toLowerCase())) return;
+    if (!cats[p.category]) cats[p.category] = [];
+    cats[p.category].push(p);
+  });
+  let html = '';
+  Object.keys(cats).sort().forEach(cat => {
+    html += `<div class="plate-item-group-title">${cat}</div>`;
+    cats[cat].forEach(p => {
+      const active = p.id === state.activePlateId;
+      const marked = state.bookmarkedPlates.includes(p.id);
+      html += `
+      <div class="plate-item ${active ? 'active' : ''}" data-plate="${p.id}" tabindex="0" role="button">
+        <div class="plate-item-top">
+          <span class="plate-item-code">${p.code}${marked ? ' ★' : ''}</span>
+          <span class="plate-item-era">${p.era}</span>
+        </div>
+        <div class="plate-item-title">${p.title.split(':')[0]}</div>
+        <div class="plate-item-desc">${p.subtitle.split('—')[0].trim()}</div>
+      </div>`;
+    });
+  });
+  if (!html) html = `<div style="padding:40px 20px;text-align:center;color:var(--ink-muted);font-family:var(--font-serif);font-style:italic;">No plates match the current search.</div>`;
+  listEl.innerHTML = html;
+  $$('.plate-item', listEl).forEach(el => {
+    el.addEventListener('click', () => selectPlate(el.dataset.plate));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectPlate(el.dataset.plate); }});
+  });
+}
+
+// --- RENDER: Plate canvas ---
+function renderPlate() {
+  const p = PLATES.find(x => x.id === state.activePlateId);
+  if (!p) return;
+  state.activePlate = p;
+  $('#plate-code').textContent = p.code;
+  $('#plate-title').textContent = p.title;
+  $('#plate-subtitle').textContent = p.subtitle;
+  $('#plate-dim').textContent = p.dimensions;
+  $('#plate-modulus').textContent = p.modulus;
+  $('#plate-material').textContent = p.material;
+  $('#plate-era-badge').textContent = p.era;
+  $('#plate-desc-full').textContent = p.description;
+
+  // SVG inject
+  const svgWrap = $('#plate-svg');
+  svgWrap.innerHTML = getPlateSVG(p.svg_key);
+  // Apply ink class
+  const frame = $('#plate-frame');
+  frame.className = `plate-frame ink-mode-${state.inkMode}`;
+
+  // Datum pins
+  const pinsWrap = $('#datum-pins');
+  pinsWrap.innerHTML = '';
+  if (state.showPins) {
+    p.hotspots.forEach(h => {
+      const pin = document.createElement('button');
+      pin.className = 'datum-pin';
+      pin.style.left = h.x + 'px';
+      pin.style.top = h.y + 'px';
+      pin.innerHTML = `<span class="pin-letter">◆</span>
+        <div class="datum-tooltip">
+          <strong>${h.label}</strong>
+          ${h.desc}
+        </div>`;
+      pin.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playClick(3200);
+      });
+      pinsWrap.appendChild(pin);
+    });
+    (state.customPins.filter(c => c.plateId === p.id) || []).forEach(c => {
+      const pin = document.createElement('button');
+      pin.className = 'datum-pin custom-pin';
+      pin.style.left = c.x + 'px';
+      pin.style.top = c.y + 'px';
+      pin.innerHTML = `<span class="pin-letter">+</span>
+        <div class="datum-tooltip"><strong>Datum Mark</strong>Custom researcher annotation at ${c.x.toFixed(0)}, ${c.y.toFixed(0)}</div>`;
+      pin.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playClick(2800);
+      });
+      pinsWrap.appendChild(pin);
+    });
+  }
+
+  // Grid overlay
+  const gridEl = $('#grid-overlay');
+  if (state.showGrid) {
+    gridEl.style.backgroundImage = 'linear-gradient(rgba(24,23,22,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(24,23,22,0.045) 1px, transparent 1px)';
+    gridEl.style.backgroundSize = '28px 28px';
+  } else {
+    gridEl.style.backgroundImage = 'none';
+  }
+
+  // Bookmark button state
+  const bbtn = $('#bookmark-btn');
+  const isMarked = state.bookmarkedPlates.includes(p.id);
+  bbtn.classList.toggle('active', isMarked);
+  bbtn.innerHTML = isMarked ? '★ Bookmarked' : '☆ Bookmark Plate';
+
+  renderFolioList();
+}
+
+function selectPlate(id) {
+  state.activePlateId = id;
+  state.panZoom = { x: 0, y: 0, scale: 1 };
+  applyTransform();
+  renderPlate();
+  playClick(2400, 0.02, 0.03);
+  showToast('PLATE LOADED', `Folio ${PLATES.find(x=>x.id===id).code}`);
+}
+
+// --- Pan & Zoom ---
+function applyTransform() {
+  const stage = $('#canvas-stage');
+  if (stage) stage.style.transform = `translate(${state.panZoom.x}px, ${state.panZoom.y}px) scale(${state.panZoom.scale})`;
+  const zl = $('#zoom-level-indicator');
+  if (zl) zl.textContent = `×${state.panZoom.scale.toFixed(2)}`;
+}
+
+// --- Typology Matrix ---
+function renderTypologies() {
+  const f = state.typologyFilters;
+  let items = TYPOLOGIES.filter(t => {
+    if (f.era !== 'all' && t.era !== f.era) return false;
+    if (f.system !== 'all' && t.system !== f.system) return false;
+    if (f.search && !(t.name + t.archetype + t.desc).toLowerCase().includes(f.search.toLowerCase())) return false;
+    return true;
+  });
+  const grid = $('#typology-grid');
+  if (items.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-title">No typologies found</div><div class="empty-sub">Adjust era, system, or search to widen the net.</div></div>`;
+    return;
+  }
+  grid.innerHTML = items.map(t => `
+    <div class="typology-card" data-code="${t.code}" tabindex="0">
+      <div class="typology-card-top">
+        <span class="typology-code">${t.code}</span>
+        <span class="typology-era">${t.era}</span>
+      </div>
+      <div class="typology-title">${t.name}</span>
+      <div class="typology-archetype">${t.archetype}</div>
+      <div class="typology-desc">${t.desc}</div>
+      <div class="typology-metrics">
+        <div class="typology-metric-item">SPAN <span>${t.span}</span></div>
+        
+        <div class="typology-metric-item">SYSTEM <span>${t.system}</span></div>
+        <div class="typology-metric-item">EFFICIENCY <span>${t.efficiency}</span></div>
+      </div>
+    </div>`).join('');
+  $$('.typology-card').forEach(el => {
+    el.addEventListener('click', () => {
+      openDrawer(el.dataset.code);
+      playClick(2900);
+    });
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { openDrawer(el.dataset.code); }});
+  });
+}
+
+// --- Materials view ---
+function renderMaterials() {
+  const grid = $('#materials-grid');
+  grid.innerHTML = MATERIALS.map((m, i) => `
+    <div class="material-card" tabindex="0" data-mat="${m.id}">
+      <div class="material-swatch-box" style="${m.swatchStyle}"></div>
+      <div class="mat-header">
+        <span class="mat-code">MAT-${String(i+1).padStart(2,'0')}</span>
+        <span class="mat-carbon ${m.carbon.includes('-') ? 'carbon-negative' : ''}">${m.carbon}</span>
+      </div>
+      <div class="mat-name">${m.name}</div>
+      <div class="mat-origin serif">${m.origin}</div>
+      <div class="mat-desc">${m.description}</div>
+      <div class="mat-specs">
+        <div><label>DENSITY</label><span>${m.density}</span></div>
+        <div><label>STRENGTH</label><span>${m.compressive}</span></div>
+        <div><label>LIFESPAN</label><span>${m.lifespan}</span></div>
+      </div>
+    </div>`).join('');
+  $$('.material-card').forEach(el => {
+    el.addEventListener('click', () => {
+      openDrawer(null, el.dataset.mat);
+      playClick(2600);
+    });
+  });
+}
+
+// --- Comparative view ---
+function renderComparison() {
+  const a = PLATES.find(x => x.id === state.compareA);
+  const b = PLATES.find(x => x.id === state.compareB);
+  $('#compare-a-name').textContent = a.title;
+  $('#compare-b-name').textContent = b.title;
+  $('#compare-a-code').textContent = a.code;
+  $('#compare-b-code').textContent = b.code;
+  $('#compare-svg-a').innerHTML = getPlateSVG(a.svg_key);
+  $('#compare-svg-b').innerHTML = getPlateSVG(b.svg_key);
+  $('#compare-svg-a').firstChild && $('#compare-svg-a').firstChild.setAttribute('viewBox', '60 20 680 400');
+  $('#compare-svg-b').firstChild && $('#compare-svg-b').firstChild.setAttribute('viewBox', '60 20 680 400');
+  const rows = [
+    ['ERA', a.era, b.era],
+    ['MATERIAL SYSTEM', a.material, b.material],
+    ['MODULUS', a.modulus, b.modulus],
+    ['DIMENSIONS', a.dimensions, b.dimensions]
+  ];
+  $('#compare-metrics').innerHTML = rows.map(r => `
+    <tr>
+      <td class="metric-name">${r[0]}</td>
+      <td class="metric-val">${r[1]}</td>
+      <td class="metric-val">${r[2]}</td>
+    </tr>`).join('');
+
+  // Synthesis text
+  const yr = /(\d{3,4})/.exec(a.subtitle + b.subtitle);
+  $('#compare-synthesis').innerHTML = `<strong>${a.title.split(':')[0]}</strong> and <strong>${b.title.split(':')[0]}</strong> represent divergent answers to the same structural problem: how to enclose volume with minimal material at maximum dignity. Where the first relies on ${a.material.split(',')[0].toLowerCase()} resolved through ${a.modulus.toLowerCase()}, the latter deploys ${b.material.split(',')[0].toLowerCase()} governed by ${b.modulus.toLowerCase()}. The caliper reveals that neither approach is superior; each is a local optimum of its era's material intelligence.`;
+}
+
+// --- Drawer ---
+function openDrawer(typCode, matId) {
+  const drawer = $('#inspector-drawer');
+  const body = $('#drawer-body');
+  if (typCode) {
+    const t = TYPOLOGIES.find(x => x.code === typCode);
+    body.innerHTML = `
+      <div class="drawer-tag">TYPOLOGY MONOGRAPH</div>
+      <h2 class="drawer-title">${t.name}</h2>
+      <div class="drawer-sub">${t.archetype}</div>
+      <div class="drawer-section">
+        <div class="drawer-label">STRUCTURAL PRINCIPLE</div>
+        <p>${t.desc}</p>
+      </div>
+      <div class="drawer-section">
+        <div class="drawer-label">FULL LEDGER</div>
+        <div class="drawer-table">
+          <div><span>Era</span><b>${t.era}</b></div>
+          <div><span>System</span><b>${t.system}</b></div>
+          <div><span>Material</span><b>${t.material}</b></div>
+          <div><span>Span Range</span><b>${t.span}</b></div>
+          <div><span>Efficiency</span><b>${t.efficiency}</b></div>
+        </div>
+      </div>
+      <div class="drawer-quote">"Architecture is the learned game, correct and magnificent, of forms assembled in the light."</div>
+      <div class="drawer-quote-author">— Le Corbusier</div>`;
+  } else if (matId) {
+    const m = MATERIALS.find(x => x.id === matId);
+    body.innerHTML = `
+      <div class="drawer-tag">MATERIAL ASSAY</div>
+      <h2 class="drawer-title">${m.name}</h2>
+      <div class="drawer-sub">${m.origin}</div>
+      <div class="drawer-section">
+        <div class="drawer-label">TACTILITY</div>
+        <p>${m.tactility}</p>
+      </div>
+      <div class="drawer-section">
+        <div class="drawer-label">DESCRIPTION</div>
+        <p>${m.description}</p>
+      </div>
+      <div class="drawer-section">
+        <div class="drawer-label">FULL LEDGER</div>
+        <div class="drawer-table">
+          <div><span>Density</span><b>${m.density}</b></div>
+          <div><span>Strength</span><b>${m.compressive}</b></div>
+          <div><span>Carbon</span><b>${m.carbon}</b></div>
+          <div><span>Lifespan</span><b>${m.lifespan}</span></div>
+          <div><span>Formula</span><b>${m.formula}</b></div>
+        </div>
+      </div>`;
+  }
+  drawer.classList.add('open');
+  playClick(1800, 0.04, 0.04);
+}
+function closeDrawer() {
+  $('#inspector-drawer').classList.remove('open');
+}
+
+// --- Omni palette ---
+const omniIndex = [];
+function buildOmniIndex() {
+  PLATES.forEach(p => omniIndex.push({ type: 'Plate', title: p.title, sub: p.code, action: () => { setView('folio'); setTimeout(()=>selectPlate(p.id), 50); } }));
+  TYPOLOGIES.forEach(t => omniIndex.push({ type: 'Typology', title: t.name, sub: t.code, action: () => { setView('matrix'); setTimeout(()=>openDrawer(t.code), 50); } }));
+  MATERIALS.forEach((m, i) => omniIndex.push({ type: 'Material', title: m.name, sub: `MAT-${String(i+1).padStart(2,'0')}`, action: () => { setView('materials'); setTimeout(()=>openDrawer(null, m.id), 50); } }));
+  const views = [['folio', 'Folio Plates'], ['matrix', 'Typology Lexicon'], ['compare', 'Caliper Studio'], ['exegesis', 'Exegesis Journal'], ['materials', 'Material Assays']];
+  views.forEach(v => omniIndex.push({ type: 'View', title: 'Go to ' + v[1], sub: 'Navigation', action: () => setView(v[0]) }));
+  omniIndex.push({ type: 'Action', title: 'Toggle Proportional Caliper', sub: 'C', action: () => toggleCaliper() });
+  omniIndex.push({ type: 'Folio', title: 'Open the Incunabula Atlas', sub: 'about:blank', action: () => {} });
+}
+let omniSelected = 0;
+function openOmni() {
+  $('#omni-backdrop').classList.add('open');
+  const input = $('#omni-input');
+  input.value = '';
+  input.focus();
+  renderOmni('');
+  playClick(3400);
+}
+function closeOmni() {
+  $('#omni-backdrop').classList.remove('open');
+}
+function renderOmni(query) {
+  const list = $('#omni-results');
+  const q = query.trim().toLowerCase();
+  const results = (q ? omniIndex.filter(i => (i.title + i.sub).toLowerCase().includes(q)) : omniIndex).slice(0, 9);
+  omniSelected = 0;
+  if (results.length === 0) {
+    list.innerHTML = `<div class="omni-empty">No results for "${query}"</div>`;
+    return;
+  }
+  list.innerHTML = results.map((r, i) => `
+    <div class="omni-item ${i === 0 ? 'selected' : ''}" data-idx="${omniIndex.indexOf(r)}">
+      <div class="omni-item-left">
+        <div class="omni-item-title">${r.title}</div>
+        <div class="omni-item-sub">${r.sub}</div>
+      </div>
+      <span class="omni-item-badge">${r.type}</span>
+    </div>`).join('');
+  $$('.omni-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const item = omniIndex[parseInt(el.dataset.idx)];
+      closeOmni();
+      item.action();
+    });
+  });
+}
+
+// --- Caliper ---
+function toggleCaliper() {
+  const w = $('#caliper-window');
+  if (w.classList.contains('open')) {
+    w.classList.remove('open');
+  } else {
+    w.classList.add('open');
+    playChime();
+  }
+}
+
+// --- View switching ---
+const VIEW_NAMES = { folio: 'Folio Plates', matrix: 'Typology Lexicon', compare: 'Caliper Studio', exegesis: 'Exegesis Journal', materials: 'Material Assays' };
+function setView(v) {
+  state.view = v;
+  $$('.view-pane').forEach(p => p.classList.remove('active'));
+  $(`#view-${v}`).classList.add('active');
+  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  $('#view-title').textContent = VIEW_NAMES[v];
+  $('#breadcrumb-view').textContent = VIEW_NAMES[v];
+  playClick(2000, 0.025, 0.035);
+  if (v === 'matrix') renderTypologies();
+  if (v === 'materials') renderMaterials();
+  if (v === 'compare') renderComparison();
+}
+
+// --- Clock ---
+function tickClock() {
+  const now = new Date();
+  const months = ['IAN', 'FEB', 'MAR', 'APR', 'MAI', 'IUN', 'IUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  $('#clock-date').textContent = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  const roman = toRoman(now.getHours()) + ':' + String(now.getMinutes()).padStart(2, '0');
+  $('#clock-time').textContent = roman;
+}
+function toRoman(n) {
+  if (n === 0) return 'N';
+  const map = [[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  let out = '';
+  map.forEach(([val, sym]) => { while (n >= val) { out += sym; n -= val; } });
+  return out;
+}
+
+// --- INIT ---
+function init() {
+  loadState();
+  buildOmniIndex();
+  renderFolioList();
+  renderPlate();
+  renderTypologies();
+  renderMaterials();
+  renderComparison();
+  tickClock();
+  setInterval(tickClock, 30000);
+
+  // Nav buttons
+  $$('.nav-btn').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+
+  // Plate search
+  $('#folio-search').addEventListener('input', (e) => { state.plateSearch = e.target.value; renderFolioList(); });
+
+  // Bookmark
+  $('#bookmark-btn').addEventListener('click', () => {
+    const id = state.activePlateId;
+    const idx = state.bookmarkedPlates.indexOf(id);
+    if (idx >= 0) { state.bookmarkedPlates.splice(idx, 1); showToast('BOOKMARK REMOVED'); }
+    else { state.bookmarkedPlates.push(id); showToast('PLATE BOOKMARKED', 'Saved to working folio'); }
+    saveState();
+    renderPlate();
+  });
+
+  // Toolbars
+  $$('.tool-btn[data-ink]').forEach(b => b.addEventListener('click', () => {
+    state.inkMode = b.dataset.ink;
+    $$('.tool-btn[data-ink]').forEach(x => x.classList.toggle('active', x === b));
+    renderPlate();
+    showToast('INK SCHEME', b.dataset.ink.toUpperCase());
+  }));
+  $('#grid-toggle').addEventListener('click', (e) => {
+    state.showGrid = !state.showGrid;
+    e.currentTarget.classList.toggle('active', state.showGrid);
+    renderPlate();
+  });
+  $('#pin-toggle').addEventListener('click', (e) => {
+    state.showPins = !state.showPins;
+    e.currentTarget.classList.toggle('active', state.showPins);
+    renderPlate();
+  });
+
+  // Zoom controls
+  $('#zoom-in').addEventListener('click', () => { state.panZoom.scale = Math.min(3, state.panZoom.scale * 1.25); applyTransform(); playClick(2500); });
+  $('#zoom-out').addEventListener('click', () => { state.panZoom.scale = Math.max(0.4, state.panZoom.scale / 1.25); applyTransform(); playClick(2100); });
+  $('#zoom-reset').addEventListener('click', () => { state.panZoom = { x: 0, y: 0, scale: 1 }; applyTransform(); showToast('VIEW RESET'); });
+
+  // Pan (mouse drag)
+  const viewport = $('#canvas-viewport');
+  let isDragging = false, dragStart = { x: 0, y: 0 }, panStart = { x: 0, y: 0 };
+  viewport.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.datum-pin') || e.target.closest('.canvas-floating-controls')) return;
+    isDragging = true;
+    dragStart = { x: e.clientX, y: e.clientY };
+    panStart = { ...state.panZoom };
+    viewport.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    state.panZoom.x = panStart.x + (e.clientX - dragStart.x);
+    state.panZoom.y = panStart.y + (e.clientY - dragStart.y);
+    applyTransform();
+  });
+  window.addEventListener('mouseup', () => { isDragging = false; viewport.classList.remove('dragging'); });
+
+  // Alt+Click to drop custom datum
+  viewport.addEventListener('click', (e) => {
+    if (!e.altKey) return;
+    const rect = viewport.getBoundingClientRect();
+    const stageRect = $('#plate-frame').getBoundingClientRect();
+    const x = ((e.clientX - stageRect.left) / stageRect.width) * 900;
+    const y = ((e.clientY - stageRect.top) / stageRect.height) * 660;
+    state.customPins.push({ plateId: state.activePlateId, x: x * (900 / stageRect.width), y: y * (660 / stageRect.height) });
+    saveState();
+    renderPlate();
+    playClick(3600);
+    showToast('DATUM PLACED', `x:${Math.round(x)} y:${Math.round(y)}`);
+  });
+
+  // Typology filters
+  $('#filter-era').addEventListener('change', e => { state.typologyFilters.era = e.target.value; renderTypologies(); });
+  $('#filter-system').addEventListener('change', e => { state.typologyFilters.system = e.target.value; renderTypologies(); });
+  $('#filter-search').addEventListener('input', e => { state.typologyFilters.search = e.target.value; renderTypologies(); });
+
+  // Compare selects
+  $('#compare-select-a').addEventListener('change', e => { state.compareA = e.target.value; renderComparison(); playClick(2300); });
+  $('#compare-select-b').addEventListener('change', e => { state.compareB = e.target.value; renderComparison(); playClick(2300); });
+
+  // Notes
+  const notesEl = $('#notes-textarea');
+  notesEl.value = state.userNotes;
+  notesEl.addEventListener('input', () => {
+    state.userNotes = notesEl.value;
+    saveState();
+    $('#notes-status').textContent = 'Saved';
+    setTimeout(() => { $('#notes-status').textContent = 'Autosaved'; }, 800);
+  });
+
+  // Drawer
+  $('#drawer-close').addEventListener('click', closeDrawer);
+
+  // Omni
+  $('#omni-backdrop').addEventListener('click', (e) => { if (e.target.id === 'omni-backdrop') closeOmni(); });
+  $('#omni-input').addEventListener('input', (e) => renderOmni(e.target.value));
+  $('#omni-input').addEventListener('keydown', (e) => {
+    const items = $$('.omni-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      omniSelected = Math.min(items.length - 1, omniSelected + 1);
+      items.forEach((it, i) => it.classList.toggle('selected', i === omniSelected));
+      items[omniSelected].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      omniSelected = Math.max(0, omniSelected - 1);
+      items.forEach((it, i) => it.classList.toggle('selected', i === omniSelected));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const sel = items[omniSelected];
+      if (sel) { const item = omniIndex[parseInt(sel.dataset.idx)]; closeOmni(); item.action(); }
+    }
+  });
+  $('#cmd-k-btn').addEventListener('click', openOmni);
+
+  // Caliper
+  $('#caliper-toggle-btn').addEventListener('click', toggleCaliper);
+  $('#caliper-close').addEventListener('click', toggleCaliper);
+
+  // View switching keyboard shortcuts
+  window.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      if (e.key === 'k' || e.key === 'K') { e.preventDefault(); openOmni(); }
+      return;
+    }
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.key === '1') setView('folio');
+    else if (e.key === '2') setView('matrix');
+    else if (e.key === '3') setView('compare');
+    else if (e.key === '4') setView('exegesis');
+    else if (e.key === '5') setView('materials');
+    else if (e.key === 'c' || e.key === 'C') toggleCaliper();
+    else if (e.key === 'Escape') { closeDrawer(); closeOmni(); }
+  });
+
+  // Export SVG
+  $('#export-btn').addEventListener('click', () => {
+    const svg = $('#plate-svg').innerHTML;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${state.activePlate.code.replace(/[^\w-]/g, '_')}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('PLATE EXPORTED', 'Vector SVG');
+  });
+
+  // Caliper slider live readout
+  const caliperSlider = $('#caliper-range');
+  caliperSlider.addEventListener('input', () => {
+    const v = parseFloat(caliperSlider.value);
+    const phi = 1.6180339887;
+    const ratio = (v / phi).toFixed(3);
+    $('#caliper-readout-main').textContent = v.toFixed(3);
+    $('#caliper-ratio-val').textContent = `1 : ${ratio}`;
+    const deviation = Math.abs(v - phi) / phi * 100;
+    const badge = $('#caliper-ratio-badge');
+    if (deviation < 1.5) { badge.textContent = 'φ CONGRUENT'; badge.className = 'caliper-ratio-badge congruent'; playChime(); }
+    else if (deviation < 8) { badge.textContent = 'NEAR-HARMONIC'; badge.className = 'caliper-ratio-badge near'; }
+    else { badge.textContent = 'DISSONANT'; badge.className = 'caliper-ratio-badge dissonant'; }
+  });
+
+  // Draggable caliper window
+  const caliperWin = $('#caliper-window');
+  const caliperHeader = $('#caliper-header');
+  let cx = 0, cy = 0, cw = false;
+  caliperHeader.addEventListener('mousedown', (e) => {
+    cw = true;
+    const rect = caliperWin.getBoundingClientRect();
+    cx = e.clientX - rect.left;
+    cy = e.clientY - rect.top;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!cw) return;
+    caliperWin.style.left = (e.clientX - cx) + 'px';
+    caliperWin.style.top = (e.clientY - cy) + 'px';
+    caliperWin.style.bottom = 'auto';
+  });
+  window.addEventListener('mouseup', () => { cw = false; });
+
+  // Print
+  $('#print-btn').addEventListener('click', () => { showToast('COMPILING FOLIO', 'Preparing print');
+    setTimeout(() => window.print(), 400);
+  });
+
+  console.log('ATLAS initialized.');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+
+</script>
+</body>
+</html>
+

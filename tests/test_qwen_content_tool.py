@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from backend.agents.llm import MODEL_REGISTRY, _TIER_ORDER, LLMClient
-from backend.agents.tools import TOOL_SCHEMAS, _QWEN_CONTENT_MODEL, execute_tool
+from backend.agents.tools import DISABLED_TOOLS, TOOL_SCHEMAS, _QWEN_CONTENT_MODEL, _generate_with_qwen, execute_tool
 
 
 class TestContentTierIsolation:
@@ -56,15 +56,30 @@ class TestToolSchema:
         assert schema["function"]["parameters"]["required"] == ["brief"]
 
 
-class TestExecuteToolDispatch:
+class TestSwitchedOff:
+    """generate_with_qwen is switched off (DISABLED_TOOLS). A job that had used it earlier kept
+    calling it by name after it was removed from the tool groups, so dispatch itself refuses it."""
+
+    def test_dispatch_refuses_it_without_calling_the_model(self):
+        fake_llm = MagicMock()
+        fake_llm.available = [_QWEN_CONTENT_MODEL]
+        result = execute_tool("generate_with_qwen", {"brief": "anything"}, "demo-repo", llm=fake_llm)
+        assert "switched off" in result
+        fake_llm.complete.assert_not_called()
+
+    def test_it_is_listed_as_disabled(self):
+        assert "generate_with_qwen" in DISABLED_TOOLS
+
+
+class TestHandler:
+    """The handler itself stays intact, so re-enabling the tool is only a matter of configuration."""
+
     def test_calls_llm_complete_with_the_content_model_and_no_tools_kwarg(self):
         fake_llm = MagicMock()
         fake_llm.available = [_QWEN_CONTENT_MODEL]
         fake_llm.complete.return_value = "generated code here"
 
-        result = execute_tool(
-            "generate_with_qwen", {"brief": "write a hello world function"}, "demo-repo", llm=fake_llm,
-        )
+        result = _generate_with_qwen("write a hello world function", llm=fake_llm)
 
         assert result == "generated code here"
         fake_llm.complete.assert_called_once()
@@ -73,13 +88,13 @@ class TestExecuteToolDispatch:
         assert "tools" not in call_kwargs  # this model can't accept tools at all
 
     def test_no_llm_client_returns_graceful_text_not_a_crash(self):
-        result = execute_tool("generate_with_qwen", {"brief": "anything"}, "demo-repo", llm=None)
+        result = _generate_with_qwen("anything", llm=None)
         assert "unavailable" in result.lower()
 
     def test_missing_dashscope_key_returns_graceful_text_not_a_crash(self):
         fake_llm = MagicMock()
         fake_llm.available = []  # DASHSCOPE_API_KEY not configured this session
-        result = execute_tool("generate_with_qwen", {"brief": "anything"}, "demo-repo", llm=fake_llm)
+        result = _generate_with_qwen("anything", llm=fake_llm)
         assert "unavailable" in result.lower()
         fake_llm.complete.assert_not_called()
 
@@ -88,7 +103,7 @@ class TestExecuteToolDispatch:
         fake_llm.available = [_QWEN_CONTENT_MODEL]
         fake_llm.complete.side_effect = RuntimeError("quota exhausted")
 
-        result = execute_tool("generate_with_qwen", {"brief": "anything"}, "demo-repo", llm=fake_llm)
+        result = _generate_with_qwen("anything", llm=fake_llm)
 
         assert "quota exhausted" in result
         assert "write the content yourself" in result.lower()

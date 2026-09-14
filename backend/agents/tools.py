@@ -3014,6 +3014,14 @@ def execute_tool(
     opposite direction from `context`), so a second commit_direction call can merge its sticky
     design fields onto the first instead of silently erasing a palette that was already chosen.
     """
+    # Not offering a tool isn't enough to switch it off: a model can still call it by name. Seen
+    # live — a long-running job that had used generate_with_qwen earlier kept calling it after it
+    # was removed from every tool group, copying its own history. Refused here, for every caller.
+    if name in DISABLED_TOOLS:
+        return (
+            f"Tool '{name}' is switched off in this Codexa install. Do this step yourself instead "
+            "(write the content and save it with write_file / edit_file). Don't call it again."
+        )
     # is_platform_repo RESOLVES the path instead of comparing the string. `repository="../.."`
     # resolved to the project root while being unequal to "codexa-os", so the guard passed and the
     # agent could edit Codexa's own source. repo_root now refuses traversal outright; this check
@@ -3303,8 +3311,14 @@ tool_groups: dict[str, list[str]] = {
         "create_branch", "commit", "summarize_changes",
     ],
     "external": ["web_search"],
-    "orchestration": ["delegate_task", "delegate_build", "generate_with_qwen"],
+    # generate_with_qwen is switched off (see DISABLED_TOOLS below): add it back here to re-enable.
+    "orchestration": ["delegate_task", "delegate_build"],  # , "generate_with_qwen"
 }
+
+# Tools that exist (schema, handler, tests) but are deliberately in no group, so no job is ever
+# offered them. generate_with_qwen (2026-09-11): its calls were slow, and GLM 5.3's quota is
+# currently unlimited, so the main model writes content itself.
+DISABLED_TOOLS = frozenset({"generate_with_qwen"})
 
 # Patterns that strongly suggest a specific group (checked before generic file/code).
 _GROUP_SIGNALS: dict[str, _re.Pattern[str]] = {

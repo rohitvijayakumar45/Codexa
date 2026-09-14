@@ -75,7 +75,8 @@ class PhasedBuild:
     model: str | None = None
     phases: list[PhaseResult] = field(default_factory=list)
     current_phase: int = -1
-    status: str = "planning"  # planning | running | done | error
+    status: str = "planning"  # planning | running | done | error | cancelled
+    cancelled: bool = False
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
 
@@ -89,34 +90,53 @@ class PhasedBuild:
         return cls(**data)
 
 
-def decompose_into_phases(spec: str, llm: LLMClient) -> list[dict[str, str]]:
-    """One bounded, non-tool-calling LLM call that splits `spec` into an ordered phase list. Never
-    raises on a malformed response — falls back to a single phase containing the whole spec
-    verbatim, so a decomposition hiccup degrades to the old monolithic behavior rather than
-    blocking the build entirely."""
+def _parse_phases(raw: str) -> list[dict[str, str]]:
+    """The phase list from a model reply: the JSON array itself, or the first one embedded in prose
+    or a fenced block (models add both despite being told not to)."""
+    text = (raw or "").strip()
+    start, end = text.find("["), text.rfind("]")
+    if start == -1 or end <= start:
+        return []
     try:
-        raw = llm.complete(
-            [
-                {"role": "system", "content": _DECOMPOSE_SYSTEM_PROMPT},
-                {"role": "user", "content": spec},
-            ],
-            agent="phase_decompose",
-        )
-        raw = raw.strip()
-        if raw.startswith("```"):
-            raw = raw.strip("`")
-            if raw.lower().startswith("json"):
-                raw = raw[4:]
-        phases = json.loads(raw)
-        cleaned = [
-            {"title": str(p["title"]), "prompt": str(p["prompt"])}
-            for p in phases
-            if isinstance(p, dict) and p.get("title") and p.get("prompt")
-        ]
-        if cleaned:
-            return cleaned[:_MAX_PHASES]
-    except Exception as exc:  # noqa: BLE001 - fall back rather than block the whole build
-        logger.warning("phase decomposition failed, falling back to a single phase: %s", exc)
+        phases = json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        return []
+    return [
+        {"title": str(p["title"]), "prompt": str(p["prompt"])}
+        for p in phases if isinstance(p, dict) and p.get("title") and p.get("prompt")
+    ][:_MAX_PHASES]
+
+
+def decompose_into_phases(spec: str, llm: LLMClient, model: str | None = None) -> list[dict[str, str]]:
+    """Split `spec` into an ordered phase list with one non-tool-calling call, trying the same fast
+    planning models the task planner uses (backend/agents/plan_builder.py) before the job's own.
+
+    It used to call only the default model. Observed: GLM via TokenRouter answered "Connection
+    error" twice, so both phased builds that day ran as a single "Build (undecomposed)" phase — the
+    exact monolithic job this feature exists to avoid. Never raises; only when every candidate fails
+    does it fall back to one phase holding the whole spec."""
+    from backend.agents.plan_builder import _planning_models  # local: plan_builder imports jobs too
+
+    messages = [
+        {"role": "system", "content": _DECOMPOSE_SYSTEM_PROMPT},
+        {"role": "user", "content": spec},
+    ]
+    try:
+        candidates = _planning_models(llm, model or llm.default_model)
+    except Exception:  # noqa: BLE001 - a client without tiers just uses the given model
+        candidates = [model or llm.default_model]
+    for candidate in candidates:
+        try:
+            raw = llm.complete(messages, model=candidate, agent="phase_decompose", max_tokens=8000, timeout=120)
+        except Exception as exc:  # noqa: BLE001 - one provider being down must not end the split
+            logger.warning("phase decomposition with %s failed: %s", candidate, str(exc)[:160])
+            continue
+        phases = _parse_phases(raw if isinstance(raw, str) else "")
+        if phases:
+            logger.info("phased build: %d phases from %s", len(phases), candidate)
+            return phases
+        logger.warning("phase decomposition with %s returned no usable phase list", candidate)
+    logger.warning("phase decomposition failed on every model, falling back to a single phase")
     return [{"title": "Build (undecomposed)", "prompt": spec}]
 
 
@@ -133,11 +153,56 @@ class PhasedBuildManager:
         build.updated_at = time.time()
         path = PHASED_BUILDS_DIR / f"{build.id}.json"
         tmp = path.with_suffix(".tmp")
-        try:
-            tmp.write_text(json.dumps(build.to_disk()), encoding="utf-8")
-            os.replace(tmp, path)
-        except OSError as exc:  # noqa: BLE001 - checkpoint failure shouldn't crash the build
-            logger.warning("phased build checkpoint failed for %s: %s", build.id, exc)
+        payload = json.dumps(build.to_disk())
+        # Retried: under OneDrive the rename fails transiently with "[WinError 5] Access is denied"
+        # while the sync client holds the file (seen live on a phased build) — same fix as jobs.py.
+        for attempt in range(5):
+            try:
+                tmp.write_text(payload, encoding="utf-8")
+                os.replace(tmp, path)
+                return
+            except OSError as exc:  # noqa: BLE001 - checkpoint failure shouldn't crash the build
+                if attempt == 4:
+                    logger.warning("phased build checkpoint failed for %s: %s", build.id, exc)
+                else:
+                    time.sleep(0.05 * (attempt + 1))
+
+    def resume_unfinished(self) -> list[str]:
+        """Restart the orchestration of builds a server restart left mid-flight. Their jobs are
+        checkpointed and resumable, but the thread that runs phases in order died with the old
+        process — without this a build stayed "running" forever and never reached its next phase."""
+        resumed: list[str] = []
+        for path in PHASED_BUILDS_DIR.glob("*.json"):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if data.get("status") not in ("planning", "running") or data.get("cancelled"):
+                continue
+            build = self.get(str(data.get("id")))
+            if build is None or not build.phases:
+                continue
+            with self._lock:
+                self._builds[build.id] = build
+            threading.Thread(target=self._run_phases, args=(build,), daemon=True).start()
+            resumed.append(build.id)
+        if resumed:
+            logger.info("resumed %d unfinished phased build(s): %s", len(resumed), ", ".join(resumed))
+        return resumed
+
+    def cancel(self, build_id: str) -> bool:
+        """Stop the build: cancel the running phase's job, and start no further phases."""
+        build = self.get(build_id)
+        if build is None:
+            return False
+        build.cancelled = True
+        phase = build.phases[build.current_phase] if 0 <= build.current_phase < len(build.phases) else None
+        if phase is not None and phase.job_id:
+            self._job_manager.cancel(phase.job_id)
+        if build.status in ("planning", "running"):
+            build.status = "cancelled"
+        self._checkpoint(build)
+        return True
 
     def get(self, build_id: str) -> PhasedBuild | None:
         with self._lock:
@@ -155,7 +220,7 @@ class PhasedBuildManager:
 
     # --- lifecycle -------------------------------------------------------------
     def start(self, spec: str, repository: str, *, model: str | None = None) -> PhasedBuild:
-        phase_dicts = decompose_into_phases(spec, self._llm)
+        phase_dicts = decompose_into_phases(spec, self._llm, model)
         build = PhasedBuild(
             id=str(uuid.uuid4()), repository=repository, spec=spec, model=model,
             phases=[PhaseResult(title=p["title"], prompt=p["prompt"]) for p in phase_dicts],
@@ -186,6 +251,12 @@ class PhasedBuildManager:
     def _run_phases(self, build: PhasedBuild) -> None:
         model = build.model if (build.model and build.model in self._llm.available) else self._llm.default_model
         for i, phase in enumerate(build.phases):
+            if phase.status == "done":
+                continue  # finished before a restart; resume_unfinished picks up after it
+            if build.cancelled:
+                build.status = "cancelled"
+                self._checkpoint(build)
+                return
             build.current_phase = i
             build.status = "running"
             phase.status = "running"
@@ -197,18 +268,32 @@ class PhasedBuildManager:
             if task_prompt:
                 messages.insert(0, {"role": "system", "content": task_prompt})
 
-            job = self._job_manager.create(repository=build.repository, model=model, messages=messages)
-            phase.job_id = job.id
-            self._checkpoint(build)
-            self._job_manager.start(job, last_user_text=message_text)
+            if phase.job_id:
+                # Resumed after a restart: this phase's job already exists. Continue it (resume
+                # restarts an interrupted job from its last checkpoint) rather than starting a
+                # second job that would redo the same work on top of it.
+                job_id = phase.job_id
+                self._job_manager.resume(job_id)
+            else:
+                job = self._job_manager.create(repository=build.repository, model=model, messages=messages)
+                job_id = job.id
+                phase.job_id = job_id
+                self._checkpoint(build)
+                self._job_manager.start(job, last_user_text=message_text)
 
             current = None
             while True:
                 time.sleep(_POLL_INTERVAL_SECONDS)
-                current = self._job_manager.get(job.id)
+                current = self._job_manager.get(job_id)
                 if current is None or current.status in ("done", "error"):
                     break
 
+            if build.cancelled:
+                phase.status = "cancelled"
+                phase.detail = "stopped by the user"
+                build.status = "cancelled"
+                self._checkpoint(build)
+                return
             if current is None:
                 phase.status = "error"
                 phase.detail = "job disappeared"

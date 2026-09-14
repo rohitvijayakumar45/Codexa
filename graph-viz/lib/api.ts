@@ -23,7 +23,8 @@ export type GraphNodeType =
   | "OnboardingPath"
   | "HealthMetric"
   | "PreventionRule"
-  | "ConventionProfile";
+  | "ConventionProfile"
+  | "QuorumDecision";
 
 export type GraphEdgeType =
   | "calls"
@@ -503,6 +504,15 @@ export async function phasedBuildStatus(buildId: string): Promise<PhasedBuildSta
   return (await res.json()) as PhasedBuildStatus;
 }
 
+/** Stops a phased build: cancels the running phase's job and starts no further phases. Best-effort. */
+export async function cancelPhasedBuild(buildId: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/chat/agent/phased/${buildId}/cancel`, { method: "POST" });
+  } catch {
+    /* best-effort */
+  }
+}
+
 /** Starts the tool-calling agent loop as a background job on the backend and returns its id.
  *  The job runs detached from this request — it survives the browser tab losing focus, the page
  *  navigating away, or even a backend restart (it checkpoints to disk and auto-resumes). Pair with
@@ -563,6 +573,11 @@ export async function subscribeAgentJob(jobId: string, handlers: StreamHandlers)
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  // The backend closes the stream itself only after a job's final event (done, or an error). A
+  // close WITHOUT one means the connection went away — seen every time the backend restarted: the
+  // page read the clean close as "job finished", stopped following, and dropped its link to a job
+  // that was still running. Only a stream that ended on a final event counts as "ended".
+  let sawFinal = false;
   try {
     for (;;) {
       const { done, value } = await reader.read();
@@ -575,6 +590,7 @@ export async function subscribeAgentJob(jobId: string, handlers: StreamHandlers)
         if (!line.startsWith("data:")) continue;
         try {
           const evt = JSON.parse(line.slice(5).trim());
+          if (evt.error || evt.done) sawFinal = true;
           if (evt.error) handlers.onError(evt.error, evt.continuable === true);
           else if (evt.done) handlers.onDone(evt.usage ?? null);
           else if (evt.thinking) handlers.onThinking?.(evt.thinking);
@@ -596,7 +612,8 @@ export async function subscribeAgentJob(jobId: string, handlers: StreamHandlers)
     // backend regardless. Report which, so the caller can reconnect after a network drop.
     return err instanceof DOMException && err.name === "AbortError" ? "aborted" : "network";
   }
-  return handlers.signal?.aborted ? "aborted" : "ended";
+  if (handlers.signal?.aborted) return "aborted";
+  return sawFinal ? "ended" : "network";
 }
 
 /** Streams a completion over SSE from the real backend chat endpoint. */

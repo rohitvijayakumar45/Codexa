@@ -17,7 +17,9 @@ tone.
 from __future__ import annotations
 
 import json
+import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -26,6 +28,8 @@ from backend.agents.llm import LLMClient
 from backend.agents.verification import Claim, ClaimType, verify_claims
 from backend.graph.schemas import GraphNodeCreate, GraphNodeProvenance, GraphNodeType
 from backend.graph.service import GraphService
+
+logger = logging.getLogger(__name__)
 
 _JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
 # A reasoning-capable model (GLM/DeepSeek thinking mode, etc.) can emit its chain-of-thought inline
@@ -41,6 +45,10 @@ _MIN_CALIBRATION_SAMPLES = 5
 # completion — too small a budget here means the call gets cut off mid-thought with no JSON at all,
 # which is a worse failure than the extra tokens this costs.
 _MAX_TOKENS = 2000
+# Some free tiers reject a request whose max_tokens exceeds a per-request output cap (Groq's
+# on_demand tier: 1000) — that model can still answer, just with a smaller budget.
+_SMALL_MAX_TOKENS = 1000
+_OUTPUT_CAP_ERROR = re.compile(r"reduce max_tokens|output tokens per minute|max_tokens.{0,40}(too large|exceed)", re.I)
 _PANEL_SIZE = 3
 
 # Only the claim types verify_claims can resolve without a tool-call log (no tools run in quorum
@@ -116,6 +124,28 @@ class QuorumRunResult(BaseModel):
     cards: list[BeliefCard]  # every agent's final card (post-debate, if a debate round happened)
     debated: bool
     decision_node_id: UUID
+    # Panel models that errored (bad key, region block, rate limit) and were replaced or dropped,
+    # each as "model: short reason", so a thinner panel is visible rather than silent.
+    unavailable_models: list[str] = []
+
+
+class QuorumUnavailableError(RuntimeError):
+    """No panel model could answer at all."""
+
+
+_ERROR_MESSAGE = re.compile(r"""['"]message['"]\s*:\s*['"]([^'"]+)""")
+
+
+def _short_error(exc: Exception) -> str:
+    """One readable line from a provider error — litellm wraps the provider's JSON body in prose."""
+    text = str(exc).strip()
+    match = _ERROR_MESSAGE.search(text)
+    if match:
+        return match.group(1).strip()[:160]
+    if "Exception - " in text:
+        text = text.split("Exception - ", 1)[1]
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip() not in ("", "{", "}")]
+    return lines[0][:160] if lines else type(exc).__name__
 
 
 class QuorumService:
@@ -125,8 +155,14 @@ class QuorumService:
 
     def run(self, request: QuorumRunRequest) -> QuorumRunResult:
         panel = self._panel_models(request.models)
+        reserves = [] if request.models else self._reserve_models(panel)
         repo_listing = self._repo_listing(request.repository)  # computed once, shared by the whole panel
-        cards = [self._ask(model, request, repo_listing) for model in panel]
+        cards, unavailable = self._gather_cards(panel, reserves, request, repo_listing)
+        if not cards:
+            raise QuorumUnavailableError(
+                "No panel model could answer — " + "; ".join(unavailable) if unavailable
+                else "No models are configured for a quorum panel."
+            )
 
         debated = False
         best = self._rank(cards)
@@ -151,8 +187,51 @@ class QuorumService:
             winning_answer=winner.answer if winner else None,
             winning_confidence=winner.confidence if winner else None,
             resolved=resolved, cards=cards, debated=debated,
-            decision_node_id=decision_node.id,
+            decision_node_id=decision_node.id, unavailable_models=unavailable,
         )
+
+    def _reserve_models(self, panel: list[str]) -> list[str]:
+        """Every other configured model, in tier order — stand-ins for a panel member that errors."""
+        seen = set(panel)
+        reserves: list[str] = []
+        for tier in ("balanced", "heavy", "light"):
+            for model in self.llm.models_for_tier(tier):
+                if model not in seen:
+                    seen.add(model)
+                    reserves.append(model)
+        return reserves
+
+    def _gather_cards(
+        self, panel: list[str], reserves: list[str], request: QuorumRunRequest, repo_listing: str,
+    ) -> tuple[list[BeliefCard], list[str]]:
+        """Ask the panel in parallel. One provider failing (a disabled account, a region block, an
+        exhausted key) used to fail the whole run; now that member is replaced by the next reserve
+        from a provider that hasn't failed, preferring one not already on the panel."""
+        cards: list[BeliefCard] = []
+        unavailable: list[str] = []
+        failed_providers: set[str] = set()
+        reserves = list(reserves)
+        queue = list(panel)
+        while queue:
+            with ThreadPoolExecutor(max_workers=len(queue)) as pool:
+                futures = [(model, pool.submit(self._ask, model, request, repo_listing)) for model in queue]
+            queue = []
+            for model, future in futures:
+                try:
+                    cards.append(future.result())
+                    continue
+                except Exception as exc:  # noqa: BLE001 — any provider error just loses this member
+                    reason = _short_error(exc)
+                    logger.warning("quorum: %s failed (%s)", model, reason)
+                    unavailable.append(f"{model}: {reason}")
+                    failed_providers.add(model.split("/", 1)[0])
+                in_use = {c.model.split("/", 1)[0] for c in cards} | {m.split("/", 1)[0] for m in queue}
+                usable = [m for m in reserves if m.split("/", 1)[0] not in failed_providers]
+                pick = next((m for m in usable if m.split("/", 1)[0] not in in_use), usable[0] if usable else None)
+                if pick:
+                    reserves.remove(pick)
+                    queue.append(pick)
+        return cards, unavailable
 
     def _panel_models(self, override: list[str] | None) -> list[str]:
         if override:
@@ -185,9 +264,13 @@ class QuorumService:
 
     def _ask(self, model: str, request: QuorumRunRequest, repo_listing: str) -> BeliefCard:
         prompt = _ANSWER_PROMPT.format(repository=request.repository, query=request.query, repo_listing=repo_listing)
-        raw = self.llm.complete(
-            [{"role": "user", "content": prompt}], model=model, agent="quorum", max_tokens=_MAX_TOKENS,
-        )
+        messages = [{"role": "user", "content": prompt}]
+        try:
+            raw = self.llm.complete(messages, model=model, agent="quorum", max_tokens=_MAX_TOKENS)
+        except Exception as exc:
+            if not _OUTPUT_CAP_ERROR.search(str(exc)):
+                raise
+            raw = self.llm.complete(messages, model=model, agent="quorum", max_tokens=_SMALL_MAX_TOKENS)
         return self._card_from_raw(model, raw, request.repository, round_=1)
 
     def _repo_listing(self, repository: str) -> str:
@@ -319,10 +402,15 @@ class QuorumService:
                 ),
                 peer_summary=peer_summary or "(no tied peer)",
             )
-            raw = self.llm.complete(
-                [{"role": "user", "content": prompt}], model=card.model, agent="quorum_debate",
-                max_tokens=_MAX_TOKENS,
-            )
+            try:
+                raw = self.llm.complete(
+                    [{"role": "user", "content": prompt}], model=card.model, agent="quorum_debate",
+                    max_tokens=_MAX_TOKENS,
+                )
+            except Exception as exc:  # noqa: BLE001 — keep this agent's first-round position
+                logger.warning("quorum debate: %s failed (%s)", card.model, _short_error(exc))
+                revised.append(card)
+                continue
             revised.append(self._card_from_raw(card.model, raw, request.repository, round_=2))
         return revised
 

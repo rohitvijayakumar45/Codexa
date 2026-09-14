@@ -7,6 +7,7 @@ import { Paperclip, ArrowUp, ChevronDown, Square, X, GitBranch, Plus, Trash2, Br
 import {
   api,
   cancelAgentJob,
+  cancelPhasedBuild,
   continueAgentJob,
   phasedBuildStatus,
   startAgentJob,
@@ -17,6 +18,7 @@ import {
   type ChatModel,
   type ImpactResult,
   type PlanSnapshot,
+  type PhasedBuildStatus,
   type PredictedBudget,
   type QuorumRunResult,
   type StreamHandlers,
@@ -163,6 +165,8 @@ export default function ChatPage() {
   const [quorumMode, setQuorumMode] = useState(false);
   const [liveImpact, setLiveImpact] = useState<ImpactResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // The phased build this page is following, so Stop can cancel the whole build, not one phase.
+  const phasedRef = useRef<string | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const turnsRef = useRef<Turn[]>(turns);
@@ -574,6 +578,101 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
+  /*
+    Follow a phased build in the chat itself: each phase's job streams into its own turn under a
+    "Phase n of N" header, so its reasoning, tool calls and plan fill the conversation and the
+    execution pane exactly as a normal job does — instead of the chat showing a status card and
+    sending you to the Agent network. Phases run one after another on the backend; this polls for
+    the next phase's job, streams it to the end, and repeats until the build finishes.
+  */
+  async function followPhasedBuild(buildId: string, controller: AbortController) {
+    phasedRef.current = buildId;
+    setStreaming(true);
+    abortRef.current = controller;
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const followed = new Set<number>();
+    // Rebuild one phase's turns from scratch (after a dropped connection, the replay restarts).
+    const resetPhase = (label: string) =>
+      setTurns((prev) => {
+        let at = -1;
+        prev.forEach((t, i) => {
+          if (t.phaseLabel === label) at = i;
+        });
+        return at === -1 ? prev : [...prev.slice(0, at), { role: "assistant", phaseLabel: label, content: "" }];
+      });
+    try {
+      for (;;) {
+        if (controller.signal.aborted) return;
+        let build: PhasedBuildStatus | null = null;
+        try {
+          build = await phasedBuildStatus(buildId);
+        } catch {
+          build = null;
+        }
+        if (!build) {
+          await sleep(3000);
+          continue;
+        }
+        let progressed = false;
+        for (let i = 0; i < build.phases.length; i++) {
+          const phase = build.phases[i];
+          if (followed.has(i) || !phase.job_id) continue;
+          followed.add(i);
+          progressed = true;
+          const label = `Phase ${i + 1} of ${build.phases.length} · ${phase.title}`;
+          setTurns((prev) => [...prev, { role: "assistant", phaseLabel: label, content: "" }]);
+          jobIdRef.current = phase.job_id;
+          useJobStore.getState().start(phase.job_id);
+          let end = await subscribeAgentJob(phase.job_id, agentHandlers(controller));
+          for (let attempt = 1; end === "network" && attempt <= 5 && !controller.signal.aborted; attempt++) {
+            await sleep(1500 * attempt);
+            resetPhase(label);
+            end = await subscribeAgentJob(phase.job_id, agentHandlers(controller));
+          }
+          if (controller.signal.aborted) return;
+        }
+        if (["done", "error", "cancelled"].includes(build.status) && !progressed) return;
+        if (!progressed) await sleep(3000);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        useJobStore.getState().stop();
+        setStreaming(false);
+        abortRef.current = null;
+        jobIdRef.current = null;
+        phasedRef.current = null;
+      }
+    }
+  }
+
+  // Returning to a conversation whose phased build is still running: rebuild its phase turns from
+  // each job's saved event log and keep following it.
+  useEffect(() => {
+    if (!activeId || streaming) return;
+    const conv = useChatStore.getState().conversations[activeId];
+    if (!conv || conv.pendingJobId) return;
+    const stored = conv.turns as Turn[];
+    let at = -1;
+    stored.forEach((t, i) => {
+      if (t.phasedBuildId) at = i;
+    });
+    if (at === -1) return;
+    const buildId = stored[at].phasedBuildId as string;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const build = await phasedBuildStatus(buildId);
+        if (controller.signal.aborted || !["planning", "running"].includes(build.status)) return;
+        setTurns((prev) => prev.slice(0, at + 1));
+        await followPhasedBuild(buildId, controller);
+      } catch {
+        /* status unavailable: leave the transcript as it is */
+      }
+    })();
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
+
   async function runCompletion(history: ChatMessage[], systemNote?: string) {
     setTurns((prev) => [...prev, { role: "assistant", content: "" }]);
     setStreaming(true);
@@ -661,13 +760,17 @@ export default function ChatPage() {
     setAttachments([]);
 
     if (phasedMode) {
-      // A large spec, split into up to 8 phases that each run as their own fresh job.
+      // A large spec, split into up to 8 phases that each run as their own fresh job. Splitting is
+      // a model call, so the composer is busy from here, not only once the first phase starts.
       setTurns((prev) => [...prev, { role: "assistant", analyzing: true }]);
+      setStreaming(true);
+      let buildId: string;
       try {
         const build = await startPhasedBuild(outgoing, activeRepo, model?.id ?? null);
+        buildId = build.phased_build_id;
         setTurns((prev) => {
           const next = [...prev];
-          next[next.length - 1] = { role: "assistant", phasedBuildId: build.phased_build_id };
+          next[next.length - 1] = { role: "assistant", phasedBuildId: buildId };
           return next;
         });
       } catch (err) {
@@ -679,7 +782,10 @@ export default function ChatPage() {
           };
           return next;
         });
+        setStreaming(false);
+        return;
       }
+      await followPhasedBuild(buildId, new AbortController());
       return;
     }
 
@@ -693,12 +799,12 @@ export default function ChatPage() {
           next[next.length - 1] = { role: "assistant", quorum: result };
           return next;
         });
-      } catch {
+      } catch (err) {
         setTurns((prev) => {
           const next = [...prev];
           next[next.length - 1] = {
             role: "assistant", error: true,
-            content: "Quorum run failed — couldn't reach the backend or the panel errored out.",
+            content: `Quorum run failed: ${err instanceof Error ? err.message : String(err)}`,
           };
           return next;
         });
@@ -820,6 +926,10 @@ export default function ChatPage() {
   }
 
   function stop() {
+    // A phased build is stopped as a whole — cancelling only the current phase's job would let the
+    // backend move straight on to the next phase.
+    if (phasedRef.current) cancelPhasedBuild(phasedRef.current);
+    phasedRef.current = null;
     if (jobIdRef.current) cancelAgentJob(jobIdRef.current);
     abortRef.current?.abort();
     setStreaming(false);
@@ -1169,7 +1279,7 @@ function Bubble({
         transition={{ duration: 0.25, ease: EASE_OUT }}
         className="mb-6 flex flex-col items-end"
       >
-        <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-ink px-4 py-2.5 text-sm leading-relaxed text-panel">
+        <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-bubble px-4 py-2.5 text-sm leading-relaxed text-bubble-ink">
           {turn.content}
         </div>
         {turn.content && (
@@ -1191,6 +1301,12 @@ function Bubble({
         <Mark size={22} />
       </div>
       <div className={`min-w-0 text-sm leading-relaxed ${turn.error ? "whitespace-pre-wrap text-warn" : "text-ink-soft"}`}>
+        {turn.phaseLabel ? (
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
+            <Layers size={12} className="text-signal" />
+            {turn.phaseLabel}
+          </div>
+        ) : null}
         {turn.thinking ? (
           <ThinkingPanel text={turn.thinking} live={streaming && !turn.content} />
         ) : null}
@@ -1306,6 +1422,7 @@ const PHASE_TONE: Record<string, string> = {
   error: "text-[var(--color-danger)]",
   pending: "text-faint",
   planning: "text-faint",
+  cancelled: "text-faint",
 };
 
 function PhasedCard({ buildId }: { buildId: string }) {
@@ -1315,7 +1432,7 @@ function PhasedCard({ buildId }: { buildId: string }) {
     // Poll while it's working; stop once the build has ended.
     refetchInterval: (query) => {
       const s = query.state.data?.status;
-      return s === "done" || s === "error" ? false : 5000;
+      return s === "done" || s === "error" || s === "cancelled" ? false : 5000;
     },
   });
   const build = q.data;
@@ -1349,7 +1466,8 @@ function PhasedCard({ buildId }: { buildId: string }) {
         </ol>
       )}
       <p className="mt-3 border-t border-line pt-2 text-[11px] text-faint">
-        Each phase runs as its own job with a fresh history — follow it live in the Agent network.
+        Each phase runs as its own job with a fresh history and streams below, with its plan, tool
+        calls and reasoning in the pane on the right.
       </p>
     </div>
   );
@@ -1528,21 +1646,25 @@ function Composer(props: {
         className="max-h-48 min-h-[52px] w-full resize-none bg-transparent px-4 py-3.5 text-sm leading-relaxed text-ink outline-none placeholder:text-faint"
       />
 
-      <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5">
-        <div className="flex items-center gap-1">
+      {/* A size container: the row adapts to the composer's own width (it sits beside the execution
+          pane, so the viewport says little about how much room it has). The right-hand controls
+          never shrink; the left group gives way first — repo name truncates, then the Quorum and
+          Phased labels collapse to icons. Without this the send button was pushed past the card. */}
+      <div className="@container flex items-center justify-between gap-2 px-2.5 pb-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
           <button
             onClick={props.onAttachClick}
-            className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-paper-sunk hover:text-ink"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-paper-sunk hover:text-ink"
             aria-label="Attach files"
           >
             <Paperclip size={17} />
           </button>
           <button
             onClick={props.onOpenRepo}
-            className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted transition-colors hover:bg-paper-sunk hover:text-ink"
+            className="flex h-9 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted transition-colors hover:bg-paper-sunk hover:text-ink"
             aria-label="Load repository"
           >
-            <GitBranch size={15} />
+            <GitBranch size={15} className="shrink-0" />
             <span className="num max-w-[120px] truncate">{props.activeRepo}</span>
           </button>
           {/* Always visible: hiding Quorum until the first keystroke made the mode undiscoverable
@@ -1550,44 +1672,49 @@ function Composer(props: {
           <button
               onClick={props.onToggleQuorum}
               aria-pressed={props.quorumMode}
+              aria-label="Quorum"
               title="Quorum: answer with a panel of agents that cross-check each other against the real codebase before responding"
-              className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
+              className={`flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
                 props.quorumMode
                   ? "bg-signal/15 text-signal"
                   : "text-muted hover:bg-paper-sunk hover:text-ink"
               }`}
             >
               <Users size={15} />
-              Quorum
+              <span className="@max-xl:hidden">Quorum</span>
             </button>
           <button
             onClick={props.onTogglePhased}
             aria-pressed={props.phasedMode}
+            aria-label="Phased"
             title="Phased build: split a large spec into up to 8 phases, each run as its own fresh job"
-            className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
+            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
               props.phasedMode ? "bg-signal/15 text-signal" : "text-muted hover:bg-paper-sunk hover:text-ink"
             }`}
           >
             <Layers size={15} />
-            Phased
+            <span className="@max-xl:hidden">Phased</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {/* A context meter reading zero communicates nothing except visual noise. It appears
-              once there is context to measure. */}
+              once there is context to measure, and gives way first when the composer is narrow. */}
           {props.usedTokens > 0 ? (
-            <ContextGauge used={props.usedTokens} total={props.contextWindow} pct={props.usedPct} />
+            <div className="@max-xl:hidden">
+              <ContextGauge used={props.usedTokens} total={props.contextWindow} pct={props.usedPct} />
+            </div>
           ) : null}
 
           <div className="relative">
             <button
               ref={pickerBtnRef}
               onClick={togglePicker}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:bg-paper-sunk"
+              title={props.model?.label ?? "Model"}
+              className="flex max-w-[9.5rem] items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:bg-paper-sunk"
             >
-              {props.model?.label ?? "Model"}
-              <ChevronDown size={13} className={`text-faint transition-transform ${pickerOpen ? "rotate-180" : ""}`} />
+              <span className="truncate">{props.model?.label ?? "Model"}</span>
+              <ChevronDown size={13} className={`shrink-0 text-faint transition-transform ${pickerOpen ? "rotate-180" : ""}`} />
             </button>
             <AnimatePresence>
               {pickerOpen && (
@@ -1626,7 +1753,7 @@ function Composer(props: {
           <button
             onClick={props.streaming ? props.onStop : props.onSend}
             disabled={!props.streaming && !canSend}
-            className="grid h-9 w-9 place-items-center rounded-lg bg-ink text-panel transition-all hover:bg-ink-soft active:scale-95 disabled:opacity-30"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-ink text-panel transition-all hover:bg-ink-soft active:scale-95 disabled:opacity-30"
             aria-label={props.streaming ? "Stop" : "Send"}
           >
             {props.streaming ? <Square size={14} className="fill-current" /> : <ArrowUp size={17} />}
@@ -1641,7 +1768,7 @@ function ContextGauge({ used, total, pct }: { used: number; total: number; pct: 
   const near = pct > 80;
   return (
     <div className="hidden items-center gap-2 sm:flex" title={`${used} / ${total} tokens (approx)`}>
-      <div className="h-1 w-16 overflow-hidden rounded-full bg-paper-sunk">
+      <div className="h-1 w-10 overflow-hidden rounded-full bg-paper-sunk">
         <div
           className={`h-full rounded-full transition-all duration-500 ${near ? "bg-warn" : "bg-signal"}`}
           style={{ width: `${Math.max(3, pct)}%` }}

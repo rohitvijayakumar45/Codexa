@@ -47,6 +47,7 @@ export const NODE_STYLE: Record<GraphNodeType, NodeStyle> = {
   RejectedAlternative: { base: 0.82, label: "Rejected alternative", family: "reasoning", step: 2 },
   OnboardingPath: { base: 0.85, label: "Onboarding path", family: "reasoning", step: 3 },
   ConventionProfile: { base: 0.85, label: "Convention profile", family: "reasoning", step: 4 },
+  QuorumDecision: { base: 0.9, label: "Quorum decision", family: "reasoning", step: 5 },
 
   CausalEvent: { base: 0.98, label: "Causal event", family: "signals", step: 0 },
   HealthMetric: { base: 1.05, label: "Health metric", family: "signals", step: 1 },
@@ -57,10 +58,17 @@ export const NODE_STYLE: Record<GraphNodeType, NodeStyle> = {
 
 const STEP_MIX = 9; // percent toward the canvas per lightness step
 
+/** A node type the backend added before this table learned it still draws, as a plain structure
+ *  node, instead of crashing the whole graph page. */
+const UNKNOWN_STYLE: NodeStyle = { base: 0.85, label: "Other", family: "structure", step: 5 };
+export function styleOf(type: GraphNodeType | string): NodeStyle {
+  return NODE_STYLE[type as GraphNodeType] ?? { ...UNKNOWN_STYLE, label: String(type) };
+}
+
 /** CSS colour for DOM swatches — follows the theme automatically. */
 export const familyColor = (f: NodeFamily) => `var(${FAMILY_META[f].cssVar})`;
 export function typeColorCss(type: GraphNodeType): string {
-  const s = NODE_STYLE[type];
+  const s = styleOf(type);
   return s.step === 0
     ? familyColor(s.family)
     : `color-mix(in srgb, ${familyColor(s.family)}, var(--color-g-canvas) ${s.step * STEP_MIX}%)`;
@@ -132,7 +140,7 @@ export function readGraphPalette(theme: ThemeName): GraphPalette {
 }
 
 export function nodeColor(type: GraphNodeType, p: GraphPalette): string {
-  const s = NODE_STYLE[type];
+  const s = styleOf(type);
   return mix(p.family[s.family], p.canvas, (s.step * STEP_MIX) / 100);
 }
 
@@ -171,7 +179,7 @@ export function edgeIsDashed(source: GraphEdgeSourceType): boolean {
 }
 
 export function nodeRadius(type: GraphNodeType, degree: number): number {
-  return NODE_STYLE[type].base * (0.85 + Math.min(degree, 8) * 0.06);
+  return styleOf(type).base * (0.85 + Math.min(degree, 8) * 0.06);
 }
 
 export function nodeLabel(props: Record<string, unknown>, stableId: string): string {

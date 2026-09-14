@@ -27,7 +27,7 @@ _SRC_EXT = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".py"}
 _MAX_FILES = 1500
 _MAX_SYMBOLS = 4000
 _MAX_EDGES = 8000
-_MAX_FILE_BYTES = 200_000
+_MAX_FILE_BYTES = 1_000_000  # was 200 KB, which skipped real hand-written files (a 342 KB vite.config.js)
 _MAX_CALLS_PER_SYMBOL = 12
 
 _PY_LANG = Language(_tspy.language())

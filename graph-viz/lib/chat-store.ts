@@ -34,6 +34,8 @@ export interface StoredTurn {
   quorum?: QuorumRunResult;
   // A phased build started from this turn; the card polls its live status by id.
   phasedBuildId?: string;
+  // Header for the turn a phase's job streams into ("Phase 2 of 5 · Backend API").
+  phaseLabel?: string;
   pending?: boolean;
   history?: ChatMessage[];
   tool?: { name: string; args: Record<string, unknown>; result?: string };
