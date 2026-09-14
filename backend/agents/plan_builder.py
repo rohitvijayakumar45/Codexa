@@ -1140,7 +1140,7 @@ def build_plan(
     execute) — see fallback_plan's note. Check `plan.tasks` before installing it.
     """
     try:
-        if contract.intent is TaskIntent.CONVERSATION:
+        if contract.intent in (TaskIntent.CONVERSATION, TaskIntent.SEARCH):
             return ExecutionPlan()
         if contract.intent in _QUESTION_INTENTS:
             # A question has one proportionate shape, so asking a model to propose one only costs a

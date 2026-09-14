@@ -1582,6 +1582,11 @@ class JobManager:
                             {s["function"]["name"] for s in active_tools},
                         )
                         force_any_tool = forced_tool is None and bool(active_tools)
+            else:
+                outstanding = [t for t in contract_dict.get("required_tools", []) if t not in set(tools_called)]
+                if outstanding and bool(active_tools):
+                    force_any_tool = True
+
             # A round with no reasoning_content chunks (most models don't emit them) left the UI
             # showing literally nothing between "the last tool result" and "the next thing that
             # happens" - could be several real seconds on a slow provider. This gives the frontend

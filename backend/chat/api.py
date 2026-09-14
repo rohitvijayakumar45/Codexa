@@ -124,7 +124,9 @@ def create_chat_router(*, llm: LLMClient, graph: GraphService | None = None, sto
         # drop_params strips cache_control for providers that don't support it.
         if messages and messages[0].get("role") == "system":
             content = messages[0]["content"]
-            if isinstance(content, str):
+            # GLM (Zhipu AI) strictly requires system message content to be a string. 
+            # Converting it to a block list makes the API drop the system message entirely.
+            if isinstance(content, str) and not model.startswith("tokenrouter/") and not model.startswith("zai/"):
                 messages[0]["content"] = [
                     {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}},
                 ]

@@ -411,16 +411,42 @@ def _slugify(name: str) -> str:
 
 def _read_manifest(path: Path) -> dict:
     out: dict = {"name": None, "description": None, "deps": [], "scripts": []}
-    pkg = path / "package.json"
-    if pkg.exists():
-        try:
-            data = json.loads(pkg.read_text(encoding="utf-8", errors="ignore"))
-            out["name"] = data.get("name")
-            out["description"] = data.get("description")
-            out["deps"] = list({**data.get("dependencies", {}), **data.get("devDependencies", {})}.keys())
-            out["scripts"] = list(data.get("scripts", {}).keys())
-        except json.JSONDecodeError:
-            pass
+    
+    candidates = [path / "package.json"]
+    try:
+        for p in path.iterdir():
+            if p.is_dir() and p.name not in _SKIP_DIRS and not p.name.startswith("."):
+                subpkg = p / "package.json"
+                if subpkg.exists():
+                    candidates.append(subpkg)
+    except OSError:
+        pass
+
+    merged_deps = set()
+    merged_scripts = []
+    
+    for pkg in candidates:
+        if pkg.exists():
+            try:
+                data = json.loads(pkg.read_text(encoding="utf-8", errors="ignore"))
+                if not out["name"]:
+                    out["name"] = data.get("name")
+                if not out["description"]:
+                    out["description"] = data.get("description")
+                
+                deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
+                merged_deps.update(deps.keys())
+                
+                rel_dir = pkg.parent.relative_to(path)
+                prefix = f"cd {rel_dir} && npm run " if str(rel_dir) != "." else "npm run "
+                for s in data.get("scripts", {}).keys():
+                    merged_scripts.append(f"{prefix}{s}")
+            except json.JSONDecodeError:
+                pass
+                
+    out["deps"] = list(merged_deps)
+    out["scripts"] = merged_scripts
+
     pyproject = path / "pyproject.toml"
     if pyproject.exists() and not out["name"]:
         text = pyproject.read_text(encoding="utf-8", errors="ignore")
@@ -774,7 +800,7 @@ def _ingest(
                     f"Languages: {', '.join(d['languages'][:5]) or 'n/a'}. "
                     f"Frameworks: {', '.join(d['frameworks'][:10]) or 'n/a'}.")
     created += _mem(store, name, "procedural", "How to build & run",
-                    (" · ".join(f"npm run {s}" for s in d["scripts"][:5]) if d["scripts"] else "See README."))
+                    (" · ".join(d["scripts"][:5]) if d["scripts"] else "See README."))
     origin = f"Cloned from {url}" if url else "Created locally (scaffolded from nothing, not cloned)"
     created += _mem(store, name, "episodic", "Loaded into Codexa",
                     f"{origin} on {datetime.now(UTC):%Y-%m-%d %H:%M} UTC — {d['file_count']} files.")

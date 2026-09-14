@@ -1,0 +1,4091 @@
+{
+  ".\\main.py": [
+    {
+      "type": "class",
+      "name": "_CatchUnhandledMiddleware",
+      "docstring": "Turns an unhandled exception into a clean JSON 500 instead of an opaque connection drop.\n\nThis has to be a real ASGI middleware (added to the stack via app.add_middleware), not an\n`@app.exception_handler(Exception)` \u2014 Starlette special-cases a handler registered for the bare\n`Exception`/500 key by handing it to ServerErrorMiddleware, which sits OUTSIDE CORSMiddleware.\nServerErrorMiddleware sends that handler's response over the raw, pre-CORS `send` it was given\n(CORSMiddleware never gets a chance to wrap it, since the exception propagated up past\nCORSMiddleware without it ever sending anything), so an exception_handler-based response reaches\nthe browser with no Access-Control-Allow-Origin header \u2014 the browser reports it as a\nnetwork-level \"Failed to fetch\", masking every backend error as \"server unreachable\" (confirmed\nvia TestClient vs real uvicorn \u2014 same code, header present in-process, missing over real HTTP).\nA BaseHTTPMiddleware, registered BEFORE CORSMiddleware (so CORSMiddleware ends up wrapping it,\nper Starlette's add_middleware inserting each new one at the front of the stack), instead runs\nINSIDE CORSMiddleware \u2014 its response passes through CORSMiddleware's normal per-request header\ninjection exactly like a real 200 OK would, and CORSMiddleware handles the origin-matching\nitself instead of this needing to reimplement it.",
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "create_app",
+      "docstring": null
+    }
+  ],
+  ".\\seed.py": [
+    {
+      "type": "function",
+      "name": "days_ago",
+      "docstring": null
+    },
+    {
+      "type": "class",
+      "name": "NodeSpec",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "EdgeSpec",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_node_specs",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_edge_specs",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "seed_graph",
+      "docstring": "Populate the graph. No-op if nodes already exist (unless force)."
+    },
+    {
+      "type": "function",
+      "name": "_main",
+      "docstring": null
+    }
+  ],
+  "agents\\api.py": [
+    {
+      "type": "function",
+      "name": "create_agents_router",
+      "docstring": null
+    }
+  ],
+  "agents\\coder.py": [
+    {
+      "type": "class",
+      "name": "ChangeProposalStatus",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ProposedFileChange",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ChangeProposalRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ChangeProposalResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ProposeChangeRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ProposeChangeResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "CoderService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "record_proposal",
+          "docstring": null
+        },
+        {
+          "name": "propose",
+          "docstring": "The real, callable entry point `record_proposal` never got wired to \u2014 it only persists a\ndiff/rationale someone else already produced. This is the piece that was missing: read the\nnamed files, ask the LLM to actually produce the diff and rationale, then persist it through\nthe same event path so the agent-network dashboard attributes real activity to this node."
+        },
+        {
+          "name": "_parse_proposal",
+          "docstring": "Robust against a model that doesn't follow the JSON-only instruction exactly (fenced\ncode blocks, leading prose) \u2014 never lets a malformed response crash the request; falls back\nto recording the raw analysis as a single observational entry so nothing is silently lost."
+        }
+      ]
+    }
+  ],
+  "agents\\context_window.py": [
+    {
+      "type": "function",
+      "name": "_latest_touched_path",
+      "docstring": "The path of the most recent write_file/edit_file/read_file call in the conversation so far \u2014\nused as the \"what is the model currently working on\" anchor for the blast-radius lookup."
+    },
+    {
+      "type": "function",
+      "name": "_file_node_id",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "relevant_paths",
+      "docstring": "Paths structurally close to whatever the model most recently touched \u2014 files whose stale\npayloads should get extra grace before compaction. Returns None (not an empty set) when there's\nno anchor to compute from, so the caller can tell \"nothing is protected\" apart from \"couldn't\ndetermine relevance, don't extend anyone's grace\"."
+    }
+  ],
+  "agents\\controller.py": [
+    {
+      "type": "class",
+      "name": "InterventionReason",
+      "docstring": "Why the controller is stepping in. Carried into events and logs so an unproductive stretch is\ndiagnosable after the fact rather than appearing as an unexplained tool-choice change.",
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ExecutionController",
+      "docstring": "Owns plan advancement for one job. Constructed fresh per `_loop` entry; all durable state\nlives on the job (and therefore in its checkpoint), never in this object \u2014 a controller rebuilt\nafter a restart or a model rotation resumes at exactly the same task with the same history.",
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "sync",
+          "docstring": "Write the plan back onto the job (so the next checkpoint carries it) and optionally push\na snapshot to the UI. Called after every transition rather than once per round \u2014 the plan is\nthe job's execution position, and a checkpoint that disagrees with it would resume the wrong\ntask."
+        },
+        {
+          "name": "current_task",
+          "docstring": null
+        },
+        {
+          "name": "begin_task",
+          "docstring": "Move a task to IN_PROGRESS and record where in the job's tool/exit-code history it began.\n\nThose offsets are the whole reason a per-task validator can exist: `job.tools_called` is\ncumulative for the job, so asking \"did THIS task call write_file\" without them would be\nanswered by a write_file from three tasks ago, and every later task would validate itself on\nthe strength of earlier work. Returns True if this call actually started the task."
+        },
+        {
+          "name": "tools_in_task",
+          "docstring": null
+        },
+        {
+          "name": "exit_codes_in_task",
+          "docstring": null
+        },
+        {
+          "name": "apply_task_context",
+          "docstring": "Ensure exactly one live execution-state block, describing the current task, sitting at the\nend of the transcript.\n\nRemoving the previous block rather than appending alongside it is the point. The two lists\nare index-matched (compaction reads round numbers positionally), so both are edited together\n\u2014 a drift here would silently mis-age unrelated messages. Safe to delete at this position\nbecause these blocks are only ever inserted at a round boundary, never between an assistant\ntool_calls message and its results."
+        },
+        {
+          "name": "snapshot_repo",
+          "docstring": null
+        },
+        {
+          "name": "record_round",
+          "docstring": "Fold one round's outcome into the task's state and return what actually changed.\n\n`reasoning_chars` is accumulated but is deliberately NOT an input to whether progress\noccurred. That asymmetry is the correction this whole system makes: generation was being\nread as work, and a model that generated 39,655 reasoning tokens across 48 minutes while\nwriting zero files was indistinguishable, to every guard that existed, from one doing its\njob."
+        },
+        {
+          "name": "intervention_reason",
+          "docstring": "Whether this task has stopped advancing, and which flavour of stuck it is. None means\ncarry on \u2014 the common case, and it must stay cheap."
+        },
+        {
+          "name": "forced_tool_for",
+          "docstring": "The one tool call that would actually advance this task, or None if nothing specific\napplies.\n\nNaming a tool rather than demanding \"call something\" is not a refinement, it is the whole\nmechanism. `tool_choice=\"required\"` was tried first and measured: after a round was cut, the\nmodel satisfied it with `screenshot` against a URL serving nothing (ERR_CONNECTION_REFUSED)\nand `list_directory` on an empty repository, then went straight back to planning. Forcing\n*a* tool only buys a tool call; forcing *the* tool buys the task.\n\nPreference order is by what is outstanding, not by what is listed first: a required tool the\ntask has not yet called beats one it has, and a missing expected artifact means write_file\nregardless of what else the task nominally requires."
+        },
+        {
+          "name": "_artifact_partially_written",
+          "docstring": "True when at least one expected artifact is already on disk with real content in it.\n\nThe distinction that decides between \"write it\" and \"finish it\". Checked against the\nfilesystem rather than against whether write_file appears in the task's history, because a\nwrite that was refused (see the destructive-overwrite guard in tools.py) also appears there."
+        },
+        {
+          "name": "intervene",
+          "docstring": "Step in on an unproductive task. Returns the tool name to force next round, if any.\n\nCounts an INTERVENTION, not a validation attempt. The two are separate budgets because they\nare separate failures: a rejected completion means the model thinks it is done and is wrong;\nan intervention means it is not finishing at all. Sharing one counter (as an earlier version\ndid) let three slow-but-legitimate rounds exhaust the validation budget of a task that had\nnever once claimed to be finished. Once the intervention budget is spent the task is\nabandoned rather than forced a fourth time, and `recover` gets a chance at a narrower one."
+        },
+        {
+          "name": "validate_current",
+          "docstring": null
+        },
+        {
+          "name": "try_advance",
+          "docstring": "Complete a task the moment its checks actually pass, without waiting to be told.\n\nCompletion used to be evaluated in one place only: a round where the model returned NO tool\ncalls, read as a claim of \"finished\". That quietly made the model the trigger. A task whose\nvalidators had already passed stayed IN_PROGRESS for as long as the model kept calling\ntools \u2014 and a model with no remaining useful action does not fall silent, it invents one.\n\nObserved exactly that: task one was \"inspect the repository and establish the conventions\",\nits check was \"list_directory was called\", and that passed on round one. Fifteen rounds\nlater it was still the active task, with nine list_directory calls out of nineteen tools,\na screenshot of a repository containing no page, and an intervention \u2014 all of it work the\nmodel manufactured because nothing had told it the task was over.\n\nCodexa owns when a task is complete. Owning that means noticing, not waiting to be asked.\n\nOnly ever advances a task that has genuinely made progress and genuinely passes; a task with\nno mechanical check is left alone, because \"nothing to verify\" must not become \"complete the\ninstant it starts\"."
+        },
+        {
+          "name": "on_completion_claim",
+          "docstring": "The model produced a round with no tool calls while a task is active \u2014 i.e. it believes\nthis task is done. Check reality and decide.\n\nReturns True if the task is now COMPLETED (the caller advances), False if it stays active\n(the caller has been handed a correction message and should run another round)."
+        },
+        {
+          "name": "recover",
+          "docstring": "Replace a failed task with a narrower repair task, and re-point its dependents at the\nreplacement.\n\nWithout the re-pointing this would be useless: `plan.fail` blocks everything downstream of a\nfailed task, so a repair inserted after it would sit behind a dependency that can never be\nsatisfied and the plan would be permanently stuck.\n\nRecovery does not recurse. A repair that itself fails is not repaired again \u2014 that produced\na real \"Recover: Recover: Recover: ...\" chain that burned the entire revision budget\nre-attempting something the run had already demonstrated three times over that it could not\ndo, and buried the actual first failure under four layers of near-identical task names. One\nrepair per task is the whole allowance; after that the task stays failed and the plan says\nso plainly.\n\nA recovery task gets a reduced intervention budget (1 instead of 3). The original task\nalready demonstrated that the model could not satisfy this goal with the available tools \u2014\na fresh recovery with the same budget lets it burn through the exact same failure pattern\na second time before the chain stops. Historical evidence (premature-completion-job,\nstatus-tool-call-job) shows every recovery task hitting its full intervention budget,\nconfirming the model was not learning from the constraint but merely exhausting it."
+        },
+        {
+          "name": "blocking_reason",
+          "docstring": "Why the job must not report success yet. None means the plan is genuinely finished.\n\nThis is the gate that replaces \"the model stopped calling tools, so it must be done\". A job\nwhose plan still has outstanding work has not finished, no matter how confident the final\nmessage sounds."
+        },
+        {
+          "name": "failed_tasks",
+          "docstring": "Tasks the plan gave up on. Non-empty means the run finished with known holes in it.\n\nReported rather than absorbed. `is_complete()` is satisfied by \"every task terminal and at\nleast one succeeded\", which is the right rule for advancing the plan and the wrong one for\nannouncing success: a UI build whose screenshot task failed three times has produced a file\nnobody ever looked at, and calling that done is the same class of claim as the model saying\n\"Done.\" with an empty repository. The job surfaces these instead, and Continue retries them."
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "_intervention_message",
+      "docstring": "The text sent alongside a forced tool call.\n\nThe forcing is what works; this explains it, so the model's next round is aimed rather than\nmerely legal. Measured lesson behind the tone: a polite \"your next message must call a tool\" was\nfollowed by 23,692 more characters of planning and no call. Explanations do not constrain \u2014 they\nonly stop the constraint from looking arbitrary once it is applied."
+    }
+  ],
+  "agents\\design_intent.py": [
+    {
+      "type": "class",
+      "name": "DesignIntent",
+      "docstring": "What this interface is supposed to be, decided before it is built.\n\nCarried on the job next to the contract. The contract says what must exist; this says what it\nmust be like \u2014 and the two are checked separately, because \"the HTML runs\" was being allowed to\nmean \"the frontend is finished\".",
+      "methods": [
+        {
+          "name": "to_dict",
+          "docstring": null
+        },
+        {
+          "name": "from_dict",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "_strip_negations",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_character_of",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_interaction_depth",
+      "docstring": "How much this thing has to *do*.\n\nThe single most consequential field. The observed failure was a model satisfying a rich brief\nwith a beautiful static page: every visual instruction honoured, almost no behaviour. Naming the\nexpected depth up front, and checking for it afterwards, is what makes that difference\ninspectable instead of a matter of taste."
+    },
+    {
+      "type": "function",
+      "name": "_motion_level",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "select_skills",
+      "docstring": "One visual style plus at most two craft skills, most important first."
+    },
+    {
+      "type": "function",
+      "name": "_committed_capabilities",
+      "docstring": "The promises this brief actually made, plus the ones its depth implies.\n\nA capability listed here becomes something the artifact is checked against. Under-listing is the\nsafe direction \u2014 a capability nobody asked for would fail a build for not having it \u2014 so this\nonly claims what the brief says, or what \"product\" depth plainly entails."
+    },
+    {
+      "type": "function",
+      "name": "derive",
+      "docstring": "Build the design intent for a frontend task, or None when the task is not one.\n\nNone matters: attaching a design brief to \"run the tests\" is noise in every prompt for the rest\nof that job. UI-ness is taken from the contract (task.py already sets `screenshot` as a required\ntool for a UI task) rather than re-derived here, so the two cannot disagree."
+    },
+    {
+      "type": "function",
+      "name": "brief",
+      "docstring": "The resident design brief: small enough to live in context for the whole job.\n\nThis is the half of the fix that addresses the compaction problem. The full skill files are tens\nof thousands of characters and get redacted after three rounds, which is before any real\nimplementation happens. A few hundred characters of imperative constraint can simply stay."
+    }
+  ],
+  "agents\\impact.py": [
+    {
+      "type": "class",
+      "name": "ImpactRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "NodeRef",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "CouplingRisk",
+      "docstring": "A file in this change's blast radius that is git-coupled (backend/repository/coupling.py's\nCORRELATES_WITH edges) to a file with real incident history (backend/trust_safety/incident.py's\nCausalEvent/PreventionRule nodes) \u2014 two structures that already existed independently in this\ngraph but were never queried together until now.",
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ImpactResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_label",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_candidates",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_resolve_targets",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_change_kind",
+      "docstring": "\"cosmetic\" for a comment/docs/formatting-only edit, else \"code\"."
+    },
+    {
+      "type": "function",
+      "name": "_is_entry",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_edge_confidence",
+      "docstring": "How much an edge carries blast radius. A git co-change edge is a certain fact (confidence 1.0)\nwhose coupling STRENGTH lives in its properties \u2014 that strength is what propagates."
+    },
+    {
+      "type": "function",
+      "name": "_grade",
+      "docstring": null
+    },
+    {
+      "type": "class",
+      "name": "BlastRadius",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "blast_radius_ids",
+      "docstring": "The reverse-dependency BFS itself, factored out of the /agents/impact endpoint below so\nother callers (backend/agents/jobs.py's context compaction) can reuse the exact same traversal\nas a \"what's currently relevant\" oracle instead of duplicating it."
+    },
+    {
+      "type": "function",
+      "name": "_coupling_incident_risks",
+      "docstring": "Walks the File->CausalEvent CORRELATES_WITH edges that backend/trust_safety/incident.py now\nrecords, for every file already in this change's blast-radius subgraph \u2014 surfacing \"this file\nyou're touching has a real incident history\" using two structures (coupling mining, incident\nlearning) that already existed independently and were never joined until now."
+    },
+    {
+      "type": "function",
+      "name": "create_impact_router",
+      "docstring": null
+    }
+  ],
+  "agents\\jobs.py": [
+    {
+      "type": "function",
+      "name": "_friendly_tool_status",
+      "docstring": "Human-readable status for a dispatched tool call, filling the same silent gap\n_round-start status covers but with detail specific to what's actually happening\n(rather than the generic \"working on the next step\") - directly what was asked for:\nsomething other than a bare \"thinking\" indicator while a model is mid-task."
+    },
+    {
+      "type": "function",
+      "name": "_contract_from_dict",
+      "docstring": "Rehydrate the serialized contract stored on the job. Factored out because three separate\ncall sites in `_loop` were reconstructing it inline with the same six fields, and a field added\nto TaskContract had to be remembered in all of them."
+    },
+    {
+      "type": "function",
+      "name": "_attach_preamble",
+      "docstring": "Put the task prompt and design brief into the job's system message, whatever shape it is in.\n\nThis is the second time this guarantee has been broken by the SHAPE of the caller's message\nrather than by its absence.\n\nThe first version lived in backend/chat/api.py and ran only `if messages[0][\"role\"] ==\n\"system\"`, so a job started through the API with just a user message got no task prompt at all.\nMoving it here fixed that. But the frontend's system message is not a string: chat/api.py wraps\nit as `[{\"type\": \"text\", \"text\": ..., \"cache_control\": {...}}]` for prefix caching, and the\nreplacement checked `isinstance(existing, str)` \u2014 so for every job started from the UI it\nmatched neither branch and silently did nothing. Verified on a live job: TASK MODE present\n(added by the HTTP layer, which handles the list), DESIGN INTENT absent. The design pipeline was\ndark again, in exactly the way it had just been fixed not to be.\n\nSo this handles all three shapes explicitly, and appends to the CACHED block on purpose: the\npreamble is stable for the life of the job, which is what a cached prefix is for."
+    },
+    {
+      "type": "function",
+      "name": "_replace_directive",
+      "docstring": "Keep exactly one recovery directive in the transcript, at the end.\n\nThe previous rule was \"do not append if an identical one is among the last three messages\", and\nit does not hold. By the time a later round is cut, the earlier directive has scrolled past that\nwindow behind the assistant/tool pairs in between \u2014 so it appended again. Measured on a live\njob: FOUR copies of the same 2,227-character execution directive, ~9KB of duplicated instruction\nre-sent on every subsequent request for the rest of the run.\n\nThat is not merely wasteful. A history filling with byte-identical system messages is the exact\npattern documented in this file's stall-recovery path as having preceded two providers going\npermanently silent, which is why that path collapses its own runs of nudges.\n\nReplacing rather than appending also keeps the instruction adjacent to the round it applies to,\nwhere a model is most likely to act on it. The two lists are edited together \u2014 they are\nindex-matched and compaction reads round numbers positionally."
+    },
+    {
+      "type": "function",
+      "name": "_recent_non_context_messages",
+      "docstring": "The last `count` messages, ignoring the controller's execution-state block.\n\nThat block is re-appended at the end of the transcript every round, so any \"what was the\nprevious message?\" check reads it instead of the real one. Several guards in this loop are\nexactly that kind of check, and they must see the conversation, not the state banner sitting on\ntop of it."
+    },
+    {
+      "type": "function",
+      "name": "_last_user_text",
+      "docstring": "Fallback source for plan building when `job.contract_source` is absent \u2014 a job checkpointed\nby an older build, which would otherwise plan against an empty string."
+    },
+    {
+      "type": "class",
+      "name": "_GenerationBudgetExceeded",
+      "docstring": "One round generated too much, or ran too long, without producing an action.\n\nCarries WHY so the controller can recover differently for different causes \u2014 see\nbackend/agents/controller.py. `chars` is deliberation only; tool-call arguments are never\ncounted, because those are the product rather than the deliberation.",
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "_execution_directive",
+      "docstring": "The message that opens an execution round: what was settled, and the one thing left to do.\n\nCarries decisions and outcomes, never deliberation. Replaying the reasoning that produced a\ndecision is what invites a model back into the deliberation it was cut out of; replaying the\ndecision itself ends it."
+    },
+    {
+      "type": "function",
+      "name": "_stream_with_watchdog",
+      "docstring": "Re-yields everything from `source`, but raises TimeoutError if _CHUNK_TIMEOUT_SECONDS pass\nwith nothing arriving \u2014 chunk, natural completion, or an error from `source` itself. Runs the\nreal iteration in a daemon thread so a call that never returns at all (the actual incident this\nexists for) can't block the caller forever: if it eventually does resolve after we've already\ngiven up, the producer thread just finishes writing to a queue nobody's reading, then exits."
+    },
+    {
+      "type": "function",
+      "name": "_mark_wait",
+      "docstring": "Bracket-log a potentially-blocking wait boundary and refresh the job's progress clock.\n\nAdopted from goose's WAITING_LLM_STREAM_START/END, WAITING_TOOL_START/END:name pattern (see\nHARNESS_RESEARCH_FINDINGS.md problem 2). The point: when a job goes silent for a long time,\nthe last log line names exactly what it was waiting on \u2014 a stuck stream vs. a stuck tool vs.\ngenuinely idle between rounds \u2014 instead of the loop just going dark with nothing to grep for.\n\nlast_activity_ts is what a status poll reports as idle_seconds. It is refreshed here, at wait-\nboundary transitions, not only once per completed round \u2014 a job stuck mid-round (blocked on a\nsingle slow tool call, say) still shows a real, moving number instead of one that only updates\non round completion and would otherwise read as \"idle\" for however long that round takes."
+    },
+    {
+      "type": "function",
+      "name": "_tool_call_signature",
+      "docstring": "Canonical (order-independent) identity for one tool call, used to detect exact repeats.\n\nA round can look completely healthy by every existing signal here \u2014 a tool ran, a result came\nback, the round-counter advanced \u2014 while still being pure waste if it's the Nth identical\nread_file(\"same/path\") in a row. Nothing based on round completion can see that shape; this is\na second, independent detector (goose's tool_monitor.rs / cline's LoopDetectionTracker) keyed\non call identity instead. json.dumps(sort_keys=True) makes two calls with the same arguments in\na different key order compare equal, same as cline's canonical-JSON signature."
+    },
+    {
+      "type": "function",
+      "name": "_compact_stale_payloads",
+      "docstring": "Collapse bulky tool payloads a few rounds after the model has already acted on them, so a\nlong task doesn't keep re-sending the same huge blobs every round. When a graph is available,\na write_file/edit_file payload for a file still within the current blast-radius neighborhood\n(backend/agents/context_window.py) gets extra rounds of grace before compaction \u2014 the model is\nmore likely to still need it \u2014 while a payload for a file the task has clearly moved past\ncompacts on the normal, shorter schedule. A large plain-text assistant reply (no tool_calls)\ncompacts on the flat schedule too \u2014 a wall of narrated code/file content that was never actually\nwritten via write_file otherwise sits in history at full size forever.\n\nget_design_guidance is pinned (SWE-agent's history_processors.py tag-based-pin pattern, see\nHARNESS_RESEARCH_FINDINGS.md problem 3 \u2014 never elided, not even on the flat schedule) for as\nlong as it was fetched during the CURRENTLY active task. This is the direct fix for a real,\ndiagnosed bug: guidance loaded during planning was going stale by round 3, several rounds\nbefore the authoring round that actually needed it, so the model authored generic output\nhaving \"forgotten\" the very rules it fetched earlier in the same task. A call made during an\nEARLIER task still compacts on the normal schedule \u2014 only the live task's guidance is exempt.\ntask_start_rounds tracks the round each task began; the highest value in it is the currently\nactive task's start round (tasks start in order, exactly one active at a time), used here as a\ncheap proxy that needs no extra plumbing from the caller."
+    },
+    {
+      "type": "class",
+      "name": "Job",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "to_disk",
+          "docstring": null
+        },
+        {
+          "name": "from_disk",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "_events_path",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_read_events",
+      "docstring": "The job's full event log from disk. The checkpoint deliberately leaves events out (it must stay\nsmall and is rewritten every round), so this append-only file is what lets a subscriber after a\nserver restart replay the whole run instead of a single synthesized ending."
+    },
+    {
+      "type": "function",
+      "name": "_flush_events",
+      "docstring": "Append the events emitted since the last flush to the on-disk log. Called at every checkpoint\nand on a job's final event, so the log on disk always covers at least what the checkpoint can\nresume from. Opening the file once per streamed chunk instead made the test suite 14x slower."
+    },
+    {
+      "type": "class",
+      "name": "JobManager",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "_checkpoint",
+          "docstring": "Persist the job's resumable state. Retries the atomic rename, because on this platform it\nfails transiently and losing a checkpoint is not a cosmetic failure.\n\nObserved on a real overnight run, repeatedly:\n\n    job checkpoint failed for 05d1f8b6: [WinError 5] Access is denied:\n    '...\\backend\\data\\jobs\\05d1f8b6.tmp' -> '...\\backend\\data\\jobs\\05d1f8b6.json'\n\nThe project lives under OneDrive, and the sync client (an indexer or antivirus does the same)\nbriefly opens files it notices changing. `os.replace` onto a handle another process holds\nfails immediately on Windows \u2014 unlike POSIX, where the rename would simply succeed. It is a\nrace measured in milliseconds, and the old code treated it as unrecoverable: one warning,\ncheckpoint dropped.\n\nWhat that costs is much more than a log line. The checkpoint IS the job's resumable state and\nits execution position \u2014 a lost one means a restart resumes at a stale round, the plan\nsilently reverts to an older snapshot, and anything reading the file to find out what the job\nis doing is told something untrue. Retrying with a short backoff turns a lost checkpoint back\ninto what it actually is: a write that needs to happen a few milliseconds later."
+        },
+        {
+          "name": "_load_from_disk",
+          "docstring": null
+        },
+        {
+          "name": "create",
+          "docstring": null
+        },
+        {
+          "name": "start",
+          "docstring": null
+        },
+        {
+          "name": "cancel",
+          "docstring": "User-initiated stop. Checked between chunks and between rounds \u2014 the model call already\nin flight finishes (or its connection closes as soon as the next check fires) rather than\nbeing killed instantly, but no further rounds or tool calls run."
+        },
+        {
+          "name": "get",
+          "docstring": null
+        },
+        {
+          "name": "_rotate_away_from_stalled_model",
+          "docstring": "Picks a different model to resume a stall-exhausted job with. A stall is NOT a rate\nlimit \u2014 run_round's own ring/key failover in llm.py never sees it at all (is_rate_limit_error\nis False for a timeout), so left alone, EVERY resume (automatic auto-continue or a manual\nContinue click) kept retrying the identical already-dead connection for the job's entire\nremaining budget \u2014 confirmed against a real dead job that spent all 20 auto-continues stuck\non tokenrouter/z-ai/glm-5.3-free. None if there's no tier/ring info or nothing else to try\n(caller keeps the current model in that case \u2014 better than an empty job.model)."
+        },
+        {
+          "name": "continue_job",
+          "docstring": "Explicit user action (\"Continue\" in the UI) for a job that errored out from one of the\ntwo specific mechanically-recoverable reasons \u2014 ran out of tool-calling rounds\n(error_reason == \"max_rounds\") or exhausted its stall-recovery retries on a flaky provider\nconnection (error_reason == \"stall_exhausted\") \u2014 NOT a crash/restart reattach, that's\nresume()'s job. Grants a fresh budget for whichever ran out and re-runs the SAME job (same\nid, same messages/tools_called/receipts history) from where it left off, so nothing already\ndone gets thrown away. Returns None if the job doesn't exist or isn't in that specific\ncontinuable state (any other error, or a job that's still actually running)."
+        },
+        {
+          "name": "resume",
+          "docstring": "Reattaches a job that isn't in the in-memory registry (server restarted while it was\nmid-flight) and continues its tool-calling loop from the last checkpointed round."
+        },
+        {
+          "name": "load_interrupted_ids",
+          "docstring": "Jobs left mid-flight by an unclean shutdown \u2014 call once at startup for observability."
+        },
+        {
+          "name": "_emit",
+          "docstring": null
+        },
+        {
+          "name": "_run",
+          "docstring": null
+        },
+        {
+          "name": "_loop",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "agents\\llm.py": [
+    {
+      "type": "function",
+      "name": "is_rate_limit_error",
+      "docstring": "True for a genuine rate limit - whether raised directly as litellm.RateLimitError, or\nwrapped in litellm.MidStreamFallbackError. The latter is a REAL, observed failure mode: a 429\nthat surfaces after streaming has already started gets wrapped by litellm as\nMidStreamFallbackError, which subclasses ServiceUnavailableError, NOT RateLimitError - so a\nbare `except litellm.RateLimitError` never catches it, silently skipping key failover entirely\n(this is exactly why a real Gemini rate limit hit didn't fail over to GEMINI_API_KEY_2: the\nwrapped exception type didn't match). Access the wrapper's `.original_exception` defensively\n(getattr, not an isinstance import of the wrapper class itself) so a future litellm version\nrenaming or restructuring that class degrades to \"no failover\" instead of an ImportError/crash."
+    },
+    {
+      "type": "class",
+      "name": "_RateLimiter",
+      "docstring": "Sliding-window token bucket, one deque of call timestamps per (model, key).\n\nBucketing by key as well as model is what makes multi-key rotation worth anything under a\nper-project quota: four Gemini keys are four separate projects, each with its own 5/min\nallowance. A single model-wide bucket would serialise all four behind one limit and discard\nthree quarters of the configured capacity while enforcing a ceiling that no provider imposes.",
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "wait",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "CancellableStream",
+      "docstring": "A provider stream that can actually be stopped from another thread.\n\nThe consumer of a stream runs on the job thread; the producer that pulls from it runs on a\nwatchdog thread (backend/agents/jobs.py `_stream_with_watchdog`). When a round is cut \u2014 a\ngeneration budget, the wall clock, a user cancel \u2014 the consumer needs to stop the provider, and\nit is not the thread inside the iteration.\n\nCalling `close()` on the generator itself does not work, and failed silently. Python raises\n`ValueError: generator already executing` when a generator is closed while another thread is\ninside it, and that was swallowed by a best-effort `except Exception`. So every cut left the\nproducer blocked on a live HTTP response with the provider still generating and still billing,\nuntil it happened to finish on its own. Orphaned generation was the normal case, not an edge.\n\nWhat can be closed safely from another thread is litellm's own stream wrapper. This holds a\nreference to whichever one is currently live \u2014 it changes on key failover \u2014 and closes that.",
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "__iter__",
+          "docstring": null
+        },
+        {
+          "name": "__next__",
+          "docstring": null
+        },
+        {
+          "name": "close",
+          "docstring": "Tear down the underlying provider response. Safe to call from any thread, more than\nonce, and while the producer is mid-iteration \u2014 which is the only situation it is ever\ncalled in."
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "LLMClient",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "model_for_task",
+          "docstring": null
+        },
+        {
+          "name": "models_for_task",
+          "docstring": "All available models for a task's tier, in priority order \u2014 for callers that want to\nretry against the next candidate on a runtime failure (e.g. a rate-limited provider)."
+        },
+        {
+          "name": "tier_of",
+          "docstring": null
+        },
+        {
+          "name": "models_for_tier",
+          "docstring": "Like models_for_task, but keyed directly off a tier name \u2014 for a caller that already\nknows which model just failed and wants its peers, not a task->tier lookup."
+        },
+        {
+          "name": "reset_keys",
+          "docstring": "Clear the sticky key rotation for `models`, so the next call starts again at key 1.\n\nOnly meaningful when a ROUND-ROBIN ring wraps to a new lap. Sticky rotation is correct\nwithin a lap (a bucket that just returned 429 will still be exhausted a second later), but a\nfull lap of a multi-model ring takes real network time, and without this a wrapped ring\nwould retry only each model's LAST key forever while its earlier keys \u2014 separate buckets\nthat may well have refilled \u2014 were never touched again for the life of the job."
+        },
+        {
+          "name": "describe_active",
+          "docstring": "Human label for the model AND which of its keys is live \u2014 e.g. 'Gemini 3.8 Flash #2'.\n\nExists because a bare model id is ambiguous once multi-key rotation is in play: four keys on\none model are four independent quota buckets, so 'switched to Gemini 3.8' is unactionable\nwhen the interesting fact is which of the four it moved to. The '#n' suffix only appears\nwhen more than one key is configured, so single-key setups stay uncluttered."
+        },
+        {
+          "name": "worker_ring",
+          "docstring": "Ordered, availability-filtered worker models for delegated authoring (see _WORKER_RING).\nThe caller rotates to the next entry when the current one's own per-key rotation is\nexhausted, giving delegation a (models x keys) budget instead of a single model's."
+        },
+        {
+          "name": "failover_ring",
+          "docstring": "Bounded round-robin failover candidates for a tier (see _FAILOVER_RING) \u2014 a curated\nsubset of models_for_tier's full list. Empty for a tier with no ring defined; the caller\n(jobs.py's run_round) treats that as \"use the old linear-until-exhausted behavior over the\nfull tier instead\"."
+        },
+        {
+          "name": "context_window",
+          "docstring": null
+        },
+        {
+          "name": "available_models",
+          "docstring": null
+        },
+        {
+          "name": "_provider_of",
+          "docstring": null
+        },
+        {
+          "name": "_current_key",
+          "docstring": null
+        },
+        {
+          "name": "_advance_key",
+          "docstring": "Sticky failover to this MODEL's next configured key (see __init__ for why the index is\nper-model, not per-provider, despite the key list itself being shared per provider).\nReturns False (nothing left to try) once every configured key has been exhausted for this\nspecific model \u2014 the caller re-raises at that point so backend/agents/jobs.py's own\nmodel-switch fallback becomes the next resort."
+        },
+        {
+          "name": "_kwargs",
+          "docstring": null
+        },
+        {
+          "name": "_record_usage",
+          "docstring": null
+        },
+        {
+          "name": "_with_key_failover",
+          "docstring": "Runs `call()` \u2014 a thunk that makes the actual litellm request using today's active key\nfor model's provider. On a rate limit (see is_rate_limit_error \u2014 covers both a bare\nRateLimitError and one wrapped in MidStreamFallbackError), fails over to the next\nconfigured key (see __init__) and retries the SAME call from scratch \u2014 safe here because\nthis path is only for non-streaming calls, where \"from scratch\" and \"the original attempt\"\nare identical from the caller's point of view (no partial output could have escaped already)."
+        },
+        {
+          "name": "complete",
+          "docstring": null
+        },
+        {
+          "name": "stream",
+          "docstring": null
+        },
+        {
+          "name": "_stream_with_key_failover",
+          "docstring": "Same idea as _with_key_failover, but a stream can't be silently retried once the caller\nhas already seen real output from it \u2014 that would hand back duplicated/garbled content.\nSo the rule here is: rate-limited before a single chunk went out \u2192 nothing was lost, retry\ntransparently on the next key, the caller never even sees an exception. Rate-limited after\nchunks were already yielded \u2192 re-raise instead of swallowing it; backend/agents/jobs.py's\nown stall-recovery already preserves that partial content and asks the model to continue,\nwhich is the correct way to hand off \"half-finished work,\" not a second layer of it here.\nCatches Exception broadly (not just litellm.RateLimitError) and filters with\nis_rate_limit_error \u2014 a REAL observed rate limit arrived wrapped in\nlitellm.MidStreamFallbackError, a different class the narrower except silently let through\nwith zero failover."
+        },
+        {
+          "name": "record_usage",
+          "docstring": "Public entry point for callers that assembled their own response (e.g. from raw stream\nchunks via litellm.stream_chunk_builder) and need it logged the same way as complete()."
+        },
+        {
+          "name": "complete_message",
+          "docstring": "Non-streaming completion returning (raw message [may carry tool_calls], real usage dict)."
+        },
+        {
+          "name": "generate",
+          "docstring": "Back-compat single-prompt call. Routes by agent_role/task unless overridden."
+        }
+      ]
+    }
+  ],
+  "agents\\phased_build.py": [
+    {
+      "type": "class",
+      "name": "PhaseResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "PhasedBuild",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "to_disk",
+          "docstring": null
+        },
+        {
+          "name": "from_disk",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "_parse_phases",
+      "docstring": "The phase list from a model reply: the JSON array itself, or the first one embedded in prose\nor a fenced block (models add both despite being told not to)."
+    },
+    {
+      "type": "function",
+      "name": "decompose_into_phases",
+      "docstring": "Split `spec` into an ordered phase list with one non-tool-calling call, trying the same fast\nplanning models the task planner uses (backend/agents/plan_builder.py) before the job's own.\n\nIt used to call only the default model. Observed: GLM via TokenRouter answered \"Connection\nerror\" twice, so both phased builds that day ran as a single \"Build (undecomposed)\" phase \u2014 the\nexact monolithic job this feature exists to avoid. Never raises; only when every candidate fails\ndoes it fall back to one phase holding the whole spec."
+    },
+    {
+      "type": "class",
+      "name": "PhasedBuildManager",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "_checkpoint",
+          "docstring": null
+        },
+        {
+          "name": "resume_unfinished",
+          "docstring": "Restart the orchestration of builds a server restart left mid-flight. Their jobs are\ncheckpointed and resumable, but the thread that runs phases in order died with the old\nprocess \u2014 without this a build stayed \"running\" forever and never reached its next phase."
+        },
+        {
+          "name": "cancel",
+          "docstring": "Stop the build: cancel the running phase's job, and start no further phases."
+        },
+        {
+          "name": "get",
+          "docstring": null
+        },
+        {
+          "name": "start",
+          "docstring": null
+        },
+        {
+          "name": "_phase_message",
+          "docstring": null
+        },
+        {
+          "name": "_run_phases",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "agents\\plan.py": [
+    {
+      "type": "class",
+      "name": "TaskStatus",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ValidationState",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_slug",
+      "docstring": null
+    },
+    {
+      "type": "class",
+      "name": "Task",
+      "docstring": "One unit of work Codexa tracks independently.\n\nGranularity target: concrete enough that finishing it is observable from outside the model\n(a file exists, a command exited 0, a screenshot was taken), but not so fine that every tool\ncall is its own task \u2014 a plan of thirty trivial steps reintroduces the planning overhead this\nis meant to remove.",
+      "methods": [
+        {
+          "name": "is_terminal",
+          "docstring": null
+        },
+        {
+          "name": "note",
+          "docstring": "Record a progress note, keeping only the most recent `limit`. Bounded because these are\nre-sent to the model every round of this task; an unbounded list would recreate, in miniature,\nthe transcript growth this whole design exists to avoid."
+        },
+        {
+          "name": "to_dict",
+          "docstring": null
+        },
+        {
+          "name": "from_dict",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "ExecutionPlan",
+      "docstring": "The authoritative record of what this job is doing and how far it has got.\n\nPersisted with the job checkpoint, so a restart, a model rotation, or a user clicking Continue\nall resume at the same task with the same history \u2014 the execution position is Codexa's, not\nsomething reconstructed from whatever the model happens to remember.",
+      "methods": [
+        {
+          "name": "get",
+          "docstring": null
+        },
+        {
+          "name": "index_of",
+          "docstring": null
+        },
+        {
+          "name": "is_ready",
+          "docstring": "A task may start once every dependency has REACHED A TERMINAL STATE \u2014 completed or failed.\n\nNot \"completed\". In the plans this system actually produces, `depends_on` expresses ORDER,\nnot impossibility: \"implement the core experience\" follows \"create the primary artifact\"\nbecause doing them the other way round is silly, not because the second is unattemptable if\nthe first went wrong. Requiring completion made every failure fatal to the entire remainder\nof the plan \u2014 one task failing validation three times deadlocked all seven tasks behind it\nand killed jobs that were still perfectly capable of producing the artifact (the later task\nwould have written the file itself, which is precisely what the earlier one failed to do).\n\nA dependency that does not exist at all is different, and still blocks: that is a malformed\nplan, and proceeding on it would mean running a task whose prerequisites are unknowable."
+        },
+        {
+          "name": "current",
+          "docstring": "The one task the model should be working on right now.\n\nResolution order is deliberate: an already-started task wins, so a round that arrives after\na restart continues rather than jumping ahead; otherwise the earliest ready PENDING task, so\nplan order is respected. None means there is nothing left that can be worked on \u2014 either the\nplan is finished, or everything remaining is blocked behind a failure."
+        },
+        {
+          "name": "remaining",
+          "docstring": null
+        },
+        {
+          "name": "completed",
+          "docstring": null
+        },
+        {
+          "name": "is_complete",
+          "docstring": "Every task reached a terminal state AND at least one actually succeeded.\n\nThe second half matters: a plan whose every task FAILED has also \"finished\", and reporting\nthat as job completion is precisely the silent-success failure in a new costume."
+        },
+        {
+          "name": "is_stuck",
+          "docstring": "Work remains but none of it can be started \u2014 every non-terminal task is BLOCKED, or is\nwaiting on a dependency that failed. Distinct from is_complete(): the job must surface this\nrather than either looping forever looking for a current task or reporting success."
+        },
+        {
+          "name": "begin",
+          "docstring": null
+        },
+        {
+          "name": "complete",
+          "docstring": "Mark a task done. Callers must have validated first \u2014 `record_validation` is the gate,\nand jobs.py routes every completion claim through it. Kept as a separate call rather than\nfolded into validation so the controller can also complete a task that had nothing\nmechanical to check (an inspection step), which is a different judgement entirely."
+        },
+        {
+          "name": "fail",
+          "docstring": "Give up on one task. Deliberately does NOT cascade to its dependents.\n\nCascading was the first implementation and it was wrong. Because a generated build plan is a\nlinear chain, blocking dependents on failure meant any single failed task took the whole\nremaining plan down with it \u2014 the job then reported \"blocked with work outstanding\" while\nevery one of those outstanding tasks was independently attemptable. A failure should cost\none task, stay visible in the plan as FAILED, and let the run continue; the job-level\ncontract check is what decides whether what remains added up to the actual request."
+        },
+        {
+          "name": "block",
+          "docstring": null
+        },
+        {
+          "name": "unblock",
+          "docstring": null
+        },
+        {
+          "name": "record_validation",
+          "docstring": "The single gate between \"the model says it finished\" and COMPLETED.\n\nOn failure the task stays active and burns an attempt; once attempts are exhausted the task\nFAILS rather than being retried forever, because the same approach failing a fourth time is\nnot new information. Returns True if the task is now complete."
+        },
+        {
+          "name": "can_revise",
+          "docstring": null
+        },
+        {
+          "name": "insert_after",
+          "docstring": "Add a discovered subtask or a repair step directly after an existing task. This is the\nonly supported way to grow a plan mid-run: additive, positioned, and counted. Refused once\nthe revision budget is spent, which is what stops replanning from becoming the work."
+        },
+        {
+          "name": "drop",
+          "docstring": "Retire a task that turned out to be unnecessary. Recorded as COMPLETED-with-reason rather\nthan deleted, so the history of what the plan decided stays auditable and any dependents\nremain satisfiable."
+        },
+        {
+          "name": "render_progress",
+          "docstring": "Compact plan view for the model's context \u2014 the \"what has been done / what remains\" half\nof task-driven context. Symbols match what the UI shows so a screenshot and a transcript\ndescribe the same thing."
+        },
+        {
+          "name": "to_dict",
+          "docstring": null
+        },
+        {
+          "name": "from_dict",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "make_task",
+      "docstring": "Build a task with a stable, readable id (`t1-write-index-html`).\n\nReadable rather than a uuid because these ids appear in dependency lists, in checkpoints, in\nlog lines and in the model's own context; debugging a plan whose tasks are named by hash is\nneedlessly hard, and the index prefix keeps them unique even when two objectives slugify alike."
+    },
+    {
+      "type": "function",
+      "name": "_hide_later",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "task_context_block",
+      "docstring": "The message the model receives each round in place of \"solve the whole problem\".\n\nStructure is fixed on purpose \u2014 overall objective, what is settled, this one task, what it must\nproduce, what already happened, the single outstanding action. Everything here is state and\noutcome; none of it is prior deliberation. Replaying reasoning to preserve continuity is what\nmade a model re-enter the deliberation it was cut out of, so continuity is carried by facts\ninstead: files written, commands run, what validation said.\n\nFuture tasks are named and nothing more. An earlier version rendered the entire plan in full\nevery round, and a model given the whole plan solves the whole plan: on one run it called\ncommit_direction, acknowledged in as many words that writing the page \"is task 3\", and then\ndesigned task 3's CSS architecture, JavaScript architecture, fourteen archive records, timeline\nbehaviour, FLIP implementation and mobile layout \u2014 before task 1 had returned. Listing later\nwork in detail is an invitation to do it early; the plan already holds those tasks and will\npresent each one when it becomes active.\n\n`commitment` is the job's commit_direction record \u2014 rendered here, every round, is what makes a\nchosen palette actually durable. It used to appear only in the one-shot post-cut directive\n(backend/agents/jobs.py's _execution_directive), which is invisible by the time it matters: a\nreal job called get_design_guidance at round 1, wrote the file at round 6, and by then the\nguidance \u2014 including an explicit ban on the exact palette it produced \u2014 had already been\ncompacted out of context. A decision recorded once and never repeated is not different, to a\nmodel five rounds later, from a decision never made."
+    },
+    {
+      "type": "function",
+      "name": "summarize_for_event",
+      "docstring": "Shape the UI consumes (graph-viz reads this off the SSE stream). Deliberately excludes\nreasoning of any kind: the interface shows execution state and progress, never chain of thought."
+    }
+  ],
+  "agents\\planner.py": [
+    {
+      "type": "class",
+      "name": "PlanRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "PlanResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "BlastRadiusRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "BlastRadiusPath",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "BlastRadiusResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "_TraversalState",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "PlannerService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "synthesize_plan",
+          "docstring": null
+        },
+        {
+          "name": "plan",
+          "docstring": "The real, callable entry point `synthesize_plan` never got wired to \u2014 takes a goal in\nplain language and produces an ordered, concrete implementation plan, recorded as a genuine\nplanner.* event so the agent-network dashboard can attribute real activity to this node."
+        },
+        {
+          "name": "compute_blast_radius",
+          "docstring": null
+        },
+        {
+          "name": "_outgoing_edges",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "agents\\plan_builder.py": [
+    {
+      "type": "function",
+      "name": "_detect_primary_artifact",
+      "docstring": "The one file this request is obviously about, or None.\n\nNone is the correct and common answer. An expected artifact is checked against the filesystem\nby validators.py, so guessing one is not a harmless nicety: a build that correctly writes\n`src/App.tsx` while the plan expects the invented `components/Widget.tsx` fails validation on\nevery attempt, exhausts MAX_ATTEMPTS_PER_TASK and FAILS a task that actually succeeded. No\nartifact check is weaker than a correct one but far better than a wrong one, so anything short\nof \"the request names it, or it can only be index.html\" returns None."
+    },
+    {
+      "type": "function",
+      "name": "_normalise_artifact",
+      "docstring": "Force a proposed path to be repository-relative, or reject it.\n\nValidation resolves these paths against the repository. A plan must therefore not be able to\npoint them anywhere else \u2014 a model writing `/etc/passwd` or `../../secrets.env` as an expected\nartifact would otherwise have Codexa stat those paths on its behalf. Leading `./` and `/` are\nstripped rather than rejected because models routinely write `/index.html` meaning \"at the root\nof the project\"; `..` and drive-letter/UNC prefixes are rejected outright because there is no\ncharitable repository-relative reading of either."
+    },
+    {
+      "type": "function",
+      "name": "_strip_fences",
+      "docstring": "Remove ```json ... ``` wrappers. Models fence structured output by habit even when told not\nto, and treating that as unparseable would throw away a perfectly good plan."
+    },
+    {
+      "type": "function",
+      "name": "_extract_json_object",
+      "docstring": "Pull the outermost balanced `{...}` out of a reply and parse it.\n\nBrace-balanced rather than regex-greedy, and string-aware, because task objectives frequently\ncontain braces and quotes (\"wire up the {count} badge\") and a greedy first-`{`-to-last-`}` slice\ngets those wrong in both directions. A plain json.loads is tried first for the common case where\nthe model did exactly as asked."
+    },
+    {
+      "type": "function",
+      "name": "_clean_str",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_clean_str_list",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_ensure_commitment_task",
+      "docstring": "Guarantee that something commits to one direction before anything is authored.\n\nThe proposal prompt asks for this and the model does not reliably provide it. Observed across\nthree consecutive trials of the same request: two plans included it, the third \u2014 twelve tasks,\nfrom a fallback planner \u2014 went straight from \"inspect the project structure\" to \"write\nindex.html\" with nothing in between.\n\nThat task is not ceremony. It is the measured fix for the failure this whole plan system was\nbuilt around: a model handed a large open request designs three complete products in a row and\ndiscards two. The deterministic plans have always carried it, and a proposed plan that omits it\nsilently loses the protection while looking more specific and therefore better.\n\nInserted immediately before the first task that produces an artifact, so it sits exactly where\nit does in the deterministic shape: after looking, before building."
+    },
+    {
+      "type": "function",
+      "name": "_plan_from_proposal",
+      "docstring": "Normalise a parsed proposal into a real ExecutionPlan, or return None to fall back.\n\nEverything here is a repair or a refusal; nothing is taken on trust. Returning None rather than\nraising keeps the single decision point in build_plan: any doubt at all means the deterministic\nplan runs, and the job proceeds."
+    },
+    {
+      "type": "function",
+      "name": "_default_objective",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_planning_model",
+      "docstring": "Which model decomposes the request. Deliberately not the job's model.\n\nPlanning is decomposition, not design \u2014 turning a paragraph into an ordered list of checkable\nobjectives. Running it on the job's ultra-heavy reasoning model was measured and does not work:\n\n    max_tokens=3,000   reasoning=3,000, content=0        cut off mid-thought, plan lost\n    max_tokens=16,000  reasoning=13,651, content=10,090  valid JSON, ~4-5 minutes of wall clock\n    max_tokens=32,000  timed out at 180s                 plan lost again\n\nBoth knobs move together: room to think is also time spent thinking, so every raise of the token\nceiling pushes the call further past the timeout. There is no pair of values that makes a model\nwhich needs 13,651 tokens of deliberation to write nine one-line objectives fast enough to sit\non the critical path before any work begins.\n\nA fast model returns the same shape in seconds. The trade is real but small \u2014 decomposition is\nwell within a flash-class model \u2014 and it is measured against the alternative that actually\nhappened, which was no proposal at all and the generic template on nearly every job.\n\nFalls back to the job's model when nothing faster is configured, so a single-provider setup\nstill gets a proposal rather than losing the feature entirely."
+    },
+    {
+      "type": "function",
+      "name": "_planning_models",
+      "docstring": "The models to try, in order, ending with the job's own.\n\nOne candidate is not enough: the first live attempt at this picked gemini-3.7-flash and got a\n503 \"high demand\" in 6.8 seconds, which would have sent every job straight back to the template\nfor as long as that provider was busy. Free and shared endpoints are unavailable often enough\nthat a planner depending on one specific model is a planner that works most of the time.\n\nThe job's model is always last. It is slow enough that it cannot be the primary (see\n_planning_model), but on a machine with a single provider it is the only thing there is, and\nlosing the feature entirely is a worse outcome than a slow plan."
+    },
+    {
+      "type": "class",
+      "name": "_ProposalRejected",
+      "docstring": "The proposal call returned, and what it returned could not be used.\n\nDistinct from an exception out of the provider (timeout, rate limit, connection) because the\nremedy is different: a rejected proposal is a prompt or budget problem on our side, a failed\ncall is the provider's. Both fall back to the template \u2014 neither may fail a job \u2014 but the plan\nnow records which, so the fallback rate can be attributed instead of guessed at.",
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_proposal_prompt",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_request_proposal",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_build_tasks",
+      "docstring": "Turn ordered task specs into a strictly sequential plan.\n\nEvery task depends on the one before it. Real builds are sequential \u2014 you cannot refine a file\nyou have not written \u2014 and a linear chain has the property that a failure stops the plan (via\nplan.fail's dependent-blocking) instead of letting later tasks run against a state that never\nmaterialised."
+    },
+    {
+      "type": "function",
+      "name": "_create_specs",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_is_full_stack",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_named_files",
+      "docstring": "Every repository-relative file path the request actually names, in order."
+    },
+    {
+      "type": "function",
+      "name": "_target_phrase",
+      "docstring": "A short human name for what is being changed, for use inside task objectives.\n\nThe point is that a plan should read as being about THIS request. A generic \"Locate the code\nthat has to change\" is the same sentence for every job in the system, which is exactly the\ncomplaint that produced this function: editing one file in an existing repository produced a\ntask list indistinguishable from a greenfield build."
+    },
+    {
+      "type": "function",
+      "name": "_modify_specs",
+      "docstring": "Plan for changing something that already exists \u2014 sized to the change.\n\nPreviously this returned a fixed four-to-five task template that never looked at the request:\nthe same list, with the same generic objectives, whether the ask was \"rename this variable\" or\n\"restructure the whole dashboard\". For a small edit that is pure overhead \u2014 four validated task\ntransitions to change one line \u2014 and because no objective ever named the file, the plan gave the\nmodel no information it did not already have.\n\nNow the shape follows the request: a small, targeted change gets two tasks and names its target;\na substantial one keeps the inspect/change/verify arc; and only a UI change pays for the\nrun-and-look-at-it steps."
+    },
+    {
+      "type": "function",
+      "name": "_fullstack_specs",
+      "docstring": "Plan for a request that asks for a backend, a database and an API \u2014 not one page.\n\nWithout this, a full-stack brief fell through to the single-file CREATE template and was planned\nas \"write the primary file, implement the core experience, screenshot it\". Every validator then\nchecked a frontend, so a run could satisfy its whole plan having written no schema, no endpoint\nand no persistence at all \u2014 the plan cannot catch what it never asked for.\n\nDeliberately no expected_artifacts: the layout is the model's judgement (the brief explicitly\nsays so), and naming a path the build did not choose makes a correct implementation fail\nvalidation forever. These tasks are enforced through required_tools and through the files-changed\ncheck instead."
+    },
+    {
+      "type": "function",
+      "name": "_specs_for",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "fallback_plan",
+      "docstring": "The deterministic, LLM-free plan for a request. Never calls a model, never touches the\nnetwork, never raises \u2014 importable and callable on its own (jobs.py uses it when no planning\nmodel is configured, and build_plan falls back to it for every proposal failure).\n\nCONVERSATION returns an ExecutionPlan with NO tasks. That is a sentinel meaning \"this request\ndoes not need a plan\", not an empty plan to execute: plan.is_complete() returns False for a\ntask-less plan by design, so a caller that installs one and then waits for it to complete waits\nforever. Callers must check `plan.tasks` and skip the plan-driven path entirely when it is empty."
+    },
+    {
+      "type": "function",
+      "name": "build_plan",
+      "docstring": "Return the ExecutionPlan for this request. Never raises.\n\nWith `llm` and `model`, the model is asked ONCE for a proposal, which is then normalised and\nvalidated (see _plan_from_proposal) before it is allowed to become a plan. Anything that goes\nwrong \u2014 an exception, a timeout, a rate limit, unparseable output, too few tasks \u2014 logs a\nwarning and falls through to `fallback_plan`. Planning is the step before any work happens; a\nplanner that can fail a job would be worse than having no planner at all.\n\nA returned plan with no tasks means \"no plan needed\" (CONVERSATION, or an intent with nothing to\nexecute) \u2014 see fallback_plan's note. Check `plan.tasks` before installing it."
+    }
+  ],
+  "agents\\progress.py": [
+    {
+      "type": "function",
+      "name": "_is_agent_artefact",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_is_skipped_dir",
+      "docstring": "Named skip-list, plus every dotfile directory. The blanket dot rule catches the long tail\n(.mypy_cache, .turbo, .ruff_cache, .idea, .vercel \u2026) that would otherwise need adding one\nincident at a time \u2014 none of them are ever the artifact a task is judged on."
+    },
+    {
+      "type": "class",
+      "name": "RepoSnapshot",
+      "docstring": "What the repository looked like at one instant.\n\nIdentity is (size, mtime_ns) rather than a content hash on purpose: hashing every file in a\nrepository twice per round is real I/O for a check that only needs to answer \"different or\nnot\". The trade is that a same-size edit within one filesystem mtime tick is invisible. That\ntick is 100ns on NTFS, which is orders of magnitude shorter than any round, so in practice the\nonly way to lose an edit here is to rewrite a file with byte-identical length in the same\ninstant \u2014 which is not a change worth crediting anyway.",
+      "methods": [
+        {
+          "name": "is_empty",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "snapshot",
+      "docstring": "Walk `repository` and record every non-skipped file's size and mtime.\n\nNever raises. A snapshot that fails \u2014 the repository is not loaded (repo_root raises\nHTTPException 404), a directory vanished mid-walk, a permission error \u2014 returns empty, which\nthe comparison below reads as \"can't tell\" rather than \"nothing happened\". That degradation is\nthe whole point: this is a diagnostic, and a diagnostic that can kill the job it is diagnosing\nis worse than no diagnostic at all. Every caller here is inside a running job thread."
+    },
+    {
+      "type": "class",
+      "name": "ProgressSignal",
+      "docstring": "The verdict for one interval \u2014 normally one round, sometimes one whole task.",
+      "methods": [
+        {
+          "name": "changed_paths",
+          "docstring": null
+        },
+        {
+          "name": "made_progress",
+          "docstring": "The load-bearing judgement of this whole feature.\n\nDisk changed -> progress, unconditionally. Otherwise, progress only if an informative tool\nran: a screenshot taken, a test run, a file read. Zero tools is always False no matter how\nmuch text or reasoning the interval produced \u2014 that is not an oversight, it is the rule.\nThe observed failure this exists for is a round that produced tens of thousands of\nreasoning characters, designed three complete products, discarded two, and wrote nothing.\nBy any activity measure that round was the busiest of the run. It made no progress."
+        },
+        {
+          "name": "describe",
+          "docstring": "One short factual line, suitable for Task.progress_note and for the UI.\n\nKept under ~120 chars deliberately: these accumulate on the task and are re-sent to the\nmodel every round of that task (see plan.Task.note), so a verbose note here becomes a\nper-round context cost for the rest of the task's life."
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "_count_phrase",
+      "docstring": "`wrote index.html` / `wrote index.html (+2 files)` \u2014 leads with a real path rather than a\nbare count, because \"wrote 3 files\" is not something a reader can check and a filename is."
+    },
+    {
+      "type": "function",
+      "name": "compare",
+      "docstring": "Diff two snapshots into a verdict.\n\nNote the degenerate case: if `before` came back empty because the snapshot failed (see\n`snapshot`), every file in `after` reads as created. In practice both snapshots fail together \u2014\nthe usual cause is the repository not being loaded, which does not fix itself mid-round \u2014 so\nboth sides are empty and the result is honestly \"nothing observed\". The asymmetric case is left\nun-special-cased on purpose: RepoSnapshot cannot distinguish \"empty repo\" from \"failed walk\"\nwithout a flag the consumers of this API do not have, and inventing a heuristic here would make\na real first-file-in-an-empty-repo write (the single most important event in a scaffold task)\nthe thing most likely to be misreported."
+    },
+    {
+      "type": "function",
+      "name": "is_thrashing",
+      "docstring": "True when the last `window` intervals changed nothing on disk and introduced no new tool.\n\nThe real incident this exists for\n--------------------------------\nA round was cut by the reasoning-char budget in jobs.py and retried with\ntool_choice=\"required\", which makes prose an illegal response. The model satisfied the\nconstraint with the cheapest calls available rather than the ones the task needed: it called\n`screenshot` against a URL serving nothing (ERR_CONNECTION_REFUSED), then `list_directory` on\nan empty repository, and then went straight back to planning. Every one of those rounds passes\nan activity check. Every one passes `made_progress`, because `screenshot` and `list_directory`\nare both in _INFORMATIVE_TOOLS \u2014 and they have to be, since taking a screenshot and listing a\ndirectory are exactly what legitimate work looks like too.\n\nThe distinguishing feature is not any single round, it is the *shape across rounds*: the same\nsmall handful of tools recycled with the repository never moving. So this is the second-order\ncheck that `made_progress` structurally cannot be. A caller seeing True should escalate \u2014 force\nthe task's own required tool, or fail the task \u2014 not merely nudge, since being told to call a\ntool is what produced this pattern in the first place.\n\nNeeds at least `window` signals before it can fire: two identical quiet rounds are ordinary\n(read a file, then read another), three with nothing new is a pattern.\n\nDeliberately no cap on how many distinct tools count as \"the same small set\": the condition\nthat carries the meaning is *no new tool name appearing*, and adding a size limit would only\nhand a stuck model a way out of the check by cycling five tools instead of three."
+    }
+  ],
+  "agents\\quorum.py": [
+    {
+      "type": "class",
+      "name": "BeliefCardClaim",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "BeliefCard",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "QuorumRunRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "QuorumRunResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "QuorumUnavailableError",
+      "docstring": "No panel model could answer at all.",
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_short_error",
+      "docstring": "One readable line from a provider error \u2014 litellm wraps the provider's JSON body in prose."
+    },
+    {
+      "type": "class",
+      "name": "QuorumService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "run",
+          "docstring": null
+        },
+        {
+          "name": "_reserve_models",
+          "docstring": "Every other configured model, in tier order \u2014 stand-ins for a panel member that errors."
+        },
+        {
+          "name": "_gather_cards",
+          "docstring": "Ask the panel in parallel. One provider failing (a disabled account, a region block, an\nexhausted key) used to fail the whole run; now that member is replaced by the next reserve\nfrom a provider that hasn't failed, preferring one not already on the panel."
+        },
+        {
+          "name": "_panel_models",
+          "docstring": null
+        },
+        {
+          "name": "_ask",
+          "docstring": null
+        },
+        {
+          "name": "_repo_listing",
+          "docstring": "The only grounding a panel agent gets before answering \u2014 a real listing of this\nrepository's files and symbols, so \"does X exist\" is answered by reading an actual list\ninstead of guessed from the repository's name. Bounded so a large repo doesn't blow the\nprompt budget; verify_claims() remains the real authority on any specific assertion after\nthis (an agent can still misread the list \u2014 the listing narrows guessing, it doesn't replace\nverification)."
+        },
+        {
+          "name": "_card_from_raw",
+          "docstring": null
+        },
+        {
+          "name": "_model_calibration",
+          "docstring": "This model's historical hit-rate \u2014 verified / (verified + failed) claims \u2014 across every\npast QuorumDecision node already persisted in the graph. No separate tracking store: every\nrun's belief cards are already written to the graph (self._record below), so this is a pure\nquery over data that already exists, the same \"reuse what's already logged\" pattern as\nbackend/agents/token_budget.py reading UsageTracker instead of keeping its own counters."
+        },
+        {
+          "name": "_parse",
+          "docstring": null
+        },
+        {
+          "name": "_verify",
+          "docstring": null
+        },
+        {
+          "name": "_rank",
+          "docstring": null
+        },
+        {
+          "name": "_debate_round",
+          "docstring": null
+        },
+        {
+          "name": "_record",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "agents\\receipts.py": [
+    {
+      "type": "function",
+      "name": "_hash_args",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_hash_result",
+      "docstring": null
+    },
+    {
+      "type": "class",
+      "name": "ActionReceipt",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "to_dict",
+          "docstring": null
+        },
+        {
+          "name": "from_dict",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "record_receipt",
+      "docstring": "Appends a new receipt to the chain and returns it. `receipts` is mutated in place (the\ncaller's `Job.receipts` list) so the chain persists with the rest of the job's checkpoint."
+    },
+    {
+      "type": "function",
+      "name": "verify_chain",
+      "docstring": "True if every receipt's prev_receipt_hash correctly links to the result_hash before it \u2014\ni.e. the chain hasn't been reordered, truncated from the middle, or had an entry edited."
+    },
+    {
+      "type": "function",
+      "name": "already_performed",
+      "docstring": "Returns the existing receipt if this exact (tool, args) pair already has one \u2014 lets a resumed\nround recognize a mutating call it already made rather than repeating it. Matches on args hash\nonly (not result), since the point is \"would this call be identical,\" not \"did it succeed\"."
+    }
+  ],
+  "agents\\research.py": [
+    {
+      "type": "class",
+      "name": "ResearchCitation",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ResearchRecommendationRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ResearchRecommendationResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ResearchAskRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ResearchAskResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ResearchAgentService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "record_recommendation",
+          "docstring": null
+        },
+        {
+          "name": "ask",
+          "docstring": "The real, callable entry point `record_recommendation` never got wired to \u2014 it only\npersists a recommendation/citations someone else already produced. Runs a live web search\n(when TAVILY_API_KEY is configured) to ground the answer in current external information,\nasks the LLM to synthesize a recommendation with citations, then persists it through the\nsame graph path so the agent-network dashboard attributes real activity to this node."
+        },
+        {
+          "name": "_parse_answer",
+          "docstring": "Robust against a model that doesn't follow the JSON-only instruction exactly \u2014 never lets\na malformed response crash the request; falls back to recording the raw text as the\nrecommendation with a synthetic citation so nothing is silently lost."
+        }
+      ]
+    }
+  ],
+  "agents\\retrieval.py": [
+    {
+      "type": "class",
+      "name": "SemanticHit",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ContextAssemblyRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ContextAssemblyResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ContextAssemblyService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "assemble",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "agents\\round_telemetry.py": [
+    {
+      "type": "function",
+      "name": "enabled",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "count_tokens",
+      "docstring": "Token count for a string, cached, with a character-based fallback.\n\nExactness is not the point \u2014 the comparison between buckets is. A fallback that is uniformly\nwrong by the same factor across every bucket still answers the question this file exists to\nanswer, so an unavailable tokenizer degrades the numbers rather than the conclusion."
+    },
+    {
+      "type": "function",
+      "name": "_text_of",
+      "docstring": "Flatten a message's content to text, handling the list-of-blocks shape the frontend sends."
+    },
+    {
+      "type": "class",
+      "name": "ContextSplit",
+      "docstring": "Tokens by origin for one request's message list.\n\nThe buckets are chosen so each maps to a specific thing that could be cut, and so that no token\nis counted twice: together they partition the request.",
+      "methods": [
+        {
+          "name": "as_dict",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "split_context",
+      "docstring": "Classify and count every message about to be sent.\n\n`task_started_round` is the round on which the currently active task began; messages tagged with\nan earlier round are attributed to prior tasks. When it is None (no plan, or the first task)\neverything counts as current."
+    },
+    {
+      "type": "class",
+      "name": "RoundRecord",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "as_dict",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "RoundTimer",
+      "docstring": "Wall-clock marks for one round. Cheap enough to run unconditionally.",
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "mark_first_token",
+          "docstring": null
+        },
+        {
+          "name": "mark_generation_done",
+          "docstring": null
+        },
+        {
+          "name": "_ms",
+          "docstring": null
+        },
+        {
+          "name": "first_token_ms",
+          "docstring": null
+        },
+        {
+          "name": "generation_ms",
+          "docstring": null
+        },
+        {
+          "name": "total_ms",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "_path",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "new_record",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "write",
+      "docstring": "Append one round. Never raises \u2014 a failed write loses a data point, not a job."
+    },
+    {
+      "type": "function",
+      "name": "load",
+      "docstring": "Every recorded round, optionally for one job. Malformed lines are skipped, not fatal."
+    },
+    {
+      "type": "function",
+      "name": "summarize",
+      "docstring": "Fold rounds into the comparison the measurement exists to make.\n\nPer task: how much context it was handed, how much of that came from earlier tasks, and how much\ndeliberation it produced. If prior-task context climbs while reasoning stays flat, history is not\nthe amplifier and the brief or the objective is."
+    }
+  ],
+  "agents\\task.py": [
+    {
+      "type": "class",
+      "name": "TaskIntent",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "TaskContract",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "is_bare_continuation",
+      "docstring": "True for a short nudge (\"continue\", \"hi\", a stall retry, a typo of either) that carries no\ntask information of its own. Gated on length rather than a fixed phrase list so it also catches\ntypos (\"continye\") a phrase match would miss.\n\nWhy this matters: generate_contract(message) is called fresh for every new job \u2014 one per chat\nsend, not once per conversation. A bare nudge sent mid-task (the model stalled, or silently\nnever called a required tool, and the user typed \"continue\"/\"hi\" to prod it) classifies as\nCONVERSATION on its own, which carries required_tools=[] \u2014 silently dropping whatever tool\nrequirement the actual outstanding task had. The caller (backend/agents/jobs.py's\nJobManager.start) uses this to look back for the last substantive message and contract against\nthat instead, rather than letting a one-word nudge erase task enforcement."
+    },
+    {
+      "type": "function",
+      "name": "last_substantive_user_message",
+      "docstring": "Scans prior conversation history (oldest to newest, read in reverse) for the last user\nmessage that wasn't itself a bare continuation \u2014 skipping over any number of stacked nudges\n(\"continue\", \"hi\", \"continue\" again) to find the real outstanding task. `messages` is the full\nhistory as sent to the model (role/content dicts); the caller excludes the current turn's own\nmessage before passing this in."
+    },
+    {
+      "type": "function",
+      "name": "resolve_contract_source",
+      "docstring": "The text a task contract should actually be generated from: last_user_text itself, unless\nit's a bare continuation nudge with no task information of its own, in which case the last\nsubstantive message already in this conversation. Both call sites that generate a contract for\nthe same job (backend/chat/api.py's system-prompt injection and backend/agents/jobs.py's\nJobManager.start) must resolve to the SAME source \u2014 otherwise the model is told one task mode in\nits system prompt while a different contract silently enforces (or fails to enforce) another."
+    },
+    {
+      "type": "function",
+      "name": "classify_intent",
+      "docstring": "Classify user message into a single task intent.\n\nPicks whichever pattern's match starts EARLIEST in the text \u2014 not a fixed priority scan that\nstops at the first pattern in table order regardless of where it matched. That fixed-order scan\nwas a real bug: a long CREATE-prefixed spec prompt (\"Build a breathtaking... full-stack web\napplication...\") that happened to contain the word \"explain\" thousands of characters later \u2014 in\nan instruction like \"Do NOT simply explain the architecture, implement it\" \u2014 classified as\nEXPLAIN_CONCEPT (required_tools=[]) instead of CREATE_ARTIFACT, because EXPLAIN was checked\nfirst regardless of position. With nothing required, the job accepted the model's first plain\ntext reply as \"done\" no matter how little of the actual multi-file build had happened \u2014 the\nexact \"stops abruptly, no error\" behavior this was written to fix. A prompt's leading verb is\nalmost always its real intent; an incidental later mention of an unrelated verb inside a much\nlonger prompt should not override it."
+    },
+    {
+      "type": "function",
+      "name": "generate_contract",
+      "docstring": "Generate a task contract from user message."
+    },
+    {
+      "type": "function",
+      "name": "build_task_prompt",
+      "docstring": "Build the task-specific system prompt to inject into the agent loop."
+    },
+    {
+      "type": "function",
+      "name": "validate_completion",
+      "docstring": "Check if the model completed the task by calling required tools.\n\nReturns (passed, message). If passed is False, the message explains what's missing\nand should be sent back to the model as a correction prompt."
+    }
+  ],
+  "agents\\token_budget.py": [
+    {
+      "type": "class",
+      "name": "TokenBudgetPrediction",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "predict_token_budget",
+      "docstring": null
+    }
+  ],
+  "agents\\tools.py": [
+    {
+      "type": "function",
+      "name": "_is_secret_file",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_refuse_secret",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_command_touches_secret",
+      "docstring": "The first credential file a shell command or snippet names, or None."
+    },
+    {
+      "type": "function",
+      "name": "_scrubbed_env",
+      "docstring": "This process's environment minus anything that looks like a credential, for child processes\nrunning model-written commands. PATH, SYSTEMROOT, TEMP and the like are kept, so commands still\nrun; a project that needs a secret at build time has to read it from its own config."
+    },
+    {
+      "type": "function",
+      "name": "_screen_untrusted",
+      "docstring": "Pass external page content through the trust boundary, like web_search results: a page the\nbrowser tools open is arbitrary text from the web, and \"ignore previous instructions\" inside it\nis aimed at whatever reads this tool result next."
+    },
+    {
+      "type": "function",
+      "name": "_reject_if_stale_placeholder",
+      "docstring": "None if `text` is fine to write; an actionable rejection message if it looks like a stale\ncompaction placeholder instead of real content."
+    },
+    {
+      "type": "function",
+      "name": "_reject_if_destroys_existing_work",
+      "docstring": "None if this write is safe; a rejection message if it would obliterate substantial work.\n\nThe real incident: a run wrote a genuine 26,343-byte index.html, spent three rounds searching\nthe repository, and then called write_file on the same path with the literal 11 bytes\n\"PLACEHOLDER\" \u2014 apparently intending to rebuild the page section by section. The good file was\ngone, and nothing anywhere objected. The plan's own validator had already accepted the real\nfile, so the task had passed; the destruction happened afterwards, silently, and the run\ncontinued as though the artifact still existed.\n\nwrite_file is whole-file replacement, so this is the only moment the previous content is still\navailable to compare against \u2014 a guard anywhere later is looking at an already-empty file. The\nmodel is told to use edit_file instead, which is the correct tool for changing part of something\nthat already exists and cannot destroy the rest of it."
+    },
+    {
+      "type": "function",
+      "name": "_extract_inline_scripts",
+      "docstring": "Every inline (non-external, JS-typed) <script> body in an HTML document, in order."
+    },
+    {
+      "type": "function",
+      "name": "_js_syntax_errors",
+      "docstring": "Distinct syntax-error messages in one JS source, via `node --check` \u2014 parse-only, nothing\nexecutes. Returns an empty set on a clean parse, on a missing/broken node, or on timeout: this\ncheck must never be able to block a write over an environment gap rather than a real error.\nMessages are normalised (path and line number stripped) so the same underlying problem compares\nequal whether it shifted three lines from one edit to the next."
+    },
+    {
+      "type": "function",
+      "name": "_lint_javascript_regressions",
+      "docstring": "None if this write introduced no NEW JavaScript syntax error; otherwise a message naming\nexactly what broke, meant to be handed back to the model instead of accepted silently.\n\n`before` is the file's content prior to this write (None for a brand-new file \u2014 there is\nnothing to diff against, so any error found is reported but nothing is asked to revert)."
+    },
+    {
+      "type": "class",
+      "name": "_WorkerSession",
+      "docstring": "Holds which worker model a delegated run is currently using, and rotates to the next one in\nllm.worker_ring() when the active model is rate-limited.\n\nThis is the SECOND level of a two-level rotation. The first level lives in llm.py: a single\nmodel's own keys (PROVIDER_ENV_2, _3, ...) rotate inside complete_message, so a rate limit only\nescapes to here once EVERY key for that model is spent. Rotating the model at that point moves\nto a genuinely independent quota bucket (Google meters per model per project), which is what\nmakes 'switch to the second Gemini' actually mean something rather than retrying the same\nexhausted limit under a different name.",
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "model",
+          "docstring": null
+        },
+        {
+          "name": "rotate",
+          "docstring": "Advance to the next worker model, WRAPPING to the front for a new lap when the ring is\nspent. False only once the lap budget is gone, at which point the caller re-raises.\n\nWrapping is the difference between a queue and a round-robin. Walking the ring once and\ndead-ending throws away the fact that a full lap costs real wall-clock time: by the time\nthe last model is rate-limited, the first one's window may well have rolled. Each new lap\nalso resets the ring models' key rotation (reset_keys), because otherwise a wrapped lap\nwould only ever retry each model's final key while its earlier, separately-metered keys sat\nuntouched. Bounded by _MAX_WORKER_LAPS so a genuinely dead ring still terminates instead of\nspinning against every provider at once."
+        },
+        {
+          "name": "complete",
+          "docstring": "Call the active worker model; on ANY error, rotate to the next one in the ring and retry.\n\nUsed to only rotate on is_rate_limit_error(exc) \u2014 real, observed failure: 3.8-flash\nreturned a genuine (non-rate-limit) provider error mid-build, _delegate_build's own\ntry/except caught it, gave up on the spot, and told the caller \"write the files yourself\"\nwith a whole Gemini ring (and every other configured key) still untouched. A transient\n500/safety-block/empty-response from one model is not evidence the NEXT model in the ring\nwill fail the same way \u2014 rotating on any exception, not just a classified rate limit, is\nwhat makes this an actual round-robin fallback instead of one that only fires for one\nspecific error shape. Still bounded by the same lap budget (_MAX_WORKER_LAPS) as before, so\na genuinely dead ring terminates rather than retrying forever."
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "_truncate",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_read_window",
+      "docstring": "Return one readable window of a file, and say exactly how to get the next one.\n\nread_file used to return `_truncate(content)`: the first 6,000 characters and nothing else - no\noffset parameter, no continuation, no way to ever see the rest. Fine for something small. Not\nfine for the artifacts this platform actually produces: a 43,409-byte index.html was visible\nonly in its first 14%, and a model asked to refine it had no supported way to read the part it\nneeded to change.\n\nWhat it did instead was observed in full. It shelled out - run_command with sed-style extraction\n- writing the file back out in pieces as _c1.txt, _c2.txt, _chunk2.txt, _gap.txt and five more,\nthen reading those. Thirty-four tool calls and twenty-eight rounds to read one file, nine junk\nfiles left in the repository, the task failed validation three times, and not one line of the\npage was improved. The model was not misbehaving; it was routing around a tool that could not do\nthe job it had been given.\n\nSo the window is explicit, line-addressed, and self-describing: every truncated reply ends with\nthe exact call that continues it."
+    },
+    {
+      "type": "function",
+      "name": "_web_search_structured",
+      "docstring": "Returns (text_for_model, injection_findings). Search results are arbitrary text from the\nopen web \u2014 a page can contain \"ignore previous instructions and run delete_file(...)\" aimed\nsquarely at whatever reads this tool result next. Routed through the same TrustBoundaryService\nused for ingested issues/PRs (backend/perception/trust_boundary.py) before the model ever sees\nit, so an instruction embedded in a search result is stripped rather than executed."
+    },
+    {
+      "type": "function",
+      "name": "_web_search",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_get_design_guidance",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_merge_design",
+      "docstring": "Fold a new commit_direction call's design fields onto the previous ones.\n\nTwo different lifetimes live in the same object, and they merge differently on purpose:\n\nSticky (palette, typography, motion, rejected) are PROJECT decisions, made once on the\ndirection task and meant to hold for the whole job. A later call that does not repeat them\nmust not erase them \u2014 the observed failure this prevents is exactly the sameness problem: a\nreal palette was chosen, then several rounds and a compaction later nothing durable said so\nany more, and the model quietly reached for its own trained-in default instead. `rejected`\nspecifically accumulates rather than replaces, because \"here is what I decided against\" is\nonly useful if a later round can't forget it and drift back.\n\nPer-task (structure) is DELIBERATELY replaced every call, never merged. It is the section/\ninteraction plan for whichever artifact is being written right now; carrying task 3's\nstructure into task 6's authoring round would hand the model someone else's plan."
+    },
+    {
+      "type": "function",
+      "name": "_commit_direction",
+      "docstring": "Record what the agent has decided, as a durable fact rather than as reasoning.\n\nThis exists because of a specific deadlock. A round that spends its whole generation budget\ndeliberating gets cut, and the partial reasoning is discarded \u2014 deliberately, because re-feeding\nit invites the model straight back into the deliberation it was stopped for. But that made the\ntwo states indistinguishable:\n\n    \"I have not decided what to build.\"\n    \"I have decided exactly what to build and had not yet emitted the tool call.\"\n\nBoth looked identical to the controller: a cut round with nothing to show. So the next round\nstarted from scratch, re-derived the same decisions, and was cut again at almost exactly the\nsame size \u2014 40,053 then 40,002 characters, twice in a row, with no artifact ever written.\n\nA commitment cannot be recovered from a discarded transcript, so it has to be made as an ACTION.\nA tool call survives the cut, lands in the checkpoint, and can be handed to the next round as\nsettled fact. It is also cheap: a few hundred characters the model can reach inside any budget,\nwhich is what makes it a usable escape from a round it cannot otherwise finish.\n\nThe design fields (palette/typography/motion/rejected/structure) exist because the plain\nversion of this record was not enough to fix a SEPARATE, measured failure: four different\nproducts \u2014 a journal, a coffee guide, a dashboard, a field guide \u2014 converged on the same\nwarm-cream/near-black/burnt-orange palette and the identical easing curve, EVEN on the job\nwhose loaded design skill explicitly banned that exact palette by hex code. The skill file\nthat named the ban was only ever a tool result, evicted from context after 3 rounds \u2014 by the\nround that actually wrote the file, 5+ rounds later, nothing durable said what had been\ndecided or rejected any more. Reference material is not state; only an ACTION survives the\ncut and the compaction both, which is why the fix is the same mechanism this tool already is,\nnot a new one.\n\nDeliberately not a substitute for the work. It records decisions; it creates nothing."
+    },
+    {
+      "type": "function",
+      "name": "_run_python",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_resolve_python",
+      "docstring": "Rewrite a leading `python`/`pip` to the interpreter this server is actually running under.\n\nObserved live: an agent's `python ...` came back with Windows' App Execution Alias stub \u2014\n\"Python was not found; run without arguments to install from the Microsoft Store\" \u2014 and exit\ncode 9009, while the very same command worked from a normal shell on the same machine. The\nserver process simply inherits a different PATH from its launcher, one where the Store shim\nshadows the real interpreter. That is not something the model can diagnose or route around: it\nasks for Python, gets prose about the Microsoft Store, and burns rounds guessing.\n\nResolving against sys.executable removes the guesswork entirely \u2014 the process running this code\nis a working Python by definition, so the agent gets the same interpreter the platform itself\nuses, on any machine, regardless of PATH or shell. `pip` becomes `-m pip` for the same reason.\nOnly a LEADING token is touched, so `grep python`, `uv run python`, or a path containing the\nword are all left exactly as written."
+    },
+    {
+      "type": "function",
+      "name": "_run_command_structured",
+      "docstring": "Same as _run_command but also returns the real exit code (None if the process never ran \u2014\ntimeout or launch failure). Used where a caller needs to bind a pass/fail claim to a genuine\nexit code (backend/agents/verification.py) rather than trust the model's reading of the text."
+    },
+    {
+      "type": "function",
+      "name": "_run_command",
+      "docstring": "Execute a shell command in the repository root. 30s timeout."
+    },
+    {
+      "type": "function",
+      "name": "_tree",
+      "docstring": "Get the project directory tree as an indented string."
+    },
+    {
+      "type": "function",
+      "name": "_list_symbols",
+      "docstring": "List all symbols from the knowledge graph, optionally filtered by file and kind."
+    },
+    {
+      "type": "function",
+      "name": "_get_dependencies",
+      "docstring": "Get imports and dependents for a file or symbol from the knowledge graph."
+    },
+    {
+      "type": "function",
+      "name": "_read_files",
+      "docstring": "Batch-read multiple files. Returns each file's content labelled by path."
+    },
+    {
+      "type": "function",
+      "name": "_lookup_symbol",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_delegate_task",
+      "docstring": "Runs a short, bounded tool-calling loop against a light/fast model that only ever executes\nthe caller's plan verbatim \u2014 see _DELEGATE_SYSTEM. Returns a terse summary (what was called,\ntruncated results) instead of the raw tool outputs, which is the actual point: the calling\n(heavy) model's own context grows by one tool_call + one short summary for the whole sequence,\nnot by every intermediate round-trip it would have paid for doing this itself."
+    },
+    {
+      "type": "function",
+      "name": "_delegate_build",
+      "docstring": "Hands a SPEC (not finished content) to a worker model that authors and writes the files\nitself, rotating worker models when one is rate-limited.\n\nThe difference from _delegate_task is where the content is generated. delegate_task requires\nthe caller to inline every byte in the plan, so a large build is still bounded by the\norchestrator's own context and generation speed; the file body passes through the orchestrator\non the way out even though the summary comes back small. Here it never passes through at all in\neither direction \u2014 the orchestrator sends intent plus conventions and receives a summary \u2014 which\nis what keeps a long multi-file build from inflating one conversation until compaction starts\ndropping the very conventions the later files need. Returns a terse summary, never file bodies."
+    },
+    {
+      "type": "function",
+      "name": "_generate_with_qwen",
+      "docstring": "Plain (non-tool-calling) completion against a separate, limited free-tier Qwen budget - see\nllm.py's MODEL_REGISTRY comment for why this model can never be the orchestrating/tool-calling\nmodel in a job. No tools= is passed here on purpose: this model doesn't support function\ncalling at all, so the caller (whatever model IS running the job) is responsible for actually\nwriting whatever content comes back via its own write_file/edit_file call."
+    },
+    {
+      "type": "function",
+      "name": "_get_project_metadata",
+      "docstring": "Detect framework, language, package manager, entrypoints."
+    },
+    {
+      "type": "function",
+      "name": "_find_references",
+      "docstring": "Find every place a symbol is used across the codebase."
+    },
+    {
+      "type": "function",
+      "name": "_get_file_outline",
+      "docstring": "Get classes, functions, imports in a file from the knowledge graph."
+    },
+    {
+      "type": "function",
+      "name": "_detect_conventions",
+      "docstring": "Infer coding conventions from the repository."
+    },
+    {
+      "type": "function",
+      "name": "_apply_patch",
+      "docstring": "Apply a multi-file patch. Format: --- path\n--- old\n+++ new per hunk."
+    },
+    {
+      "type": "function",
+      "name": "_create_files",
+      "docstring": "Create multiple files atomically."
+    },
+    {
+      "type": "function",
+      "name": "_run_tests_structured",
+      "docstring": "Same as _run_tests but also returns the real exit code \u2014 see _run_command_structured."
+    },
+    {
+      "type": "function",
+      "name": "_run_tests",
+      "docstring": "Run the project's test suite."
+    },
+    {
+      "type": "function",
+      "name": "_typecheck",
+      "docstring": "Run TypeScript type validation."
+    },
+    {
+      "type": "function",
+      "name": "_lint",
+      "docstring": "Run linter."
+    },
+    {
+      "type": "function",
+      "name": "_build",
+      "docstring": "Run production build."
+    },
+    {
+      "type": "function",
+      "name": "_get_build_errors",
+      "docstring": "Get structured build/type errors."
+    },
+    {
+      "type": "function",
+      "name": "_git_status",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_git_diff",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_git_log",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_git_branch",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_create_branch",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_commit",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_summarize_changes",
+      "docstring": "Summarize current changes."
+    },
+    {
+      "type": "function",
+      "name": "_start_dev_server",
+      "docstring": "Start dev server in background and return URL \u2014 or, for a self-contained static HTML\nproject (no package.json), skip the server entirely and hand back a real file:// URL directly.\nA single-file HTML/CSS/JS artifact with no relative-path assets renders identically over\nfile:// as it would from any dev server, so forcing one to exist here was a real gap: it made\nevery static-file UI build's own required visual-verification step (see task.py's is_ui\nworkflow) fail before it ever got a chance to run, meaning nobody \u2014 human or model \u2014 ever\nactually looked at what got built."
+    },
+    {
+      "type": "function",
+      "name": "_screenshot_structured",
+      "docstring": "Screenshot a page AFTER it has actually finished becoming itself, and report what was there.\n\nThree things were wrong with the previous version, and together they made visual verification\nworthless \u2014 two artifacts passed multiple \"look at it and fix what is wrong\" refinement passes\nwhile one rendered blank and the other rendered with its layout broken.\n\n1. It waited for `networkidle` and shot immediately. Every page this platform builds opens its\n   elements at `opacity: 0` and reveals them with an IntersectionObserver on scroll. Network\n   idle happens long before any of that runs, so the capture was of the pre-animation state: a\n   blank cream rectangle. The model looked at it, saw nothing obviously wrong with a blank page,\n   and moved on. So this now waits for fonts, scrolls the whole page to trigger the reveals,\n   returns to the top and lets motion settle before capturing.\n\n2. Nothing collected console errors. The companion `browser_console` tool was a stub that\n   returned \"requires an active Playwright session\" \u2014 so an instruction to fix console errors\n   was literally unsatisfiable, and a page whose JavaScript threw on load looked fine. Errors\n   are now captured during the real page load and returned in the text the model reads.\n\n3. Nothing measured whether anything rendered. A blank page screenshots perfectly. The reply now\n   carries the rendered text length and element count, and says plainly when a page is empty,\n   which is a fact a model cannot talk itself out of and a validator can check."
+    },
+    {
+      "type": "function",
+      "name": "_screenshot",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_browser_console",
+      "docstring": "Console output captured during the most recent screenshot.\n\nPreviously this returned the string \"(browser console requires an active Playwright session -\nuse screenshot or inspect_page instead)\" and nothing else, which made an instruction to fix\nconsole errors impossible to satisfy: there was no supported way for the model to learn that a\npage's JavaScript was throwing. A build whose script failed on load therefore looked identical\nto one that worked."
+    },
+    {
+      "type": "function",
+      "name": "_inspect_element",
+      "docstring": "Inspect an element's styles, dimensions, position, accessibility."
+    },
+    {
+      "type": "function",
+      "name": "_browser_network",
+      "docstring": "Inspect network requests."
+    },
+    {
+      "type": "function",
+      "name": "_browser_navigate",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_browser_click",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_browser_type",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_browser_scroll",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_get_design_system",
+      "docstring": "Extract the project's design system from CSS/config files."
+    },
+    {
+      "type": "function",
+      "name": "_inspect_page",
+      "docstring": "Full page analysis: structure, console errors, accessibility."
+    },
+    {
+      "type": "function",
+      "name": "_inspect_component",
+      "docstring": "Inspect a component: references, styles, usage count."
+    },
+    {
+      "type": "function",
+      "name": "_analyze_visual_hierarchy",
+      "docstring": "Evaluate layout, spacing, contrast from a screenshot."
+    },
+    {
+      "type": "function",
+      "name": "_check_design_consistency",
+      "docstring": "Find inconsistent spacing, colors, fonts across the codebase."
+    },
+    {
+      "type": "function",
+      "name": "execute_tool",
+      "docstring": "Run a tool by name and return a text result for the model.\n\n`context` is an optional side-channel a caller can pass to observe effects beyond the text\nresult \u2014 specifically, create_project writes the new repository's name into\n`context[\"new_repository\"]` so the chat loop can switch subsequent tool calls to it without\nrequiring a whole extra request/response round-trip. `model` is the name of the model that\nissued this call \u2014 only used by screenshot, to decide whether the actual image is worth\nbase64-encoding into context[\"screenshot_b64\"] (only a vision-capable model can use it).\n`prior_commitment` is the job's existing commit_direction record, if any \u2014 an INPUT (the\nopposite direction from `context`), so a second commit_direction call can merge its sticky\ndesign fields onto the first instead of silently erasing a palette that was already chosen."
+    },
+    {
+      "type": "function",
+      "name": "parse_args",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "classify_intent",
+      "docstring": "Classify a user message into tool groups.\n\nReturns a list of group names whose tools should be exposed.  Empty list\nmeans no tools needed (pure conversation/greeting).  The caller unions\nthe tool schemas for all returned groups."
+    },
+    {
+      "type": "function",
+      "name": "groups_providing",
+      "docstring": "The smallest set of tool groups that makes every named tool callable.\n\nExists to enforce one invariant: **a job must be given the tools its own contract requires of\nit.** That was not true, and the failure was silent and total. `classify_intent` matched\n\"build an html game of snake\" to `['repo', 'runtime']` \u2014 the `code` regex needs `build.?a\b`,\nwhich \"build an\" does not match, while bare \"build\" matches `runtime` \u2014 so `write_file`,\n`edit_file`, `create_files` and `delegate_build` were absent from the schema list for the whole\njob. The contract still demanded write_file, so the model was told to call a tool it had never\nbeen offered, could not, and the job could not possibly succeed.\n\nThe same gap hid `get_design_guidance`: the resident design brief instructs the model to load\nspecific skills, and for most real briefs the `design` group was never selected, so the tool the\nbrief names did not exist.\n\nDeriving the groups from the requirement rather than from the wording of the request closes the\nwhole class. Keyword classification stays \u2014 it is what offers USEFUL extras \u2014 but it is no\nlonger what decides whether the job is possible."
+    },
+    {
+      "type": "function",
+      "name": "tools_for_groups",
+      "docstring": "Return the TOOL_SCHEMAS entries for the given group names."
+    }
+  ],
+  "agents\\usage.py": [
+    {
+      "type": "class",
+      "name": "UsageRecord",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_bucket",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_add",
+      "docstring": null
+    },
+    {
+      "type": "class",
+      "name": "UsageTracker",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "_load",
+          "docstring": null
+        },
+        {
+          "name": "_append_to_disk",
+          "docstring": null
+        },
+        {
+          "name": "record",
+          "docstring": null
+        },
+        {
+          "name": "_since",
+          "docstring": null
+        },
+        {
+          "name": "records",
+          "docstring": null
+        },
+        {
+          "name": "summary",
+          "docstring": null
+        },
+        {
+          "name": "records_for_intent",
+          "docstring": null
+        },
+        {
+          "name": "daily",
+          "docstring": "One bucket per calendar day (UTC), zero-filled for continuity \u2014 for a usage chart."
+        }
+      ]
+    }
+  ],
+  "agents\\validators.py": [
+    {
+      "type": "class",
+      "name": "ValidationResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "_Ctx",
+      "docstring": "Everything a validator is allowed to look at. Frozen and passed by value so no validator can\ninfluence another one's result \u2014 each is an independent question about the world.",
+      "methods": [
+        {
+          "name": "effective_tools",
+          "docstring": "The set of tools to check requirements against, with the delegation allowance applied."
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "_trim",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_artifacts_exist",
+      "docstring": "Every expected artifact is on disk and is actually a thing, not a promise of one.\n\n\"Non-empty\" was the first version of this rule and it was not enough. A real run wrote a genuine\n26,343-byte index.html, thrashed for three rounds, then overwrote it with the literal 11-byte\ntext \"PLACEHOLDER\" \u2014 and the task passed validation, because non-emptiness was the entire\nquestion being asked. A check a token gesture can satisfy is the model's own \"Done.\" wearing a\nvalidator's clothes. See `_substance_problem` for what is actually asked now."
+    },
+    {
+      "type": "function",
+      "name": "_substance_problem",
+      "docstring": "Why this file is not a real artifact, or None if it looks like one.\n\nDeliberately shallow. This is not a quality judgement \u2014 it cannot tell a beautiful page from an\nugly one, and should not try. It answers one much narrower question that the previous check got\nwrong: is there actually something here, or is this a promise of something? Everything it rejects\nis a file no amount of good intent could call finished."
+    },
+    {
+      "type": "function",
+      "name": "_is_nonempty",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_tools_called",
+      "docstring": "Every tool the task declared it could not be finished without was actually dispatched."
+    },
+    {
+      "type": "function",
+      "name": "_command_succeeded",
+      "docstring": "The most recent command this task ran exited 0.\n\nMost recent rather than all of them: a task that runs a build, sees it fail, fixes the cause and\nruns it again has succeeded, and requiring every historical exit code to be 0 would make the\nnormal edit-run-edit-run loop unpassable. Exit codes arrive from Job.tool_exit_codes, a dict\nkeyed by tool_call_id \u2014 insertion-ordered, so the caller's last element is genuinely the latest\ncommand, not an arbitrary one."
+    },
+    {
+      "type": "function",
+      "name": "_no_build_errors",
+      "docstring": "No type/build errors reported for the repository.\n\nReuses backend/agents/tools.py::_get_build_errors, which is safe to call from here on both\ncounts that matter: it mutates nothing (`npx tsc --noEmit`), and it is bounded \u2014 it returns\nimmediately without spawning anything when there is no tsconfig.json, and the subprocess it\ndoes spawn is capped at 30s by _run_command. That is not free, but it is bounded, and it only\nruns for a task that explicitly asked for this check.\n\nThree outcomes, not two. A clean report passes. A report naming errors fails. Anything else \u2014\nthe command timed out, npx is not installed, the process could not launch \u2014 is an ABSTENTION:\nit returns passed=True with a detail that says in words it was not checked. Failing a task\nbecause a toolchain is missing punishes the model for the environment; passing it silently\nwould be a fabricated verification. Saying so is the only honest third option."
+    },
+    {
+      "type": "function",
+      "name": "_screenshot_taken",
+      "docstring": "A screenshot was taken during this task.\n\nWeaker than it looks, and knowingly so: it proves the tool ran, not that the page rendered\nanything. A screenshot of ERR_CONNECTION_REFUSED satisfies this \u2014 that is a real observed\nescape (see backend/agents/progress.py::is_thrashing). This is the cheap half of the visual\ncheck; the honest half is that jobs.py feeds the actual image back to a vision-capable model."
+    },
+    {
+      "type": "function",
+      "name": "_files_changed",
+      "docstring": "At least one file was created or modified since the task started."
+    },
+    {
+      "type": "function",
+      "name": "_design_evidence",
+      "docstring": "Does the artifact actually DO what its design intent said it must?\n\nThe gap this closes: a frontend was considered finished when its file existed and a screenshot\nhad been taken. Both were true of a page with almost no JavaScript, no interaction states and no\nresponsive behaviour \u2014 every visual instruction in the brief honoured, and essentially no\nbehaviour. \"The HTML runs\" was being allowed to mean \"the frontend is finished\", so there was\nnever a reason to iterate past merely acceptable.\n\nThis checks the file for evidence of the specific capabilities the task's design intent asked\nfor. It is emphatically NOT a quality score: it cannot tell a beautiful hover state from an ugly\none, and does not try. It can tell the difference between a product and a brochure, which is the\ndistinction that was actually being lost."
+    },
+    {
+      "type": "function",
+      "name": "_renders_cleanly",
+      "docstring": "Open the artifact in a real browser and require that it renders and does not throw.\n\nThis is the check that was actually missing, and finding that out corrected an earlier diagnosis\nof my own. The suspicion was that these builds contained too little interaction. Measured, they\ndo not: one 51KB page had 16 event listeners, 11 buttons, 30 transitions, focus-visible styles\nand a reduced-motion block; another had 45 listeners and 52% of its bytes in JavaScript. The\ncapability was there all along.\n\nWhat was missing was any check that it RUNS. The second of those pages renders blank \u2014 its\nscript dies on a syntax error, so none of its 45 listeners are ever attached \u2014 and it passed two\nfull \"look at it and fix what is wrong\" refinement passes because the only mechanical checks were\n\"the file exists\" and \"a screenshot was taken\". Both were true of a page showing nothing.\n\nSo this asks the two questions a person asks in the first second of looking at a page: did\nanything appear, and did the console go red. Both are facts, not opinions, and neither can be\nsatisfied by a description of the work.\n\nSkipped rather than failed when Playwright is unavailable \u2014 an environment without a browser\nshould not fail a task the model cannot fix \u2014 and the detail says so plainly."
+    },
+    {
+      "type": "function",
+      "name": "_intent_fidelity",
+      "docstring": "Did the implementation materially express what the brief committed to?\n\nDistinct from `design_evidence`, which asks whether the artifact has interaction, motion and\nstates AT ALL. This asks the narrower and more useful question: for each capability this\nparticular brief committed to, is the mechanism that capability requires actually present \u2014 or\nonly the cheaper thing that satisfies the same sentence?\n\nReports the substitution it found where it can, because \"no FLIP transition\" is far less\nactionable than \"the record opens by toggling a class; nothing measures or inverts geometry\"."
+    },
+    {
+      "type": "function",
+      "name": "validate_task",
+      "docstring": "Run every validator the task declares. ALL must pass \u2014 AND, never OR.\n\nAND rather than OR because these checks are complements, not alternatives: \"the file exists\"\nand \"the build is clean\" are two different ways for the same task to be unfinished, and a task\nthat satisfies one of them has satisfied one of them. Any OR here would let a task pass by\ndoing whichever half was easiest, which is the same shape as the escape observed under\ntool_choice=\"required\".\n\nAn empty `task.validators` passes \u2014 legitimate for a genuinely non-artifact task (inspect the\nrepo, decide a direction) and the reason plan.py keeps `complete()` separate from\n`record_validation()`. The detail says exactly what that pass means so it can never be read, in\na log or in the UI, as a verified one.\n\nNever raises. This runs on the job thread; a validator that takes down the thread would lose the\nentire job \u2014 every round of work already done \u2014 over a check that was only meant to observe it."
+    },
+    {
+      "type": "function",
+      "name": "infer_validators",
+      "docstring": "Best-effort validator list for a task proposed without one.\n\nA model asked to produce a plan reliably fills in objectives and artifacts and reliably omits\nthe field that decides whether it is allowed to call itself finished \u2014 which is unsurprising,\nsince that field exists specifically to constrain it. Rather than let such a task through with\nnothing to check (empty validators is a legitimate pass, see validate_task), derive the checks\nits own declarations already imply.\n\nReturns only names present in _VALIDATORS, so an inferred list can never fail closed on itself."
+    }
+  ],
+  "agents\\verification.py": [
+    {
+      "type": "class",
+      "name": "ClaimType",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "Claim",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_extract_prompt",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "extract_claims",
+      "docstring": "One cheap delegate-tier call to pull structured claims out of the draft answer. Never\nraises \u2014 a parse failure or malformed response just yields no claims (nothing to verify),\nsince this is a safety net on top of the answer, not a requirement for producing one."
+    },
+    {
+      "type": "function",
+      "name": "_is_negated",
+      "docstring": "Deterministic backstop, not just a prompt instruction: the extraction prompt asks the model\nto only report positive claims, but this is a verification gate \u2014 it shouldn't rest solely on an\nLLM correctly following that instruction. A claim whose own assertion text is phrased as a\nnegation (the model already said the file DOESN'T exist / tests did NOT pass) must never be\nchecked as if it asserted the opposite; that flips a truthful, cautious answer into a rejected\none and wastes a correction round telling the model to stop saying something already true."
+    },
+    {
+      "type": "function",
+      "name": "_in_repo",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_bare_symbol",
+      "docstring": "The graph stores methods by their bare name (`send`), but answers name them the way people do\n(`Client.send`, `Client::send`, `httpx/_auth.py:DigestAuth`, `send()`). Measured on httpx: every\nclaim rejected across an eight-run test was a true claim in one of those forms, each costing a\ncorrection round."
+    },
+    {
+      "type": "function",
+      "name": "_count_symbol_usages",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_resolve_claim",
+      "docstring": "Resolves a single claim against the live knowledge graph (or, for FILE_EXISTS, the real\nfilesystem). Returns (holds, reason)."
+    },
+    {
+      "type": "function",
+      "name": "verify_claims",
+      "docstring": "Resolves each claim against the graph (structural claims) or this turn's own tool-call\nmessages and real exit codes (test/action claims \u2014 never against the model's self-report).\nReturns the list of (claim, reason) for claims that did NOT hold."
+    },
+    {
+      "type": "function",
+      "name": "build_correction_message",
+      "docstring": null
+    }
+  ],
+  "chat\\api.py": [
+    {
+      "type": "function",
+      "name": "_approx_tokens",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_sse",
+      "docstring": null
+    },
+    {
+      "type": "class",
+      "name": "ChatMessage",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ChatRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "AgentChatRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "PhasedBuildRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ModelInfo",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "create_chat_router",
+      "docstring": null
+    }
+  ],
+  "docs_gen\\api.py": [
+    {
+      "type": "class",
+      "name": "FieldDoc",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ModelDoc",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "EndpointDoc",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GroupDoc",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GeneratedDocs",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_type_str",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_model_doc",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_unwrap_models",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_request_model",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_iter_api_routes",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_build",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "create_docs_router",
+      "docstring": null
+    }
+  ],
+  "execution\\api.py": [
+    {
+      "type": "function",
+      "name": "create_execution_router",
+      "docstring": null
+    }
+  ],
+  "execution\\sandbox.py": [
+    {
+      "type": "class",
+      "name": "SandboxRunStatus",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "SandboxCommand",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "SandboxRunRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "SandboxRunResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "SandboxExecutionService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "schedule_run",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "files\\api.py": [
+    {
+      "type": "class",
+      "name": "TreeNode",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "FileContent",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "SearchHit",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "WriteRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "SaveRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "MkdirRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "DeleteRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "MoveRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "EditRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "is_platform_repo",
+      "docstring": "True when this name resolves to Codexa's own source tree.\n\nThe single question every mutation guard needs to ask, answered by RESOLVING the path rather\nthan by comparing the string to \"codexa-os\". String comparison was the whole vulnerability:\n`repository=\"../..\"` resolves to the project root while being unequal to \"codexa-os\", so the\nguard passed and write_file, delete_file and apply_patch all operated on Codexa's own code."
+    },
+    {
+      "type": "function",
+      "name": "repo_root",
+      "docstring": "Resolve a repository name to its root, refusing anything that escapes the repository store.\n\nTwo separate protections, both load-bearing.\n\nContainment: the resolved path must sit directly inside DATA_DIR/\"repos\". Previously this only\nchecked `root.exists()`, so a caller-supplied name containing `..` produced any directory on the\nmachine \u2014 `\"../..\"` reached the project root, `\"../../..\"` its parent. Repository names arrive\nfrom HTTP request bodies and from model-authored tool arguments, so this is reachable input, and\nevery path check downstream inherits whatever root it returns: `_safe` faithfully confines\ntraversal to a root that was already wrong.\n\nShape: a repository is one path segment. Rejecting separators and `..` up front means the\nresolve below cannot be steered at all, rather than being steered and then caught."
+    },
+    {
+      "type": "function",
+      "name": "_safe",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_language",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "build_tree",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "read_file",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "save_file",
+      "docstring": "Write a human edit to disk and return the new sha. Refuses \u2014 rather than corrupts \u2014 anything\nthe editor could not have shown faithfully, and anything that changed since it was opened."
+    },
+    {
+      "type": "function",
+      "name": "search_files",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "write_file",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "create_directory",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "delete_path",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "move_path",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "edit_file",
+      "docstring": "Surgical find-replace \u2014 requires old_text to appear exactly once, same discipline as the\neditor's own Edit tool. Safer than a full-file write_file for a small, targeted change."
+    },
+    {
+      "type": "function",
+      "name": "create_files_router",
+      "docstring": "`on_saved(repository)` runs after an IDE save, in the background \u2014 the app wires it to the\ngraph re-index, so Strata, the graph and architecture reflect a hand edit without a reload."
+    }
+  ],
+  "graph\\api.py": [
+    {
+      "type": "function",
+      "name": "create_graph_router",
+      "docstring": null
+    }
+  ],
+  "graph\\causal.py": [
+    {
+      "type": "class",
+      "name": "CausalEventInput",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "CausalChainRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "CausalChainResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "CausalGraphOverview",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "CausalGraphService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "record_chain",
+          "docstring": null
+        },
+        {
+          "name": "overview",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "graph\\consistency.py": [
+    {
+      "type": "class",
+      "name": "ProjectionCount",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ConsistencyCheckRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ConsistencyCheckResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "MultiStoreConsistencyService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "check",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "graph\\data_flow.py": [
+    {
+      "type": "class",
+      "name": "DataFlowTraceRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "DataFlowTraceResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "DataFlowTracingService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "create_trace",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "graph\\events.py": [
+    {
+      "type": "class",
+      "name": "GraphEvent",
+      "docstring": "Source-of-truth event that projection workers can replay.",
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GraphEventWriter",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "append",
+          "docstring": "Persist an event for Postgres-backed graph projections."
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "InMemoryGraphEventWriter",
+      "docstring": "Test/dev event writer until Postgres persistence is wired.",
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "append",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "PostgresGraphEventWriter",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "append",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "graph\\repository.py": [
+    {
+      "type": "class",
+      "name": "GraphRepository",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "add_node",
+          "docstring": "Persist a graph node in Postgres source of truth."
+        },
+        {
+          "name": "add_edge",
+          "docstring": "Persist a spec-validated temporal graph edge."
+        },
+        {
+          "name": "list_nodes",
+          "docstring": "Return graph nodes for query APIs and graph visualization."
+        },
+        {
+          "name": "list_edges_at",
+          "docstring": "Return active edges, optionally as of a point in time."
+        },
+        {
+          "name": "list_all_edges",
+          "docstring": "Return all temporal edges, including edges no longer active."
+        },
+        {
+          "name": "remove_by_repository",
+          "docstring": "Delete every node (and edges touching them) tagged with this repository. Returns the\nnumber of nodes removed."
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "InMemoryGraphRepository",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "add_node",
+          "docstring": null
+        },
+        {
+          "name": "add_edge",
+          "docstring": null
+        },
+        {
+          "name": "list_nodes",
+          "docstring": null
+        },
+        {
+          "name": "list_edges_at",
+          "docstring": null
+        },
+        {
+          "name": "list_all_edges",
+          "docstring": null
+        },
+        {
+          "name": "remove_by_repository",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "PostgresGraphRepository",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "add_node",
+          "docstring": null
+        },
+        {
+          "name": "add_edge",
+          "docstring": null
+        },
+        {
+          "name": "list_nodes",
+          "docstring": null
+        },
+        {
+          "name": "list_edges_at",
+          "docstring": null
+        },
+        {
+          "name": "list_all_edges",
+          "docstring": null
+        },
+        {
+          "name": "remove_by_repository",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "graph\\schemas.py": [
+    {
+      "type": "class",
+      "name": "GraphNodeType",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GraphEdgeType",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GraphEdgeSourceType",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GraphNodeProvenance",
+      "docstring": "Where a node's CONTENT originated \u2014 a taint label, separate from who is allowed to edit it.\nLets any downstream consumer (verification, explanation, an auditor) tell \"this fact came from\nstatic analysis of our own code\" apart from \"this fact came from text an external web page\nwrote\", without re-deriving it from node_type. Optional and unset on older nodes.",
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GraphNodeCreate",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GraphNode",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GraphEdgeCreate",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "validate_spec_invariants",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "GraphEdge",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GraphSnapshot",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "GraphTimeline",
+      "docstring": null,
+      "methods": []
+    }
+  ],
+  "graph\\service.py": [
+    {
+      "type": "class",
+      "name": "GraphService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "add_node",
+          "docstring": null
+        },
+        {
+          "name": "add_edge",
+          "docstring": null
+        },
+        {
+          "name": "list_nodes",
+          "docstring": null
+        },
+        {
+          "name": "remove_repository",
+          "docstring": null
+        },
+        {
+          "name": "list_edges_at",
+          "docstring": null
+        },
+        {
+          "name": "list_all_edges",
+          "docstring": "All temporal edges, including edges that have been superseded (valid_to set)."
+        },
+        {
+          "name": "snapshot_at",
+          "docstring": null
+        },
+        {
+          "name": "timeline",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "learning\\api.py": [
+    {
+      "type": "function",
+      "name": "create_learning_router",
+      "docstring": null
+    }
+  ],
+  "learning\\policy_distillation.py": [
+    {
+      "type": "class",
+      "name": "PolicyDistillationRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "PolicyDistillationResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "PolicyDistillationService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "distill",
+          "docstring": null
+        },
+        {
+          "name": "_prompt_delta",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "memory\\api.py": [
+    {
+      "type": "function",
+      "name": "create_memory_router",
+      "docstring": null
+    }
+  ],
+  "memory\\conflict.py": [
+    {
+      "type": "class",
+      "name": "ConflictResolution",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "resolve_conflict",
+      "docstring": "Decides what happens when a new memory record's content would collide with an existing\nactive record for the same (repository, memory_type, title) key.\n\n- `corroborate`: the new record repeats the existing one \u2014 no new record needed, just reinforce\n  the existing one's trust/corroboration count.\n- `supersede`: the new record's evidence outweighs the existing one \u2014 the existing record is\n  soft-invalidated (kept for history, not deleted) and the new record becomes the active one.\n- `reject`: the existing record still outweighs the new, contradicting one \u2014 the existing record\n  stays active, and the new record is stored already-invalidated (so the contradiction itself is\n  on the record, auditable, without being surfaced by ordinary retrieval).\n\nScore = trust * corroboration_count. The new record is, by construction, always the more RECENT\none (it was just created) \u2014 a tie therefore favors the new record, folding recency in as the\ntie-breaker without needing a separate timestamp comparison."
+    }
+  ],
+  "memory\\context.py": [
+    {
+      "type": "function",
+      "name": "_truncate",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_relevance_score",
+      "docstring": "Keyword-overlap score (0.0-1.0+, title matches count 2x) plus a bonus when the query's\nphrasing signals the record's own memory_type is the one that actually answers it."
+    },
+    {
+      "type": "class",
+      "name": "ContextItem",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_in_repo",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_candidates",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_label",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_load_annotations",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "create_context_router",
+      "docstring": null
+    }
+  ],
+  "memory\\records_api.py": [
+    {
+      "type": "class",
+      "name": "MemoryCreate",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "create_memory_store_router",
+      "docstring": null
+    }
+  ],
+  "memory\\schemas.py": [
+    {
+      "type": "class",
+      "name": "IntentGraphRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "IntentGraphResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ConventionProfileRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ConventionProfileResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "EngineeringDNARequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "EngineeringDNAResult",
+      "docstring": null,
+      "methods": []
+    }
+  ],
+  "memory\\services.py": [
+    {
+      "type": "function",
+      "name": "_slug",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_source_artifact_node",
+      "docstring": null
+    },
+    {
+      "type": "class",
+      "name": "IntentGraphService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "record_chain",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "OrganizationalIntelligenceService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "record_convention_profile",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "EngineeringDNAService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "record_repo_convention",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "memory\\store.py": [
+    {
+      "type": "class",
+      "name": "MemoryRecord",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "RepositorySummary",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "MemoryStore",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "_load",
+          "docstring": null
+        },
+        {
+          "name": "_save",
+          "docstring": null
+        },
+        {
+          "name": "add",
+          "docstring": "Adds a record. If an active record already exists for this exact (repository,\nmemory_type, title) \u2014 the key every real write site in this codebase already treats as\nidentifying \"the same fact\" (e.g. \"What X is\", \"Stack & conventions\") \u2014 the new content is\nrun through the deterministic conflict resolver (backend/memory/conflict.py) instead of\njust being appended as an unreconciled duplicate. Existing call sites that always `remove()`\nbefore re-adding (the repo-load path) never hit an existing record here, so this is a pure\naddition for any caller that adds without first clearing \u2014 it was previously a silent gap\nwhere two same-titled records could coexist with no record of which was current."
+        },
+        {
+          "name": "remove",
+          "docstring": "Drop a repository's memories (optionally only those from a given source). Returns count."
+        },
+        {
+          "name": "list",
+          "docstring": "By default excludes soft-invalidated records (superseded or rejected \u2014 see `add()`'s\nconflict resolution) \u2014 ordinary retrieval should only ever see the currently-active fact.\nPass include_invalid=True for audit/history views that want the full record, contradictions\nincluded."
+        },
+        {
+          "name": "has_repository",
+          "docstring": null
+        },
+        {
+          "name": "repositories",
+          "docstring": null
+        },
+        {
+          "name": "context_block",
+          "docstring": "A compact memory brief for injecting into any model's prompt."
+        },
+        {
+          "name": "_seed_self",
+          "docstring": "Seed the platform's own repository so Memory has real content from the first load."
+        }
+      ]
+    }
+  ],
+  "observability\\api.py": [
+    {
+      "type": "class",
+      "name": "EventRecord",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "SnapshotMarker",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "AgentNode",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "AgentNetwork",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_clip",
+      "docstring": "Shorten for a one-line ledger entry at a word boundary, marking the cut. A hard slice produced\nentries like \"declared in frontend/package.j\", which read as broken rather than shortened."
+    },
+    {
+      "type": "function",
+      "name": "_summary",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_attribute",
+      "docstring": "Which agent produced this event."
+    },
+    {
+      "type": "function",
+      "name": "create_observability_router",
+      "docstring": null
+    }
+  ],
+  "perception\\api.py": [
+    {
+      "type": "function",
+      "name": "create_perception_router",
+      "docstring": null
+    }
+  ],
+  "perception\\repository.py": [
+    {
+      "type": "class",
+      "name": "ArtifactRepository",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "save",
+          "docstring": "Persist raw and isolated artifact forms to Postgres source of truth."
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "InMemoryArtifactRepository",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "save",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "PostgresArtifactRepository",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "save",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "perception\\schemas.py": [
+    {
+      "type": "class",
+      "name": "TrustLevel",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ArtifactKind",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "IsolationFinding",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "IngestArtifactRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "IsolatedArtifact",
+      "docstring": null,
+      "methods": []
+    }
+  ],
+  "perception\\trust_boundary.py": [
+    {
+      "type": "class",
+      "name": "TrustBoundaryService",
+      "docstring": "Converts external artifact text into safe agent-context data.",
+      "methods": [
+        {
+          "name": "isolate",
+          "docstring": null
+        },
+        {
+          "name": "_instruction_reasons",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "repository\\analyze.py": [
+    {
+      "type": "function",
+      "name": "_query_for",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_parser_for",
+      "docstring": null
+    },
+    {
+      "type": "class",
+      "name": "Symbol",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "symbol_key",
+      "docstring": "The identity used for graph nodes, call edges and memory entries: file#Class.method."
+    },
+    {
+      "type": "function",
+      "name": "_qualify",
+      "docstring": "Prefix a definition with its enclosing class, stopping at a function boundary so a helper\nnested inside a method stays a plain function rather than posing as a method."
+    },
+    {
+      "type": "class",
+      "name": "Analysis",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_rel",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_kind",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_resolve_relative",
+      "docstring": "spec_path is a relative filesystem-style path (dots-as-slashes already applied)."
+    },
+    {
+      "type": "function",
+      "name": "_resolve_absolute",
+      "docstring": "Best-effort resolution of an absolute dotted import (e.g. `import pkg.mod`) against repo root."
+    },
+    {
+      "type": "function",
+      "name": "_py_import_specs",
+      "docstring": "Returns (spec, is_relative) pairs for a python import_statement/import_from_statement node."
+    },
+    {
+      "type": "function",
+      "name": "_js_import_specs",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_walk",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "analyze_repo",
+      "docstring": null
+    }
+  ],
+  "repository\\api.py": [
+    {
+      "type": "class",
+      "name": "LoadRepoRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "CreateRepoRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "RepositoryInfo",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "RepoDocs",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "RepoListing",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "DeleteRepoResponse",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_repo_name",
+      "docstring": null
+    },
+    {
+      "type": "class",
+      "name": "CloneError",
+      "docstring": "A load that failed for a reason the user can act on; the message is shown to them verbatim.",
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_normalize_url",
+      "docstring": "The clone URL for whatever the user pasted, or None if it isn't one.\n\nPeople paste what their browser shows: `https://github.com/owner/repo/tree/main`, or\n`github.com/owner/repo` with no scheme. Handing those to git verbatim failed (\"repository\n'.../tree/main/' not found\") or was rejected outright, so normalise them to the repository root."
+    },
+    {
+      "type": "function",
+      "name": "_canonical",
+      "docstring": "Comparable identity for a repository URL: host/owner/repo, lower-cased, no .git, no scheme."
+    },
+    {
+      "type": "function",
+      "name": "_owner",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_clone_error_message",
+      "docstring": "git's stderr, turned into one sentence that says what to do. Its LAST line is usually the\nuseless \"Cloning into '...'\" preamble, which is what the old message showed."
+    },
+    {
+      "type": "function",
+      "name": "_git_clone",
+      "docstring": "Clone `url` into `dest`, raising CloneError with an actionable message on any failure.\n\nCredential prompts are disabled: a private or mistyped URL used to make git wait on a terminal\nprompt (or pop a Git Credential Manager window) until the timeout. Now it fails in a second.\n`core.longpaths` lets deep JavaScript trees check out on Windows."
+    },
+    {
+      "type": "function",
+      "name": "_clone_tmp_root",
+      "docstring": "Where clones are written before being moved into `.codexa/repos/`. Deliberately the system temp\nfolder, NOT the repository folder: Codexa lives inside OneDrive, and OneDrive's filter driver\nscanning a pack file while git is still indexing it is a known way to get \"fetch-pack: invalid\nindex-pack output\". Git gets an unsynced folder to write in; only the finished checkout moves."
+    },
+    {
+      "type": "function",
+      "name": "_lock_for",
+      "docstring": "One load per repository at a time \u2014 a double-clicked \"Clone\" must not race itself."
+    },
+    {
+      "type": "function",
+      "name": "_read_meta",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_is_healthy_clone",
+      "docstring": "Whether `dest` is a genuine, complete git checkout \u2014 not merely a directory that exists.\n\nThe specific failure this guards against: `git clone` interrupted mid-operation (observed live\n\u2014 a backend restart landing while a clone subprocess was running) leaves a `.git` directory\nbehind with no working tree and a HEAD that cannot resolve. `dest.exists()` is true for that\ndirectory exactly as it is for a healthy one, so a check that stops there cannot tell them\napart \u2014 which is how a broken clone gets ingested as an empty repository and then silently\nre-ingested as the same empty repository on every later load of the same URL.\n\n`rev-parse HEAD` alone is NOT enough, and shipping it alone was itself a bug, caught the first\ntime this ran against a real broken clone rather than a synthetic one: every cloned repository\nlives under `.codexa/repos/`, which is itself INSIDE Codexa's own git-tracked working tree. When\na nested clone's own `.git` is broken, git does not fail \u2014 it walks UP the directory tree\nlooking for a valid repository, exactly as it is designed to when you run a git command from a\nsubdirectory of a real repo, and finds Codexa's own `.git` several levels above. `rev-parse\nHEAD` then happily returns Codexa's own commit hash, and this function would report a\ngenuinely empty, broken clone as healthy \u2014 the opposite of what it exists to catch, and worse\nthan never having the check at all, because it looks confirmed rather than merely unverified.\n`--show-toplevel` names which repository git actually resolved; requiring it to equal `dest`\nitself (not an ancestor of it) is what makes this immune to that walk-up."
+    },
+    {
+      "type": "function",
+      "name": "_replace_directory",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_make_writable",
+      "docstring": "rmtree error hook: git writes its pack files and indexes READ-ONLY, and on Windows a read-only\nfile cannot be deleted. That alone made every re-clone fail with \"[WinError 5] Access is denied\"\non `.git/objects/pack/*.idx` \u2014 after deleting everything else in the old checkout, so each\nfailed attempt also destroyed the working copy it was replacing. Clear the flag and retry."
+    },
+    {
+      "type": "function",
+      "name": "_discard",
+      "docstring": "Best-effort removal of a temp or leftover directory; logs instead of raising."
+    },
+    {
+      "type": "function",
+      "name": "_remove_directory",
+      "docstring": "Delete `dest` and confirm it is actually gone before returning. Raises OSError (the last\nreal one seen) if it still exists after every retry \u2014 never silently leaves a partial directory\nbehind for the caller to clone into."
+    },
+    {
+      "type": "function",
+      "name": "_slugify",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_read_manifest",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_read_readme",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_tree",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_analyze",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_digest_text",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "create_repository_router",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "create_local_repository",
+      "docstring": "Scaffold a brand-new, empty project on disk and ingest it \u2014 shared by the /repository/create\nroute and the create_project agent tool, so \"the LLM starts a project on its own\" and \"a user\nstarts one from the UI\" go through identical, equally-real ingestion."
+    },
+    {
+      "type": "function",
+      "name": "_destination",
+      "docstring": "The folder name to clone `url` into. Reuses the plain repository name when that folder is\nfree, is already this repository's clone, or is a broken clone (a `.git` that no longer resolves\n\u2014 safe to replace). Anything else living there (a different repository with the same name, or a\nproject the agent created locally) is never overwritten: use `owner-repo` instead."
+    },
+    {
+      "type": "function",
+      "name": "load_repository",
+      "docstring": "Clone (or reuse) a repository and ingest it \u2014 the whole /repository/load pipeline.\n\nOrder of operations, each step leaving the disk consistent if the next one fails:\n  1. normalise the URL and pick a folder that is safe to use;\n  2. under a per-repository lock, sweep temp clones a previous failed load left behind;\n  3. if there is no healthy checkout, clone into a brand-new temp folder (OneDrive-safe) and only\n     then swap it into place \u2014 a failed clone never touches the existing folder;\n  4. record the URL, then ingest (graph, memory, routes, commits, intent, health)."
+    },
+    {
+      "type": "function",
+      "name": "_run_annotation",
+      "docstring": "Re-parses (cheap) and annotates symbols whose content hash changed since the last pass."
+    },
+    {
+      "type": "function",
+      "name": "_ingest",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "rehydrate_repositories",
+      "docstring": "Rebuild the graph/score for every previously-cloned repo.\n\nThe graph is in-memory and empties on every backend restart, while `.codexa/repos/<name>`\nclones survive on disk \u2014 without this, a restart silently leaves Graph/Architecture/Repository\nscore blank for any repo that isn't the seed until the user re-pastes its URL to reload it."
+    },
+    {
+      "type": "function",
+      "name": "_refresh_annotations_async",
+      "docstring": "Re-explain only the functions an edit changed, in the background (unchanged ones are reused by\nfingerprint). One pass per repository at a time; an edit arriving mid-pass is picked up by the\nnext edit's pass."
+    },
+    {
+      "type": "function",
+      "name": "reindex_repository",
+      "docstring": "Re-parses a repository from disk and rebuilds its graph/memory footprint.\n\nBefore this, the graph was only ever built once, at initial load (`_ingest`, above) or an\nexplicit `/reload` \u2014 a chat-agent edit via write_file/edit_file/delete_file never touched it, so\nlookup_symbol/get_dependencies/find_references kept returning pre-edit results indefinitely\nafter any agent-driven change. Called from the agent job loop (backend/agents/jobs.py) once a\nturn that mutated files finishes.\n\nClears the repository's existing graph nodes/edges first (`remove_repository`) rather than\nrelying on `_ingest`'s per-node upsert-by-stable_id alone \u2014 that leaves deleted files' and\nsymbols' nodes as zombies forever, since nothing ever removes a stable_id that stopped\nreappearing. A full clear-then-rebuild is more expensive than a true incremental single-file\nreindex would be, but reuses the exact tested ingestion path instead of a second, divergent\ngraph-building implementation, and repos edited through chat are typically small."
+    },
+    {
+      "type": "function",
+      "name": "_load_persisted_docs",
+      "docstring": "Recover previously-generated docs from durable memory (survives a backend restart)."
+    },
+    {
+      "type": "function",
+      "name": "_persist_docs",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_generate_docs",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_fallback_docs",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_mem",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_functions_summary",
+      "docstring": null
+    }
+  ],
+  "repository\\coupling.py": [
+    {
+      "type": "class",
+      "name": "CouplingEdge",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "mine_change_coupling",
+      "docstring": null
+    }
+  ],
+  "repository\\intent.py": [
+    {
+      "type": "class",
+      "name": "Route",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "Commit",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "Decision",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "summary",
+          "docstring": null
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "Convention",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "_read",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_line_of",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_join",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_last_identifier",
+      "docstring": "Express handlers come last: `protect, adminOnly, createExam` -> createExam. An inline arrow\nfunction or anything that isn't a bare identifier yields None."
+    },
+    {
+      "type": "function",
+      "name": "_resolve_js",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "extract_routes",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "owns_git",
+      "docstring": "True only when `root` is itself the top of a git work tree. A directory with no `.git` of its\nown would otherwise report the history of whatever repository contains it."
+    },
+    {
+      "type": "function",
+      "name": "mine_commits",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_manifests",
+      "docstring": "Every dependency manifest in the tree: rel path -> {package: version}."
+    },
+    {
+      "type": "function",
+      "name": "_matches",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_import_re",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "extract_decisions",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "extract_conventions",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "add_intent_to_graph",
+      "docstring": "Writes routes, commits, decisions and conventions for one repository. Every node carries the\n`repository` property so scoping and `remove_repository` treat it like the rest of the repo."
+    }
+  ],
+  "repository\\scoring.py": [
+    {
+      "type": "function",
+      "name": "_clamp",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "score_repository",
+      "docstring": null
+    }
+  ],
+  "repository\\semantic.py": [
+    {
+      "type": "function",
+      "name": "_load_blob",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_save_blob",
+      "docstring": null
+    },
+    {
+      "type": "function",
+      "name": "_annotate_one",
+      "docstring": "Try each available light-tier model in turn \u2014 a rate-limited provider shouldn't silently\ndrop the symbol; fall through to the next candidate before giving up."
+    },
+    {
+      "type": "function",
+      "name": "_priority",
+      "docstring": "Order symbols so the per-run cap is spent on the ones questions are actually about.\n\nIn file order, the first 80 of httpx's 324 symbols were mostly private helpers and dunder\nmethods; `Client` and `Client.send` \u2014 the subject of the first question anyone asks \u2014 had no\nmeaning at all, so the agent read the file to find out. Ranking classes strictly first was the\nnext mistake: httpx has 87 of them, which used the whole second pass and still left `send`\nwithout a meaning, and nine slots went to test fixtures.\n\nSo: library code before tests, public before private, then by how many call sites point at the\nsymbol, with a class counted as if three things called it."
+    },
+    {
+      "type": "function",
+      "name": "annotate_repository_symbols",
+      "docstring": "Annotate up to _MAX_ANNOTATE_PER_RUN symbols whose content hash changed (or is new), most\nimportant first (see _priority).\n\nReturns {\"annotated\": n, \"reused\": n, \"skipped\": n} for observability."
+    },
+    {
+      "type": "function",
+      "name": "get_annotation",
+      "docstring": null
+    }
+  ],
+  "simulation\\api.py": [
+    {
+      "type": "function",
+      "name": "create_simulation_router",
+      "docstring": null
+    }
+  ],
+  "simulation\\chaos.py": [
+    {
+      "type": "class",
+      "name": "ChaosScenarioKind",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ChaosPremortemRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ChaosScenario",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ChaosPremortemResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ChaosPremortemService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "plan",
+          "docstring": null
+        },
+        {
+          "name": "_required_scenarios",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "simulation\\engine.py": [
+    {
+      "type": "class",
+      "name": "SimulationStatus",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "SimulationRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "SimulationResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "EngineeringSimulationEngine",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "run",
+          "docstring": null
+        },
+        {
+          "name": "_predicted_failures",
+          "docstring": null
+        },
+        {
+          "name": "_has_explicit_restore_step",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "simulation\\witness.py": [
+    {
+      "type": "function",
+      "name": "hash_graph_state",
+      "docstring": "A stable hash of the current properties of exactly these graph nodes \u2014 the ids a\nblast-radius traversal actually touched (both the target and everything downstream), not the\nwhole graph. Order-independent (sorted by id) so the same node set always hashes the same way\nregardless of how the graph happens to iterate them."
+    }
+  ],
+  "trust_safety\\api.py": [
+    {
+      "type": "function",
+      "name": "create_trust_safety_router",
+      "docstring": null
+    }
+  ],
+  "trust_safety\\confidence.py": [
+    {
+      "type": "class",
+      "name": "ConfidenceCalibrationRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ConfidenceCalibrationResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ConfidenceCalibrationService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "calibrate",
+          "docstring": null
+        },
+        {
+          "name": "list_calibrations",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "trust_safety\\economics.py": [
+    {
+      "type": "class",
+      "name": "EngineeringEconomicsRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "EngineeringEconomicsResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "EngineeringEconomicsService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "estimate",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "trust_safety\\explain.py": [
+    {
+      "type": "class",
+      "name": "ExplanationSentence",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "Explanation",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "function",
+      "name": "explain_incident",
+      "docstring": "Builds a causal-chain explanation for one incident-learning record, purely from graph\ntraversal. Returns an empty narrative (not an error) if nothing was ever recorded for this id \u2014\n\"no explanation available\" is itself an honest answer, never replaced with a guess."
+    }
+  ],
+  "trust_safety\\health.py": [
+    {
+      "type": "class",
+      "name": "RepositoryHealthRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "RepositoryHealthResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "RepositoryHealthService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "score",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "trust_safety\\incident.py": [
+    {
+      "type": "class",
+      "name": "IncidentLearningRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "IncidentLearningResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "IncidentLearningService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "record",
+          "docstring": null
+        },
+        {
+          "name": "_causal_node",
+          "docstring": null
+        },
+        {
+          "name": "_edge",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "trust_safety\\policy.py": [
+    {
+      "type": "class",
+      "name": "PolicyDecision",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ExecutionGateRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ExecutionGateResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "PolicyEngine",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "evaluate_execution_gate",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "trust_safety\\verification.py": [
+    {
+      "type": "class",
+      "name": "VerificationStatus",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "VerificationGate",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "VerificationRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "VerificationResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "VerificationService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "verify_proposal",
+          "docstring": null
+        },
+        {
+          "name": "_banned_stack_gate",
+          "docstring": null
+        },
+        {
+          "name": "_test_intent_gate",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "understanding\\api.py": [
+    {
+      "type": "function",
+      "name": "create_understanding_router",
+      "docstring": null
+    }
+  ],
+  "understanding\\architecture_evolution.py": [
+    {
+      "type": "class",
+      "name": "ArchitectureObservation",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ArchitectureTrendRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "MetricTrend",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ArchitectureTrendResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "ArchitectureEvolutionService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "record_trend",
+          "docstring": null
+        },
+        {
+          "name": "list_trends",
+          "docstring": null
+        },
+        {
+          "name": "_trend",
+          "docstring": null
+        },
+        {
+          "name": "_alerts",
+          "docstring": null
+        },
+        {
+          "name": "_bottleneck_eta_days",
+          "docstring": null
+        }
+      ]
+    }
+  ],
+  "understanding\\nightly_review.py": [
+    {
+      "type": "class",
+      "name": "NightlyArchitectureReviewRequest",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "NightlyArchitectureReviewResult",
+      "docstring": null,
+      "methods": []
+    },
+    {
+      "type": "class",
+      "name": "NightlyArchitectureReviewService",
+      "docstring": null,
+      "methods": [
+        {
+          "name": "__init__",
+          "docstring": null
+        },
+        {
+          "name": "run",
+          "docstring": null
+        }
+      ]
+    }
+  ]
+}
