@@ -101,7 +101,11 @@ def _candidates(node: GraphNode) -> list[str]:
     path = props.get("path")
     if isinstance(path, str):
         out.append(path)
-        out.append(path.split("/")[-1])
+        filename = path.rsplit("/", 1)[-1]
+        out.append(filename)
+        # Yield the stem without extension so users can omit extensions in chat
+        if "." in filename:
+            out.append(filename.rsplit(".", 1)[0])
     tail = node.stable_id.split("://")[-1]
     out.append(tail)
     out.append(tail.split("/")[-1])
@@ -129,6 +133,16 @@ def _resolve_targets(description: str, nodes: list[GraphNode]) -> list[GraphNode
         exact = [n for n in files if n.properties["path"].lower() in mentioned]
         if not exact:
             exact = [n for n in files if n.properties["path"].lower().rsplit("/", 1)[-1] in mentioned]
+        
+        # Fallback: if user typed extension wrong (e.g., args.yml vs args.yaml)
+        if not exact:
+            import difflib
+            basenames = {n.properties["path"].lower().rsplit("/", 1)[-1]: n for n in files}
+            for m in mentioned:
+                matches = difflib.get_close_matches(m, basenames.keys(), n=1, cutoff=0.8)
+                if matches:
+                    exact.append(basenames[matches[0]])
+
         if exact:
             return exact[:6]
 

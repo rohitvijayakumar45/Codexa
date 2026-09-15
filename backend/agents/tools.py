@@ -3364,7 +3364,7 @@ _GROUP_SIGNALS: dict[str, _re.Pattern[str]] = {
     ),
     # External
     "external": _re.compile(
-        r"\b(search.?the.?web|google|look.?up.?online|tavily|stackoverflow|"
+        r"\b(web.?search|search.?the.?web|google|look.?up.?online|tavily|stackoverflow|"
         r"documentation|docs.?online|npm.?package|pip.?package)\b",
         _re.IGNORECASE,
     ),

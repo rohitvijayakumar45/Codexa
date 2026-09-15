@@ -32,6 +32,9 @@ litellm.drop_params = True
 
 ZAI_API_BASE = "https://api.z.ai/api/paas/v4"
 TOKENROUTER_API_BASE = "https://api.tokenrouter.com/v1"
+AEROLINK_API_BASE = "https://cgapi.aerolink.lat/v1"
+SILICONFLOW_API_BASE = "https://api.siliconflow.com/v1"
+UPSTAGE_API_BASE = "https://api.upstage.ai/v1"
 
 # id -> (label, context_window, tier, provider). Context windows are the models' documented limits.
 #
@@ -65,6 +68,7 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     # for 2.5-flash on newer keys ("no longer available to new users") names this as the successor.
     "gemini/gemini-3.6-flash": ("Gemini 3.6 Flash", 1048576, "light", "gemini"),
     "groq/openai/gpt-oss-20b": ("GPT-OSS 20B (Groq)", 131072, "light", "groq"),
+    "groq/groq/compound-mini": ("Compound Mini (Groq)", 131072, "light", "groq"),
     "gemini/gemini-2.5-flash": ("Gemini 2.5 Flash", 1048576, "light", "gemini"),
     "openrouter/nvidia/nemotron-3.5-lightning:free": ("Nemotron 3.5 Lightning (free)", 1000000, "light", "openrouter"),
     # Tier is "ultra_heavy", not "balanced": tier_of() is what jobs.py's run_round uses to pick the
@@ -73,6 +77,13 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     # on. It still appears in the heavy/balanced _TIER_ORDER lists (those are "who can serve this
     # task", a separate question) so nothing loses GLM as a fallback option.
     "tokenrouter/z-ai/glm-5.3-free": ("GLM 5.3 (free, TokenRouter)", 128000, "ultra_heavy", "tokenrouter"),
+    "aerolink/gpt-5.6-sol": ("GPT-5.6 Sol (Aerolink)", 200000, "ultra_heavy", "aerolink"),
+    "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash": ("DeepSeek V4.1 Flash (SiliconFlow)", 128000, "heavy", "siliconflow"),
+    "upstage/solar-pro4": ("Solar Pro 4 (Upstage)", 128000, "heavy", "upstage"),
+    # Dedicated debug/testing model for Solar Pro - uses UPSTAGE_DEBUG_API_KEY. Kept in "debug"
+    # tier so automatic task routing and failover rings never pick it up; reachable explicitly by
+    # name (e.g. for testing, benchmarks, or overrides) without consuming primary key quota.
+    "upstage_debug/solar-pro4": ("Solar Pro 4 (Debug/Testing)", 128000, "debug", "upstage_debug"),
     # Real function-calling support (unlike several free/light entries above) — a solid default
     # for tool-orchestration test runs. "global." is this account's actual cross-region inference
     # profile for Haiku 4.5 (confirmed in the Bedrock console under ap-south-2 — the generic
@@ -100,6 +111,10 @@ _PROVIDER_ENV = {
     "groq": "GROQ_API_KEY",
     "gemini": "GEMINI_API_KEY",
     "zai": "ZAI_API_KEY",
+    "aerolink": "AEROLINK_API_KEY",
+    "siliconflow": "SILICONFLOW_API_KEY",
+    "upstage": "UPSTAGE_API_KEY",
+    "upstage_debug": "UPSTAGE_DEBUG_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
     "tokenrouter": "TOKENROUTER_API_KEY",
     # litellm's own env var name for Bedrock's newer bearer-token auth (not the traditional
@@ -124,9 +139,12 @@ _TIER_ORDER: dict[str, list[str]] = {
     # Gemini's entire budget for the delegated workers (_WORKER_RING) instead of making the
     # orchestrator and its own workers compete for the same buckets.
     "ultra_heavy": [
+        "aerolink/gpt-5.6-sol",
         "tokenrouter/z-ai/glm-5.3-free",
     ],
     "heavy": [
+        "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash",
+        "upstage/solar-pro4",
         "gemini/gemini-3.8-flash",
         # 3.7 sits right behind 3.8 now too — same key pool, so this isn't extra quota, but a
         # 3.8 rate limit (all keys exhausted) still leaves 3.7 genuinely reachable moments later
@@ -160,6 +178,7 @@ _TIER_ORDER: dict[str, list[str]] = {
         # candidates from the front of this list, so this is also what makes the planner use Gemini.
         "gemini/gemini-3.6-flash",
         "gemini/gemini-3.7-flash",
+        "groq/groq/compound-mini",
         "groq/openai/gpt-oss-20b",
         "gemini/gemini-2.5-flash",
         "openrouter/nvidia/nemotron-3.5-lightning:free",
@@ -184,9 +203,11 @@ _FAILOVER_RING: dict[str, list[str]] = {
     # on wrap, so a new lap genuinely retries each key after real time has passed) rather than
     # migrating the orchestrator onto the worker pool.
     "ultra_heavy": [
+        "aerolink/gpt-5.6-sol",
         "tokenrouter/z-ai/glm-5.3-free",
     ],
     "heavy": [
+        "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash",
         "gemini/gemini-3.8-flash",
         "gemini/gemini-3.7-flash",
         "tokenrouter/z-ai/glm-5.3-free",
@@ -528,7 +549,7 @@ class LLMClient:
                 "tier": tier,
                 "default": model == self.default_model,
             })
-        return out
+        return sorted(out, key=lambda x: x["label"].lower())
 
     # --- calling ------------------------------------------------------------
     def _provider_of(self, model: str) -> str:
@@ -580,12 +601,29 @@ class LLMClient:
         # exactly like every other provider. These two branches used to hardcode os.getenv(...) and
         # return early, silently bypassing the entire rotation mechanism: adding a second GLM key
         # did literally nothing, and a single key's quota was the hard ceiling for every GLM call.
-        if model.startswith("zai/") or model.startswith("tokenrouter/"):
+        if model.startswith("zai/") or model.startswith("tokenrouter/") or model.startswith("aerolink/") or model.startswith("siliconflow/") or model.startswith("upstage/") or model.startswith("upstage_debug/"):
             is_zai = model.startswith("zai/")
-            provider = "zai" if is_zai else "tokenrouter"
+            is_aerolink = model.startswith("aerolink/")
+            is_siliconflow = model.startswith("siliconflow/")
+            is_upstage = model.startswith("upstage/")
+            is_upstage_debug = model.startswith("upstage_debug/")
+            
+            if is_aerolink: provider = "aerolink"
+            elif is_siliconflow: provider = "siliconflow"
+            elif is_upstage: provider = "upstage"
+            elif is_upstage_debug: provider = "upstage_debug"
+            elif is_zai: provider = "zai"
+            else: provider = "tokenrouter"
+            
+            if is_aerolink: api_base = AEROLINK_API_BASE
+            elif is_siliconflow: api_base = SILICONFLOW_API_BASE
+            elif is_upstage or is_upstage_debug: api_base = UPSTAGE_API_BASE
+            elif is_zai: api_base = ZAI_API_BASE
+            else: api_base = TOKENROUTER_API_BASE
+            
             return {
                 "model": "openai/" + model.split("/", 1)[1],
-                "api_base": ZAI_API_BASE if is_zai else TOKENROUTER_API_BASE,
+                "api_base": api_base,
                 "api_key": self._current_key(model) or os.getenv(_PROVIDER_ENV[provider], ""),
             }
         kwargs: dict[str, Any] = {"model": model}
@@ -667,8 +705,28 @@ class LLMClient:
                     # Publish the live wrapper so CancellableStream.close() can tear it down. Set on
                     # every attempt, because key failover replaces it.
                     _live["stream"] = provider_stream
+
+                buffer = []
+                has_content = False
                 for chunk in provider_stream:
-                    emitted = True
+                    buffer.append(chunk)
+                    # Check if this chunk carries actual content or tool calls
+                    if getattr(chunk, "choices", None):
+                        delta = getattr(chunk.choices[0], "delta", None)
+                        if delta and (getattr(delta, "content", None) or getattr(delta, "tool_calls", None)):
+                            has_content = True
+                            break
+
+                if not has_content and buffer:
+                    # TokenRouter GLM empty stream bug: API returned 200 OK but instantly stopped with no content
+                    if self._advance_key(model):
+                        continue
+                    # If out of keys, fall through and yield the empty chunks
+
+                emitted = True
+                for chunk in buffer:
+                    yield chunk
+                for chunk in provider_stream:
                     yield chunk
                 return
             except Exception as exc:
