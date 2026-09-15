@@ -51,6 +51,7 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     "nvidia_nim/deepseek-ai/deepseek-v4-pro-0813": ("DeepSeek V4 Pro", 128000, "heavy", "nvidia"),
     "nvidia_nim/nvidia/nemotron-3-super-120b-a12b": ("Nemotron 3 Super 120B", 1000000, "heavy", "nvidia"),
     "groq/openai/gpt-oss-120b": ("GPT-OSS 120B (Groq)", 131072, "heavy", "groq"),
+    "zai/glm-4.7-flash": ("GLM 4.7 Flash (Z.ai)", 128000, "heavy", "zai"),
     # Balanced tier
     "gemini/gemini-3.7-flash": ("Gemini 3.7 Flash", 1048576, "balanced", "gemini"),
     "groq/qwen/qwen3.6-27b": ("Qwen3.6 27B (Groq)", 131072, "balanced", "groq"),
@@ -142,21 +143,23 @@ _TIER_ORDER: dict[str, list[str]] = {
         "aerolink/gpt-5.6-sol",
         "tokenrouter/z-ai/glm-5.3-free",
     ],
+    # Working-first ordering (verified live 2026-09-15): solar-pro4, gemini-3.8/3.7 and groq's
+    # gpt-oss-120b all answer; siliconflow's DeepSeek (insufficient account balance) and
+    # tokenrouter's glm-5.3-free (503 "no available channel") are DEAD and were demoted out of the
+    # front so a failover never lands on them first. They stay in MODEL_REGISTRY for manual
+    # selection and auto-recover if their channels return; they're just no longer auto-preferred.
     "heavy": [
-        "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash",
         "upstage/solar-pro4",
         "gemini/gemini-3.8-flash",
-        # 3.7 sits right behind 3.8 now too — same key pool, so this isn't extra quota, but a
-        # 3.8 rate limit (all keys exhausted) still leaves 3.7 genuinely reachable moments later
-        # once the window rolls, and it's a stronger fallback than jumping straight to GLM.
+        # 3.7 sits right behind 3.8 — same key pool, so not extra quota, but a 3.8 rate limit (all
+        # keys exhausted) still leaves 3.7 reachable moments later once the window rolls.
         "gemini/gemini-3.7-flash",
-        # Kimi K3 used to sit here — removed: when a gemini-3.8-flash job hit its rate limit and
-        # fell back into this list, Kimi's slow/verbose non-tool-calling style meant the job just
-        # stalled and timed out instead of recovering. GLM 5.3 (already verified working, already
-        # praised for output quality in this session's own model comparisons) takes its slot.
-        "tokenrouter/z-ai/glm-5.3-free",
-        "nvidia_nim/nvidia/nemotron-3-super-120b-a12b",
         "groq/openai/gpt-oss-120b",
+        "nvidia_nim/nvidia/nemotron-3-super-120b-a12b",
+        "zai/glm-4.7-flash",
+        # Dead as of 2026-09-15 — kept last so manual/tier lookups still resolve them if revived.
+        "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash",
+        "tokenrouter/z-ai/glm-5.3-free",
     ],
     "balanced": [
         "gemini/gemini-3.7-flash",
@@ -205,12 +208,20 @@ _FAILOVER_RING: dict[str, list[str]] = {
     "ultra_heavy": [
         "aerolink/gpt-5.6-sol",
         "tokenrouter/z-ai/glm-5.3-free",
-    ],
-    "heavy": [
-        "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash",
+        # Working tail (2026-09-15): both GLM and aerolink are down, so a manually-selected
+        # ultra_heavy job would otherwise loop forever over two dead endpoints (observed). These
+        # let it recover instead of hanging. Remove once GLM/aerolink are healthy again.
+        "upstage/solar-pro4",
         "gemini/gemini-3.8-flash",
+    ],
+    # Verified-working only (2026-09-15). siliconflow (no balance) and glm-5.3-free (503) were
+    # removed — they were the first ring entry and turned every solar hiccup into a hard job
+    # failure. solar leads (it's the tier default), then the two independent-quota fallbacks.
+    "heavy": [
+        "upstage/solar-pro4",
+        "gemini/gemini-3.8-flash",
+        "groq/openai/gpt-oss-120b",
         "gemini/gemini-3.7-flash",
-        "tokenrouter/z-ai/glm-5.3-free",
     ],
 }
 
@@ -276,12 +287,14 @@ TASK_TIER: dict[str, str] = {
     "summary": "light",
     "retrieval": "light",
     # "chat" decides default_model, which is what the UI model picker starts on — and the picker's
-    # value is what /chat/agent actually runs a job with, overriding tier routing entirely. So while
-    # architecture/coder/planner all said ultra_heavy, every real job still ran on Gemini, because
-    # the picker defaulted here. Pointing chat at ultra_heavy is what makes GLM the orchestrator in
-    # practice rather than only on paper, and it restores the intended split: GLM orchestrates,
-    # Gemini's separate quota serves the delegated workers (_WORKER_RING).
-    "chat": "ultra_heavy",
+    # value is what /chat/agent actually runs a job with, overriding tier routing entirely.
+    # Points at "heavy" (not "ultra_heavy") because the ultra_heavy models are currently both dead
+    # upstream: tokenrouter's glm-5.3-free returns 503 "no available channel" and aerolink/gpt-5.6-sol
+    # rejects with missing-credentials — defaulting there gave every fresh chat a dead endpoint with
+    # no working failover (ultra_heavy's ring was GLM+aerolink, both down). heavy's first entry is a
+    # verified-working model (see _TIER_ORDER["heavy"]). GLM/aerolink stay manually selectable and
+    # regain their orchestrator role the moment their channels come back — flip this to ultra_heavy.
+    "chat": "heavy",
 }
 
 DEFAULT_CONTEXT = 32768
@@ -316,6 +329,32 @@ def is_rate_limit_error(exc: BaseException) -> bool:
         return True
     original = getattr(exc, "original_exception", None)
     return isinstance(original, litellm.RateLimitError)
+
+
+def is_transient_upstream_error(exc: BaseException) -> bool:
+    """True for a transient provider-side failure that a DIFFERENT model would likely serve — a
+    503 "no available channel"/ServiceUnavailable, a 500 InternalServerError, or a connection/
+    timeout blip. These are NOT rate limits (so is_rate_limit_error is False) and NOT client
+    errors (a 400/401 would fail identically on every model), so the right response is the same
+    model-failover the rate-limit path already does: rotate to the next model in the tier's ring
+    instead of retrying the dead endpoint and hard-failing. A genuine rate limit is deliberately
+    excluded here — it has its own richer path (key rotation, ring reset) via is_rate_limit_error.
+
+    MidStreamFallbackError subclasses ServiceUnavailableError but usually wraps a real rate limit;
+    is_rate_limit_error is checked first at the call site, so it never reaches this classifier."""
+    transient: tuple[type[BaseException], ...] = tuple(
+        t for t in (
+            getattr(litellm, "ServiceUnavailableError", None),
+            getattr(litellm, "InternalServerError", None),
+            getattr(litellm, "APIConnectionError", None),
+            getattr(litellm, "Timeout", None),
+            getattr(litellm, "APITimeoutError", None),
+        ) if isinstance(t, type)
+    )
+    if transient and isinstance(exc, transient):
+        return True
+    original = getattr(exc, "original_exception", None)
+    return bool(transient and isinstance(original, transient))
 
 
 class _RateLimiter:

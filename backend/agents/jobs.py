@@ -36,7 +36,7 @@ import litellm
 from backend.agents.context_window import GRACE_MULTIPLIER_IN_RADIUS, relevant_paths
 from backend.agents.controller import TASK_CONTEXT_MARK, ExecutionController
 from backend.agents.design_intent import DesignIntent, brief as design_brief, derive as derive_design
-from backend.agents.llm import LLMClient, is_rate_limit_error
+from backend.agents.llm import LLMClient, is_rate_limit_error, is_transient_upstream_error
 from backend.agents.plan import ExecutionPlan, TaskStatus, ValidationState, summarize_for_event
 from backend.agents.plan_builder import build_plan
 from backend.agents.receipts import ActionReceipt, already_performed, record_receipt, verify_chain
@@ -422,6 +422,22 @@ _MAX_STALL_RECOVERIES = 2
 # needing ~15 extensions to finish, so a small cap was interrupting healthy jobs to ask a human to
 # press a button that does exactly what this already does. Override with CODEXA_MAX_AUTO_CONTINUES.
 _MAX_AUTO_CONTINUES = int(os.getenv("CODEXA_MAX_AUTO_CONTINUES", "20") or 20)
+# Investigative intents (ANALYZE/EXPLAIN/CONVERSATION/SEARCH) produce a chat answer, not a
+# multi-file artifact — they have no required tools to satisfy, so "ran out of rounds" almost
+# always means the model kept exploring (search/read/verify every round) without ever concluding,
+# not that it legitimately needs 200 rounds to build something. Auto-continuing such a job 20×
+# just burns tokens on more digging (observed: an impact question spiraled to 35+ rounds / 1M+
+# tokens). Cap these low and, on the final continue, force a no-more-tools wrap-up answer. The
+# generous build budget above still applies to CREATE/MODIFY/DELETE.
+_MAX_AUTO_CONTINUES_INVESTIGATIVE = int(os.getenv("CODEXA_MAX_AUTO_CONTINUES_INVESTIGATIVE", "2") or 2)
+_INVESTIGATIVE_INTENTS = frozenset({
+    TaskIntent.ANALYZE, TaskIntent.EXPLAIN, TaskIntent.CONVERSATION, TaskIntent.SEARCH,
+})
+_WRAPUP_NUDGE = (
+    "[SYSTEM: You have gathered enough context. Provide your complete final answer to the user's "
+    "question NOW, in plain prose. Do NOT call any more tools — answer directly from what you "
+    "already know and have read.]"
+)
 # A REAL, observed failure mode: a provider (seen live on tokenrouter/GLM) accepted the request and
 # kept the connection open but never sent a single byte back — not even a keepalive — for over 25
 # minutes straight, with zero log activity. The per-call `timeout=` kwarg passed to litellm did NOT
@@ -1176,9 +1192,17 @@ class JobManager:
             # waiting for someone to click a button, which is the entire point of running a build
             # unattended overnight.
             recoverable_reason = job.error_reason if job.status == "error" else None
+            # Investigative questions (no artifact to build) get a low auto-continue cap so they
+            # can't spiral into endless exploration; builds keep the generous budget.
+            try:
+                _intent = TaskIntent((job.contract or {}).get("intent", TaskIntent.CONVERSATION.value))
+            except ValueError:
+                _intent = TaskIntent.CONVERSATION
+            _investigative = _intent in _INVESTIGATIVE_INTENTS and not (job.contract or {}).get("required_tools")
+            _auto_cap = _MAX_AUTO_CONTINUES_INVESTIGATIVE if _investigative else _MAX_AUTO_CONTINUES
             if not (
                 recoverable_reason in ("max_rounds", "stall_exhausted")
-                and job.auto_continues < _MAX_AUTO_CONTINUES
+                and job.auto_continues < _auto_cap
             ):
                 logger.warning(
                     "job %s: _run not auto-continuing (status=%r error_reason=%r "
@@ -1193,6 +1217,11 @@ class JobManager:
             if recoverable_reason == "max_rounds":
                 job.round_budget += _MAX_ROUNDS
                 reason_text = "ran out of tool-calling rounds"
+                # For an investigative question, don't hand it another 10 rounds to keep digging —
+                # tell it to conclude now. Re-nudged on each investigative continue so it wraps up
+                # as early as possible, but not if the tail already carries the nudge (idempotent).
+                if _investigative and (not job.messages or job.messages[-1].get("content") != _WRAPUP_NUDGE):
+                    job.messages.append({"role": "user", "content": _WRAPUP_NUDGE})
             else:
                 job.stall_recoveries = 0
                 reason_text = "the connection kept stalling"
@@ -1440,7 +1469,12 @@ class JobManager:
                     # (a ServiceUnavailableError subclass) - the narrower check silently missed it,
                     # which is why a real Gemini 429 fell all the way through to a hard job failure
                     # instead of even reaching this last-resort model switch.
-                    if is_rate_limit_error(exc):
+                    # Model-failover on a rate limit OR a transient upstream failure (503 "no
+                    # channel", 500, connection/timeout): both mean "this endpoint can't serve the
+                    # round right now, another model can", so both rotate through the tier's ring
+                    # instead of retrying the dead model and hard-failing. (A dead default model
+                    # like a de-listed free GLM channel is exactly this case.)
+                    if is_rate_limit_error(exc) or is_transient_upstream_error(exc):
                         tier = llm.tier_of(model)
                         # getattr, not a direct llm.failover_ring(tier) call: several test doubles
                         # implement the older tier_of/models_for_tier interface without this newer
