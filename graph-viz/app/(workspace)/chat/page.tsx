@@ -134,13 +134,17 @@ export default function ChatPage() {
       .map((it) => (it.content ? `- [${it.kind}] ${it.title}: ${it.content}` : `- ${it.title}`))
       .join("\n");
     return (
-      `You are working on the repository '${activeRepo}'. The facts below are a snapshot from when ` +
-      `the repo was last analyzed — they can be stale (files/directories may have been added, ` +
-      `moved, or deleted since). Do NOT invent features, modules, or use-cases these facts don't ` +
-      `support. But for anything about CURRENT file/directory existence or structure — especially ` +
-      `before reading, editing, or deleting something — call list_directory or search_code to check ` +
-      `the live filesystem instead of trusting this snapshot; don't answer "it doesn't exist" from ` +
-      `memory alone.\n${lines}`
+      `You are working on the repository '${activeRepo}'. Treat the facts below as a reliable MAP of ` +
+      `the codebase (files, key symbols, structure) from the last analysis — possibly slightly stale, ` +
+      `but your starting point: use it to go straight to the relevant code. Do NOT invent features, ` +
+      `modules, or use-cases these facts don't support.\n` +
+      `Prefer targeted graph tools — lookup_symbol, find_references, get_dependencies, search_code — ` +
+      `to trace relationships; they answer structural questions in one call. Open whole files with ` +
+      `read_file only to quote or confirm the specific code you will cite, not to discover what ` +
+      `exists. Answer as soon as you have enough to be correct — don't keep exploring for its own ` +
+      `sake.\n` +
+      `Re-check the live filesystem (list_directory / search_code) before you MODIFY or DELETE ` +
+      `anything, or if the map looks wrong — not merely before answering a question.\n${lines}`
     );
   }
   // Persistent conversations — survive tab switches and reloads.
