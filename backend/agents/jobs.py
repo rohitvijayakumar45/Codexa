@@ -1222,6 +1222,10 @@ class JobManager:
                 # as early as possible, but not if the tail already carries the nudge (idempotent).
                 if _investigative and (not job.messages or job.messages[-1].get("content") != _WRAPUP_NUDGE):
                     job.messages.append({"role": "user", "content": _WRAPUP_NUDGE})
+                    # message_rounds is index-matched to messages (compaction reads it
+                    # positionally) — append in lockstep or the next round IndexErrors. Tag it with
+                    # the upcoming round so this fresh directive isn't seen as stale and compacted.
+                    job.message_rounds.append(job.round + 1)
             else:
                 job.stall_recoveries = 0
                 reason_text = "the connection kept stalling"
