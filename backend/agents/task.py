@@ -97,6 +97,35 @@ _EXPLAIN = re.compile(
     re.IGNORECASE,
 )
 
+# ── Impact / consequence questions ──────────────────────────────────────────
+# "If we change X, what breaks?" / "what depends on Y?" / "impact of Z" are ANALYZE questions,
+# not MODIFY commands. The _MODIFY pattern matches a hypothetical "change"/"update" and would
+# otherwise force an edit_file contract onto a pure impact-analysis query — the exact defect
+# behind the Q2 benchmark run, where an impact question was contractually pushed to edit a file.
+_IMPACT_QUESTION = re.compile(
+    r"\b(what|which)\b[^?]{0,90}\b(break|breaks|broke|broken|affect|affects|affected|"
+    r"impact|impacts|impacted|depend|depends|dependent|downstream|ripple|consequence|"
+    r"consequences|knock-on)\b"
+    r"|\bimpact of\b|\bblast radius\b|\bwhat happens if\b|\bwhat would happen\b"
+    r"|\bif (we|i|you|they|one)\b[^?]{0,80}\bchang\w*\b[^?]{0,80}\b(what|which|break|affect)\b",
+    re.IGNORECASE,
+)
+# Standalone impact markers that are never an edit command however the sentence opens, so they
+# fire without the leading-interrogative guard ("impact of removing the cache layer").
+_IMPACT_STRONG = re.compile(
+    r"\bimpact of\b|\bblast radius\b|\bwhat happens if\b|\bwhat would happen\b|"
+    r"\bwhat breaks\b|\bwhat depends on\b|\bwhat.{0,20}\baffected\b",
+    re.IGNORECASE,
+)
+# The message must LEAD with an interrogative/conditional for the broader impact override to fire,
+# so a genuine command that trails a question ("Change the limit to 5, then tell me what breaks")
+# still classifies as MODIFY.
+_LEADS_QUESTION = re.compile(
+    r"^\s*#*\s*(if|what|which|how|when|would|will|does|do|is|are|can|could|should|"
+    r"suppose|assuming|were)\b",
+    re.IGNORECASE,
+)
+
 # ── Artifact detection ──────────────────────────────────────────────────────
 
 _HTML_FILE = re.compile(r"\b(html|webpage|page|landing|site|website|benchmark|dashboard)\b", re.IGNORECASE)
@@ -196,6 +225,17 @@ def classify_intent(message: str, system_note: str = "") -> TaskIntent:
     longer prompt should not override it.
     """
     text = f"{message} {system_note}"
+    # Impact/consequence questions that lead with an interrogative are ANALYZE, never MODIFY —
+    # answered before the position scan so an incidental "change"/"update" can't force an edit
+    # contract. Guarded by _LEADS_QUESTION so a real edit command with a trailing question is
+    # untouched, and by _CREATE so a "build a tool that shows what breaks" still wins CREATE.
+    _lead = text.lstrip()
+    _command_lead = bool(_CREATE.match(_lead) or _MODIFY.match(_lead) or _DELETE.match(_lead))
+    if not _command_lead and (
+        _IMPACT_STRONG.search(text)
+        or (_LEADS_QUESTION.match(text) and _IMPACT_QUESTION.search(text))
+    ):
+        return TaskIntent.ANALYZE
     best_intent: TaskIntent | None = None
     best_key: tuple[int, int] | None = None
     for intent, pattern in _INTENT_PATTERNS:

@@ -169,12 +169,11 @@ def _resolve_claim(claim: Claim, *, graph: Any, repository: str) -> tuple[bool, 
     """Resolves a single claim against the live knowledge graph (or, for FILE_EXISTS, the real
     filesystem). Returns (holds, reason)."""
     if claim.type == ClaimType.FILE_EXISTS:
-        # Checked against disk, not the graph: analyze_repo (backend/repository/analyze.py) only
-        # captures recognized SOURCE-code extensions as File nodes — a README.md or a .json config
-        # file genuinely on disk has no graph node at all, which would make this claim type reject
-        # every true claim about a non-source file. The graph is the right source of truth for
-        # SYMBOL_* claims (only it knows about parsed code structure); for "does this file exist,"
-        # the filesystem itself is strictly more complete and just as fast to check.
+        # Checked against disk, not the graph. analyze_repo now records every file (not just parsed
+        # source) as a File node, but the graph is still a point-in-time snapshot from ingest — a
+        # file added/moved/deleted since would be wrong there. The filesystem is live, strictly more
+        # complete, and just as fast to check, so it's the right source of truth for "does this file
+        # exist"; the graph remains authoritative for SYMBOL_* claims (parsed code structure).
         from backend.files.api import repo_root
 
         try:

@@ -113,7 +113,7 @@ def _repo_name(url: str) -> str:
 # groups arbitrarily deep, so there the repository path ends where its UI's "/-/" separator begins.
 _OWNER_REPO_HOSTS = ("github.com", "bitbucket.org")
 _CLONE_TIMEOUT = 600
-_GRAPH_MAX_FILES = 800
+_GRAPH_MAX_FILES = 2000
 _GRAPH_MAX_SYMBOLS = 3000
 _CLONE_ATTEMPTS = 3
 # Failures that are about the DOWNLOAD, not the repository: the connection dropped, or the pack git
@@ -820,10 +820,15 @@ def _ingest(
     file_nodes = {}
     # Graph caps (were 180 files / 450 symbols, which left a third of httpx unmapped). Sized for
     # mid-sized repositories; the parser's own caps are in analyze.py.
-    for rel in code.files[:_GRAPH_MAX_FILES]:
+    # Every file (source first, then docs/config/assets), not just the 6 parseable extensions —
+    # so the graph mirrors the tree and "does this file exist" is answerable from the graph
+    # instead of a live-FS probe. `parsed` marks the subset that actually carries symbols/edges.
+    all_files = getattr(code, "all_files", None) or code.files
+    parsed = set(code.files)
+    for rel in all_files[:_GRAPH_MAX_FILES]:
         file_nodes[rel] = graph.add_node(GraphNodeCreate(
             node_type=GraphNodeType.FILE, stable_id=f"file://{name}/{rel}",
-            properties={"path": rel, "repository": name},
+            properties={"path": rel, "repository": name, "parsed": rel in parsed},
             provenance=GraphNodeProvenance.INTERNAL_CODE,
         ))
     for a, b in code.imports:

@@ -25,6 +25,10 @@ _SRC_EXT = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".py"}
 # Raised from 300 / 700 / 1200: httpx alone defines 1,131 symbols in 126 files, so the old caps
 # silently left a third of a mid-sized library out of the map.
 _MAX_FILES = 1500
+# Every non-skipped path (not just the 6 parseable source extensions) is recorded as a graph
+# file, so markdown/json/yaml/css/html/config/Dockerfile/etc. exist in the graph instead of the
+# agent being told they "don't exist" and burning tool calls (or hallucinating) to find out.
+_MAX_ALL_FILES = 6000
 _MAX_SYMBOLS = 4000
 _MAX_EDGES = 8000
 _MAX_FILE_BYTES = 1_000_000  # was 200 KB, which skipped real hand-written files (a 342 KB vite.config.js)
@@ -128,7 +132,8 @@ def _qualify(def_node: Node, name: str) -> str:
 
 @dataclass
 class Analysis:
-    files: list[str] = field(default_factory=list)
+    files: list[str] = field(default_factory=list)  # parseable source subset (6 langs) that gets symbols
+    all_files: list[str] = field(default_factory=list)  # every non-skipped path — source first, then the rest
     symbols: list[Symbol] = field(default_factory=list)
     imports: list[tuple[str, str]] = field(default_factory=list)  # (from_file, to_file)
     calls: list[tuple[str, str]] = field(default_factory=list)  # (from_symbol_key, to_symbol_key)
@@ -239,16 +244,25 @@ def analyze_repo(root: Path) -> Analysis:
     result = Analysis()
 
     source_files: list[Path] = []
+    other_rel: list[str] = []  # non-source paths (docs, config, assets) — real files, just not parsed
     for p in sorted(root.rglob("*")):
         if any(part in _SKIP_DIRS for part in p.parts):
             continue
-        if p.is_file() and p.suffix.lower() in _SRC_EXT and not p.name.endswith(".d.ts"):
-            source_files.append(p)
-        if len(source_files) >= _MAX_FILES:
+        if not p.is_file():
+            continue
+        if p.suffix.lower() in _SRC_EXT and not p.name.endswith(".d.ts"):
+            if len(source_files) < _MAX_FILES:
+                source_files.append(p)
+        elif len(other_rel) < _MAX_ALL_FILES:
+            other_rel.append(_rel(p, root))
+        if len(source_files) >= _MAX_FILES and len(other_rel) >= _MAX_ALL_FILES:
             break
 
     by_rel = {_rel(p, root): p for p in source_files}
     result.files = list(by_rel.keys())
+    # Source files first so a downstream graph cap (which slices this list) never drops a
+    # symbol-bearing file in favour of an image; the rest follow.
+    result.all_files = result.files + other_rel
 
     name_to_keys: dict[str, list[str]] = {}
     call_set: set[tuple[str, str]] = set()

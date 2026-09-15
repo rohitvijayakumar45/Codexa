@@ -211,8 +211,9 @@ class MemoryStore:
              "An engineering intelligence platform built around a temporal, confidence-weighted "
              "Engineering Knowledge Graph. FastAPI backend, Next.js frontend."),
             ("organizational", "Conventions",
-             "Python with typed Pydantic v2 models on every route. Postgres JSONB as source of truth; "
-             "Neo4j/Qdrant are projections. Untrusted content is isolated at a trust boundary."),
+             "Python with typed Pydantic v2 models on every route. Graph is in-memory by default, "
+             "with optional PostgreSQL JSONB persistence via CODEXA_DATABASE_URL (no Neo4j/Qdrant). "
+             "Untrusted content is isolated at a trust boundary."),
             ("procedural", "How to run it",
              "Backend: uvicorn backend.main:app --env-file .env (CODEXA_SEED=1). "
              "Frontend: npm --prefix graph-viz run dev."),

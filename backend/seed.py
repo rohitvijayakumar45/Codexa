@@ -115,15 +115,19 @@ def _node_specs() -> list[NodeSpec]:
         NodeSpec("r_ctx", GraphNodeType.API_ROUTE, "route://POST/agents/retrieval/context",
                  {"method": "POST", "path": "/agents/retrieval/context"}),
         # Organizational intent: a real ADR-shaped decision with its trade-off and rejected option.
-        NodeSpec("d_store", GraphNodeType.DECISION, "decision://postgres-source-of-truth",
-                 {"title": "PostgreSQL JSONB as source of truth",
-                  "summary": "Graph nodes/edges persist in Postgres; Neo4j/Qdrant are projections."}),
-        NodeSpec("t_store", GraphNodeType.TRADEOFF, "tradeoff://write-simplicity-vs-graph-queries",
-                 {"summary": "Simpler writes and one source of truth, at the cost of slower "
-                             "native graph traversal until projected to Neo4j."}),
-        NodeSpec("x_store", GraphNodeType.REJECTED_ALTERNATIVE, "rejected://neo4j-as-source-of-truth",
-                 {"summary": "Neo4j as primary store", "reason": "Weaker transactional guarantees "
-                             "for the ingest pipeline."}),
+        NodeSpec("d_store", GraphNodeType.DECISION, "decision://in-memory-graph-optional-postgres",
+                 {"title": "In-memory graph, optional PostgreSQL JSONB persistence",
+                  "summary": "Graph nodes/edges live in an in-memory store by default; setting "
+                             "CODEXA_DATABASE_URL switches to a PostgreSQL JSONB source of truth. "
+                             "No Neo4j or Qdrant projection layer is implemented."}),
+        NodeSpec("t_store", GraphNodeType.TRADEOFF, "tradeoff://in-memory-simplicity-vs-durability",
+                 {"summary": "In-memory is simplest and fastest but rebuilds on restart; graph "
+                             "traversal runs in Python over the in-memory index (fine at repo "
+                             "scale), and there is no vector/semantic search."}),
+        NodeSpec("x_store", GraphNodeType.REJECTED_ALTERNATIVE, "rejected://neo4j-qdrant-projections",
+                 {"summary": "Neo4j + Qdrant projection layer",
+                  "reason": "Extra infrastructure and sync complexity not justified at single-repo "
+                            "scale; Python traversal over the in-memory graph covers current needs."}),
         # A prevention rule distilled from a past incident, and a convention profile.
         NodeSpec("p_rule", GraphNodeType.PREVENTION_RULE, "prevention://validate-edge-time-window",
                  {"rule": "Reject edges where valid_to <= valid_from",
