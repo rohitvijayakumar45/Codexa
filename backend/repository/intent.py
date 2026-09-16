@@ -281,6 +281,41 @@ def owns_git(root: Path) -> bool:
     return top == os.path.normcase(os.path.realpath(str(root)))
 
 
+def file_first_seen(root: Path, files: set[str]) -> dict[str, datetime]:
+    """Earliest commit date each file appears, from the FULL `git log` — the repository's real
+    history. Used to backdate structural edges' valid_from so the time machine shows the graph
+    growing over the repo's actual commits instead of every import/call edge popping in at the
+    ingest instant. Dedicated uncapped pass (not mine_commits, whose per-commit file cap left many
+    files undated): `--reverse` walks oldest→newest, so the first time a path appears IS its
+    earliest date. Bounded by `files` (the analyzed set) and a 30s timeout.
+    """
+    if not owns_git(root):
+        return {}
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "log", "--reverse", "--no-merges",
+             "--format=%x1f%aI", "--name-only"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    if out.returncode != 0:
+        return {}
+    seen: dict[str, datetime] = {}
+    cur: datetime | None = None
+    for line in out.stdout.splitlines():
+        if line.startswith("\x1f"):
+            try:
+                cur = datetime.fromisoformat(line[1:].strip())
+            except ValueError:
+                cur = None
+            continue
+        f = line.strip()
+        if f and cur is not None and f in files and f not in seen:
+            seen[f] = cur
+    return seen
+
+
 def mine_commits(root: Path, known_files: set[str], limit: int = _MAX_COMMITS) -> list[Commit]:
     if not owns_git(root):
         return []

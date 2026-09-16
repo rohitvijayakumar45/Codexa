@@ -39,7 +39,7 @@ from backend.graph.service import GraphService
 from backend.memory.store import DATA_DIR, MemoryStore
 from backend.repository.analyze import Analysis, analyze_repo
 from backend.repository.coupling import mine_change_coupling
-from backend.repository.intent import add_intent_to_graph
+from backend.repository.intent import add_intent_to_graph, file_first_seen
 from backend.repository.scoring import score_repository
 from backend.repository.semantic import annotate_repository_symbols
 
@@ -831,12 +831,27 @@ def _ingest(
             properties={"path": rel, "repository": name, "parsed": rel in parsed},
             provenance=GraphNodeProvenance.INTERNAL_CODE,
         ))
+    # Backdate structural edges to the commit that introduced the file, from real git history, so
+    # the time machine shows the graph growing across the repo's commits instead of every edge
+    # popping in at the ingest instant (which made the scrubber look broken — flat, then a cliff at
+    # "now"). Falls back to the ingest time (GraphEdgeCreate's default) for files git can't date.
+    first_seen = file_first_seen(dest, set(code.files))
+
+    def _edge_from(*rels: str) -> datetime | None:
+        for rel in rels:
+            when = first_seen.get(rel)
+            if when is not None:
+                return when
+        return None
+
     for a, b in code.imports:
         if a in file_nodes and b in file_nodes:
+            when = _edge_from(a, b)
             graph.add_edge(GraphEdgeCreate(
                 from_node_id=file_nodes[a].id, to_node_id=file_nodes[b].id,
                 edge_type=GraphEdgeType.IMPORTS, confidence=1.0,
                 source_type=GraphEdgeSourceType.STATIC_ANALYSIS,
+                **({"valid_from": when} if when else {}),
             ))
     sym_nodes = {}
     for s in code.symbols[:_GRAPH_MAX_SYMBOLS]:
@@ -849,10 +864,13 @@ def _ingest(
         ))
     for a, b in code.calls:
         if a in sym_nodes and b in sym_nodes:
+            # Symbol keys are "file#qualname" — date the call by the caller's file.
+            when = _edge_from(a.split("#", 1)[0], b.split("#", 1)[0])
             graph.add_edge(GraphEdgeCreate(
                 from_node_id=sym_nodes[a].id, to_node_id=sym_nodes[b].id,
                 edge_type=GraphEdgeType.CALLS, confidence=1.0,
                 source_type=GraphEdgeSourceType.STATIC_ANALYSIS,
+                **({"valid_from": when} if when else {}),
             ))
 
     # API routes, commit history and dependency-evidenced intent (intent.py). Extras, not the core

@@ -138,8 +138,10 @@ export default function ChatPage() {
       `the codebase (files, key symbols, structure) from the last analysis — possibly slightly stale, ` +
       `but your starting point: use it to go straight to the relevant code. Do NOT invent features, ` +
       `modules, or use-cases these facts don't support.\n` +
-      `Prefer targeted graph tools — lookup_symbol, find_references, get_dependencies, search_code — ` +
-      `to trace relationships; they answer structural questions in one call. Open whole files with ` +
+      `For "where/how is X handled" questions, call semantic_search FIRST — it finds the relevant ` +
+      `code by meaning in one shot. Then prefer targeted graph tools — lookup_symbol, ` +
+      `find_references, get_dependencies, search_code — to trace relationships; they answer ` +
+      `structural questions in one call. Open whole files with ` +
       `read_file only to quote or confirm the specific code you will cite, not to discover what ` +
       `exists. Answer as soon as you have enough to be correct — don't keep exploring for its own ` +
       `sake.\n` +
