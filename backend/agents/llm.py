@@ -333,6 +333,16 @@ def is_rate_limit_error(exc: BaseException) -> bool:
     return isinstance(original, litellm.RateLimitError)
 
 
+def is_auth_error(exc: BaseException) -> bool:
+    """True for an authentication failure (401 / invalid or expired key). A provider with several
+    keys (ZAI_API_KEY, _2, ...) should skip a dead key and try the next, exactly like a rate limit,
+    instead of failing the whole call — the common 'one key expired, was working before' case."""
+    if isinstance(exc, litellm.AuthenticationError):
+        return True
+    original = getattr(exc, "original_exception", None)
+    return isinstance(original, litellm.AuthenticationError)
+
+
 def is_transient_upstream_error(exc: BaseException) -> bool:
     """True for a transient provider-side failure that a DIFFERENT model would likely serve — a
     503 "no available channel"/ServiceUnavailable, a 500 InternalServerError, or a connection/
@@ -701,7 +711,9 @@ class LLMClient:
             try:
                 return call()
             except Exception as exc:
-                if not is_rate_limit_error(exc) or not self._advance_key(model):
+                # Skip to the next key on a rate limit OR a dead/expired key (auth failure); only
+                # give up once _advance_key says every configured key has been tried.
+                if not (is_rate_limit_error(exc) or is_auth_error(exc)) or not self._advance_key(model):
                     raise
 
     def complete(self, messages: list[dict], *, model: str | None = None, agent: str = "generate", **kwargs: Any) -> str:
@@ -771,7 +783,10 @@ class LLMClient:
                     yield chunk
                 return
             except Exception as exc:
-                if not is_rate_limit_error(exc) or emitted or not self._advance_key(model):
+                # Retry on the next key for a rate limit OR a dead/expired key (auth failure) —
+                # but only if nothing was emitted yet (a stream can't be silently restarted once
+                # the caller has seen real output).
+                if not (is_rate_limit_error(exc) or is_auth_error(exc)) or emitted or not self._advance_key(model):
                     raise
 
     def record_usage(self, agent: str, model: str, response: Any, *, task_intent: str | None = None) -> dict[str, int]:
