@@ -755,6 +755,28 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "semantic_search",
+            "description": (
+                "Find the code most relevant to a NATURAL-LANGUAGE description, ranked by meaning "
+                "(embeddings) rather than exact text. Use this first for 'where/how is X handled' "
+                "questions — e.g. 'where is cheating detected', 'auth middleware', 'how are "
+                "submissions stored' — to jump straight to the right symbols/files instead of "
+                "grepping several terms and reading wrong files. Returns ranked file:line matches; "
+                "then read_file only the ones you need."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Natural-language description of what you're looking for."},
+                    "k": {"type": "integer", "description": "How many matches to return (default 8)."},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_design_guidance",
             "description": (
                 "Load a design system's rules. Call BEFORE writing any UI/HTML/CSS/React/Tailwind "
@@ -1759,6 +1781,32 @@ def _run_command_structured(command: str, repository: str) -> tuple[str, int | N
         return "Command timed out (30s limit).", None
     except Exception as exc:  # noqa: BLE001
         return f"Command failed: {exc}", None
+
+
+def _semantic_search(query: str, repository: str, *, graph: Any, llm: Any, k: int = 8) -> str:
+    """Rank symbols/files by embedding similarity to a natural-language query."""
+    if graph is None or llm is None:
+        return "Semantic search unavailable in this context."
+    from backend.agents.semantic import INDEX
+
+    try:
+        hits = INDEX.search(repository, query, graph, llm, k=max(1, min(k, 25)))
+    except Exception as exc:  # noqa: BLE001 - degrade gracefully, never crash the round
+        return (
+            f"Semantic search failed ({type(exc).__name__}: {exc}). "
+            "Fall back to search_code / lookup_symbol."
+        )
+    if not hits:
+        return (
+            "No indexable symbols/files for this repository (the graph may be empty). "
+            "Use search_code or list_directory instead."
+        )
+    lines = [f"Top {len(hits)} matches for '{query}' (by semantic similarity):"]
+    for h in hits:
+        loc = f"{h['file']}:{h['line']}" if h.get("line") else (h.get("file") or "?")
+        lines.append(f"- {h.get('label')} ({h.get('kind')}) — {loc}  [score {h['score']:.2f}]")
+    lines.append("Read only the ones you actually need.")
+    return "\n".join(lines)
 
 
 def _run_command(command: str, repository: str) -> str:
@@ -3163,6 +3211,8 @@ def execute_tool(
             return f"Moved {args['from_path']} -> {args['to_path']}."
         if name == "lookup_symbol":
             return _lookup_symbol(args["name"], repository, graph=graph, store=store)
+        if name == "semantic_search":
+            return _semantic_search(args["query"], repository, graph=graph, llm=llm, k=int(args.get("k") or 8))
         if name == "delegate_task":
             return _delegate_task(args["plan"], repository, llm=llm, graph=graph, store=store)
         if name == "delegate_build":

@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 litellm.suppress_debug_info = True
 litellm.drop_params = True
 
+_EMBED_MODEL = "gemini/gemini-embedding-001"  # 3072-dim; override with CODEXA_EMBED_MODEL
+
 ZAI_API_BASE = "https://api.z.ai/api/paas/v4"
 TOKENROUTER_API_BASE = "https://api.tokenrouter.com/v1"
 AEROLINK_API_BASE = "https://cgapi.aerolink.lat/v1"
@@ -791,6 +793,45 @@ class LLMClient:
         )
         usage = self._record_usage(agent, model, response)
         return response.choices[0].message, usage
+
+    def embed(self, texts: list[str], *, batch: int = 100) -> list[list[float]]:
+        """Embed texts for semantic code search. Uses an OpenAI-compatible embedding model via
+        litellm (default gemini/gemini-embedding-001, 3072-dim). Gemini free-tier embeddings are
+        metered per key (~100 req/min), so this rotates through every configured GEMINI_API_KEY[_N]
+        and backs off on a 429, and batches large so a whole repo costs a handful of requests. The
+        result is cached to disk by the caller, so this whole cost is paid once per repo. Raises
+        only if every key is exhausted — callers degrade to substring search."""
+        if not texts:
+            return []
+        model = os.getenv("CODEXA_EMBED_MODEL", _EMBED_MODEL)
+        keys: list[str | None]
+        if model.startswith("gemini/"):
+            keys = [k for k in (
+                os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI_API_KEY_2"),
+                os.getenv("GEMINI_API_KEY_3"), os.getenv("GEMINI_API_KEY_4"),
+            ) if k] or [None]
+        else:
+            keys = [None]  # let litellm resolve the provider key from the environment
+        out: list[list[float]] = []
+        ki = 0
+        for i in range(0, len(texts), batch):
+            chunk = texts[i : i + batch]
+            for _ in range(len(keys) * 3 + 2):
+                key = keys[ki % len(keys)]
+                try:
+                    kw: dict[str, Any] = {"model": model, "input": chunk}
+                    if key:
+                        kw["api_key"] = key
+                    resp = litellm.embedding(**kw)
+                    rows = sorted(resp.data, key=lambda d: d.get("index", 0))
+                    out.extend(list(r["embedding"]) for r in rows)
+                    break
+                except litellm.RateLimitError:
+                    ki += 1  # next key, then a short backoff before retry
+                    time.sleep(2.5)
+            else:
+                raise RuntimeError("embedding rate-limited on all configured keys")
+        return out
 
     def generate(self, agent_role: str, prompt: str, *, task: str | None = None, **kwargs: Any) -> str:
         """Back-compat single-prompt call. Routes by agent_role/task unless overridden."""
