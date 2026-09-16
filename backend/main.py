@@ -121,6 +121,11 @@ def create_app() -> FastAPI:
 
     database_url = os.getenv("CODEXA_DATABASE_URL") or os.getenv("DATABASE_URL")
     if database_url:
+        # Turnkey: create the graph/event/artifact tables if this is a fresh database, so pointing
+        # CODEXA_DATABASE_URL at an empty Postgres just works (no manual migration step). Idempotent.
+        from backend.graph.schema import ensure_schema
+
+        ensure_schema(database_url)
         artifact_repository = PostgresArtifactRepository(database_url)
         graph_repository = PostgresGraphRepository(database_url)
         event_writer = PostgresGraphEventWriter(database_url)
