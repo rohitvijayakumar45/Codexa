@@ -39,6 +39,13 @@ SILICONFLOW_API_BASE = "https://api.siliconflow.com/v1"
 UPSTAGE_API_BASE = "https://api.upstage.ai/v1"
 INCEPTION_API_BASE = "https://api.inceptionlabs.ai/v1"
 
+# Per-model extra params merged into every completion/stream call for that model (e.g. a reasoning
+# effort a model exposes as its own knob). litellm passes them through to the provider; drop_params
+# strips any a given provider doesn't support.
+_MODEL_EXTRA_PARAMS: dict[str, dict[str, Any]] = {
+    "inception/mercury-2.5": {"reasoning_effort": "high"},
+}
+
 # id -> (label, context_window, tier, provider). Context windows are the models' documented limits.
 #
 # Groq's llama-3.1-8b-instant / llama-3.3-70b-versatile shut down 2026-08-16 (Groq's own
@@ -675,8 +682,9 @@ class LLMClient:
                 "model": "openai/" + model.split("/", 1)[1],
                 "api_base": api_base,
                 "api_key": self._current_key(model) or os.getenv(_PROVIDER_ENV[provider], ""),
+                **_MODEL_EXTRA_PARAMS.get(model, {}),
             }
-        kwargs: dict[str, Any] = {"model": model}
+        kwargs: dict[str, Any] = {"model": model, **_MODEL_EXTRA_PARAMS.get(model, {})}
         key = self._current_key(model)
         if key:  # only set for providers with more than one key configured — see __init__
             kwargs["api_key"] = key
