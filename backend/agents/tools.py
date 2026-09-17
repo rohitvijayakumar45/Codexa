@@ -2662,6 +2662,39 @@ _LAST_CONSOLE_URL = ""
 _BLANK_TEXT_CHARS = 120
 
 
+def _resolve_repo_file_url(repository: str, url: str) -> str:
+    """Re-resolve a file:// screenshot URL against the real repo on THIS machine.
+
+    A model (especially one that assumes a Unix filesystem) hands back a file:// URL with the wrong
+    OS path — e.g. `file:///Users/rohit/.../Trace/index.html` on Windows, missing the `C:` drive —
+    which makes every screenshot ERR_FILE_NOT_FOUND. The model then thinks its page is broken and
+    rewrites it over and over. So for any file:// URL we ignore the model's absolute prefix and
+    rebuild from repo_root(repository) + the path AFTER the repo segment (or the bare filename),
+    falling back to the repo's index.html. Non-file URLs (http dev servers) are returned untouched.
+    """
+    if not url.startswith("file://"):
+        return url
+    from urllib.parse import unquote, urlparse
+
+    from backend.files.api import repo_root
+
+    try:
+        root = repo_root(repository)
+    except Exception:  # noqa: BLE001 - can't resolve; leave the URL as-is
+        return url
+    raw = unquote(urlparse(url).path).lstrip("/")  # "C:/Users/.../Trace/index.html" or "Users/.../index.html"
+    marker = f"/{repository}/"
+    full = "/" + raw
+    rel = full.split(marker, 1)[1] if marker in full else os.path.basename(raw)
+    for candidate in ((root / rel), (root / "index.html")):
+        try:
+            if candidate.exists():
+                return candidate.resolve().as_uri()
+        except OSError:
+            continue
+    return url
+
+
 def _screenshot_structured(
     repository: str, url: str = "", viewport: str = "1280x720", full_page: bool = False,
 ) -> tuple[str, bytes | None]:
@@ -2694,6 +2727,7 @@ def _screenshot_structured(
         return "Playwright not installed. Run: pip install playwright && playwright install chromium", None
 
     url = url or "http://localhost:3000"
+    url = _resolve_repo_file_url(repository, url)  # fix a model's wrong-OS file:// path
     try:
         w, h = (int(x) for x in (viewport or "1280x720").split("x"))
     except ValueError:
