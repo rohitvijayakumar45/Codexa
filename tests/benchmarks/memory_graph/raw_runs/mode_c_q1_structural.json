@@ -1,0 +1,17 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_c",
+  "model": "tokenrouter/z-ai/glm-5.3-free",
+  "status": "error",
+  "duration_seconds": 1050.4727137088776,
+  "input_tokens": 423721,
+  "output_tokens": 6349,
+  "total_tokens": 430070,
+  "tool_counts": {
+    "read_file": 15,
+    "search_code": 2,
+    "read_files": 1
+  },
+  "job_id": "6a1284c8-672f-4a54-8dcd-45e2bb374143",
+  "answer": "Tool run_command is explicitly disabled in this benchmark mode."
+}

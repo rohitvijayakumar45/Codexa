@@ -1,0 +1,17 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_b",
+  "model": "tokenrouter/z-ai/glm-5.3-free",
+  "status": "done",
+  "duration_seconds": 139.07790398597717,
+  "input_tokens": 62922,
+  "output_tokens": 2220,
+  "total_tokens": 65142,
+  "tool_counts": {
+    "search_code": 6,
+    "read_file": 7,
+    "read_files": 1
+  },
+  "job_id": "df0d8b45-5d7b-431b-8d90-bf9b58f7f4cc",
+  "answer": "[frontend/src/components/ExamWindow.tsx - lines 1988-2017 of 2507]\n                      ? \"text-yellow-500\"\n                      : \"text-gray-400\"\n                }`}\n              />\n              <span className={`text-sm ${\n                totalViolationFlags >= maxAllowedViolations \n                  ? \"text-red-600 font-semibold\" \n                  : totalViolationFlags >= Math.floor(maxAllowedViolations * 0.8)\n                    ? \"text-yellow-600\"\n                    : \"text-gray-600\"\n              }`}>\n                Violations: {totalViolationFlags}/{maxAllowedViolations}\n              </span>\n            </div>\n          )}\n          <Button\n            onClick={() => setShowSubmitDialog(true)}\n            disabled={examAutoSubmitted}\n            style={{ backgroundColor: examAutoSubmitted ? '#9CA3AF' : '#4444FF' }}\n            onMouseEnter={(e) => !examAutoSubmitted && (e.currentTarget.style.backgroundColor = '#3333EE')}\n            onMouseLeave={(e) => !examAutoSubmitted && (e.currentTarget.style.backgroundColor = '#4444FF')}\n          >\n            {examAutoSubmitted ? 'Auto-Submitted' : 'Submit Exam'}\n          </Button>\n        </div>\n      </header>\n\n      {/* Connection Warning */}\n      {!connectionActive && (\n        <div className=\"bg-red-50 border-b border-red-200 px-6 py-2\">\n\n[truncated here. 490 more lines. To continue, call read_file with path=\"frontend/src/components/ExamWindow.tsx\" and start_line=2018. Do NOT use run_command to page through this file.]"
+}

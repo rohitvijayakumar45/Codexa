@@ -1,0 +1,18 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_a",
+  "model": "tokenrouter/z-ai/glm-5.3-free",
+  "status": "done",
+  "duration_seconds": 212.0924642086029,
+  "input_tokens": 93189,
+  "output_tokens": 3776,
+  "total_tokens": 96965,
+  "tool_counts": {
+    "search_code": 5,
+    "read_file": 5,
+    "tree": 1,
+    "read_files": 3
+  },
+  "job_id": "3972a5fe-ea45-4081-8a31-19b305d0f984",
+  "answer": "=== backend/config/db.js ===\nconst mongoose = require('mongoose');\r\n\r\nconst connectDatabase = () => {\r\n  const mongoUri = process.env.MONGO_URI || process.env.DB_URL;\r\n  \r\n  if (!mongoUri) {\r\n    console.error('MongoDB connection error: MONGO_URI or DB_URL not found in environment variables');\r\n    process.exit(1);\r\n  }\r\n\r\n  mongoose.connect(mongoUri, {\r\n    useNewUrlParser: true,\r\n    useUnifiedTopology: true\r\n  }).then((con) => {\r\n    console.log('MongoDB connected to host: ' + con.connection.host);\r\n  }).catch((err) => {\r\n    console.error('MongoDB connection error:', err.message);\r\n    console.error('Please make sure MongoDB is running on:', mongoUri);\r\n    process.exit(1);\r\n  });\r\n\r\n  // Error logging\r\n  mongoose.connection.on('error', err => {\r\n    console.error('DB Error:', err);\r\n  });\r\n};\r\n\r\nmodule.exports = connectDatabase;\r\n\n\n=== backend/models/user.js ===\nconst mongoose = require('mongoose');\r\nconst bcrypt = require ('bcrypt');\r\nconst userSchema = new mongoose.Schema(\r\n{\r\n  name: {\r\n    type: String,\r\n    required: true,\r\n    trim: true\r\n  },\r\n  email: {\r\n    type: String,\r\n    required: true,\r\n    unique: true,\r\n    lowercase: true\r\n  },\r\n  password: {\r\n    type: String,\r\n    required: true\r\n  },\r\n  role: {\r\n    type: String,\r\n    enum: [\"student\", \"admin\"],\r\n    default: \"student\"\r\n  },\r\n  createdAt: {\r\n    type: Date,\r\n    default: Date.now\r\n  }\r\n\r\n}\r\n)\r\nuserSchema.pre(\"save\", async function (next) {\r\n  if (!this.isModified(\"password\")) return next();\r\n  const salt = await bcrypt.genSalt(10);\r\n  this.password = await bcrypt.hash(this.password, salt);\r\n  next();\r\n});\r\n\r\nuserSchema.methods.matchPassword = async function (enteredPassword) {\r\n  return await bcrypt.compare(enteredPassword, this.password);\r\n};\r\n\r\nconst userModel = mongoose.model(\"user\",userSchema);\r\nmodule.exports=userModel;\n\n=== backend/config/config.env ===\nPORT = 3000\r\nMONGO_URI=mongodb+srv://rohitvijayakumarpt_db_user:Jg6xpdAlfTnnUwNP@cluster0.jd62be7.mongodb.net/exam-proctoring?retryWrites=true&w=majority\r\nDB_URL=mongodb://localhost:27017/exam-proctoring\r\nJWT_SECRET=079d03f6e28d482bf1735992980bbb5db3d908f10b24764e6689edfe623d5e74f196c8fce487fd687f8be62f2f7f468f75267b430582a954c4a659b8ad8bdb67\r\nFRONTEND_URL=http://localhost:5173\n\n=== backend/routes/examroute.js ===\nconst express = require('express');\r\nconst { createExam, getAllExams, getExamById, updateExam, deleteExam, getExamDetails } = require('../controllers/examController'); \r\nconst { protect, adminOnly } = require(\"../middleware/authMiddleware\");\r\nconst router = express.Router();\r\n\r\nrouter.route('/exam').post(protect, adminOnly, createExam);\r\nrouter.route('/exam/get').get(protect, getAllExams);\r\nrouter.route('/exam/get/:id').get(protect, getExamById);\r\nrouter.route('/exam/details/:id').get(protect, adminOnly, getExamDetails);\r\nrouter.route('/exam/update/:id').put(protect, adminOnly, updateExam);\r\nrouter.route('/exam/delete/:id').delete(protect, adminOnly, deleteExam);\r\nmodule.exports = router;\r\n"
+}

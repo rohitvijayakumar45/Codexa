@@ -1,0 +1,18 @@
+[
+  {
+    "id": "q1_structural",
+    "text": "Starting from the frontend when a student clicks 'Submit Exam' in `ExamWindow.tsx`, describe the complete sequence of functions, API routes, and backend controllers called to store the submission in MongoDB."
+  },
+  {
+    "id": "q2_impact",
+    "text": "If we add a `severity` field to the Mongoose schema in `proctorlog.js`, which specific frontend components, backend controllers, and routes need to be updated to capture and display this new data?"
+  },
+  {
+    "id": "q3_historical",
+    "text": "What are the project conventions for handling unauthorized access in our middleware, and how should we format API responses for errors based on previous decisions?"
+  },
+  {
+    "id": "q4_cross_system",
+    "text": "Explain how cheating (like tab switching or face absence) is detected, transmitted, and displayed. Trace the flow from the browser APIs in the React frontend, through the network requests, down to the database models, and back up to the Admin Dashboard."
+  }
+]

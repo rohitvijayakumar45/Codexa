@@ -1,0 +1,16 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_c",
+  "model": "tokenrouter/z-ai/glm-5.3-free",
+  "status": "done",
+  "duration_seconds": 278.1636939048767,
+  "input_tokens": 92272,
+  "output_tokens": 3763,
+  "total_tokens": 96035,
+  "tool_counts": {
+    "search_code": 9,
+    "read_file": 10
+  },
+  "job_id": "9b06e187-eb77-407e-8ca0-864d714ea4a2",
+  "answer": "[SYSTEM: your answer made claims that don't check out against the actual code/tool results. Do not repeat these claims \u2014 investigate and either fix the underlying issue or correct your answer to reflect what's actually true.]\n- Claimed symbol_exists for 'flags.severity' (field defined in the flags subdocument in backend/models/proctorlog.js): no symbol named 'flags.severity' in the graph"
+}

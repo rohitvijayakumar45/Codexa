@@ -1,0 +1,52 @@
+{
+  "mode_a": {
+    "name": "Raw Repo",
+    "enable_graph": false,
+    "enable_memory": false,
+    "allowed_tools": [
+      "read_file",
+      "read_files",
+      "tree",
+      "list_dir",
+      "search_code",
+      "grep_search",
+      "find_by_name"
+    ]
+  },
+  "mode_b": {
+    "name": "Graph Only",
+    "enable_graph": true,
+    "enable_memory": false,
+    "allowed_tools": [
+      "read_file",
+      "read_files",
+      "tree",
+      "list_dir",
+      "search_code",
+      "grep_search",
+      "find_by_name",
+      "lookup_symbol",
+      "lookup_symbols",
+      "list_symbols",
+      "get_dependencies"
+    ]
+  },
+  "mode_c": {
+    "name": "Full Codexa",
+    "enable_graph": true,
+    "enable_memory": true,
+    "allowed_tools": [
+      "read_file",
+      "read_files",
+      "tree",
+      "list_dir",
+      "search_code",
+      "grep_search",
+      "find_by_name",
+      "lookup_symbol",
+      "lookup_symbols",
+      "list_symbols",
+      "get_dependencies"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_b",
+  "model": "tokenrouter/z-ai/glm-5.3-free",
+  "status": "done",
+  "duration_seconds": 978.5148587226868,
+  "input_tokens": 585619,
+  "output_tokens": 10011,
+  "total_tokens": 595630,
+  "tool_counts": {
+    "search_code": 26,
+    "read_file": 22
+  },
+  "job_id": "9b567cd6-9598-41a5-9dc7-1432c4dc9ddb",
+  "answer": "[SYSTEM: your answer made claims that don't check out against the actual code/tool results. Do not repeat these claims \u2014 investigate and either fix the underlying issue or correct your answer to reflect what's actually true.]\n- Claimed symbol_exists for 'examController.js' (exports.getExamDetails is defined): no symbol named 'examController.js' in the graph"
+}

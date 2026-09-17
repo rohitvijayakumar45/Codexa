@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-09-15T06:24:11Z",
+  "total_suites": 10,
+  "suites": [
+    {
+      "module": "test_claim_graph_and_projections.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 9.166,
+      "timestamp": "2026-09-15T06:24:20Z"
+    },
+    {
+      "module": "test_claim_treesitter.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 0.298,
+      "timestamp": "2026-09-15T06:24:20Z"
+    },
+    {
+      "module": "test_claim_memory.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 0.266,
+      "timestamp": "2026-09-15T06:24:21Z"
+    },
+    {
+      "module": "test_claim_strata.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 0.518,
+      "timestamp": "2026-09-15T06:24:21Z"
+    },
+    {
+      "module": "test_claim_quorum.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 0.26,
+      "timestamp": "2026-09-15T06:24:21Z"
+    },
+    {
+      "module": "test_claim_planning_and_contracts.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 0.257,
+      "timestamp": "2026-09-15T06:24:22Z"
+    },
+    {
+      "module": "test_claim_simulation_and_sandbox.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 0.267,
+      "timestamp": "2026-09-15T06:24:22Z"
+    },
+    {
+      "module": "test_claim_security_and_trust_boundary.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 0.257,
+      "timestamp": "2026-09-15T06:24:22Z"
+    },
+    {
+      "module": "test_claim_resilience_and_recovery.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 0.261,
+      "timestamp": "2026-09-15T06:24:22Z"
+    },
+    {
+      "module": "test_claim_e2e_and_failures.py",
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration_seconds": 0.274,
+      "timestamp": "2026-09-15T06:24:23Z"
+    }
+  ],
+  "overall_status": "PASSED"
+}
