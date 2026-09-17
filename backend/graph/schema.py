@@ -62,7 +62,10 @@ _STATEMENTS: tuple[str, ...] = (
         edge_type TEXT NOT NULL,
         confidence DOUBLE PRECISION NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
         source_type TEXT NOT NULL,
-        source_artifact_id UUID REFERENCES ingested_artifacts(id),
+        -- Plain UUID, NOT a foreign key: llm_inferred/seed edges legitimately reference an
+        -- artifact id that was never persisted as a row (the in-memory store never enforced this),
+        -- so a FK here rejects those inserts. Kept lenient to match in-memory behaviour.
+        source_artifact_id UUID,
         valid_from TIMESTAMPTZ NOT NULL,
         valid_to TIMESTAMPTZ,
         properties JSONB NOT NULL DEFAULT '{}'::jsonb,

@@ -243,7 +243,10 @@ def create_app() -> FastAPI:
     # happens on every single boot — permanently starving the seed check of the "still empty" state
     # it needs, so codexa-os's own graph/architecture tabs read empty forever even with
     # CODEXA_SEED=1 set. Order here is load-bearing.
-    if not database_url and os.getenv("CODEXA_SEED", "").strip().lower() in {"1", "true", "yes", "on"}:
+    # Runs regardless of storage backend (the old `not database_url` gate meant a Postgres setup
+    # never got codexa-os's self-graph). seed_graph is now idempotent on the codexa-os repo node
+    # specifically, and still runs before rehydrate_repositories below, so a fresh DB seeds once.
+    if os.getenv("CODEXA_SEED", "").strip().lower() in {"1", "true", "yes", "on"}:
         from backend.seed import seed_graph
 
         seed_graph(

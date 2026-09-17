@@ -194,7 +194,10 @@ def seed_graph(
 ) -> dict[str, int]:
     """Populate the graph. No-op if nodes already exist (unless force)."""
 
-    if not force and graph.list_nodes():
+    # No-op only if codexa-os itself is already seeded — checked by its own repo node, not "any node
+    # exists". The coarser check broke Postgres/persistent setups: rehydrate populates real repos'
+    # nodes on boot, so "any node exists" was always true and codexa-os's self-graph never seeded.
+    if not force and any(n.stable_id == "repo://codexa-os" for n in graph.list_nodes()):
         return {"nodes": len(graph.list_nodes()), "edges": len(graph.list_edges_at()), "seeded": 0}
 
     nodes: dict[str, GraphNode] = {}
