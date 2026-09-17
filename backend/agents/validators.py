@@ -597,6 +597,14 @@ _VALIDATORS: dict[str, Callable[[_Ctx], tuple[bool, str]]] = {
     "files_changed": _files_changed,
 }
 
+# Advisory validators: run and REPORTED, but a failure does not fail the task. intent_fidelity
+# (did the artifact implement the exact mechanism the brief committed to — a real FLIP transition
+# vs a modal, scroll-driven motion vs `scroll-behavior:smooth`) is a genuine quality signal, but a
+# hard gate on it traps a job that produced a working, existing artifact in a recovery loop the
+# model often can't satisfy (it kept re-verifying existence instead of rewriting the mechanism).
+# Surfacing the gap and shipping beats failing the task; move it back to a hard gate by removing it.
+_ADVISORY_VALIDATORS: frozenset[str] = frozenset({"intent_fidelity"})
+
 
 # --- the entry point ----------------------------------------------------------
 
@@ -650,6 +658,7 @@ def validate_task(
     checked: list[str] = []
     passes: list[str] = []
     failures: list[str] = []
+    advisories: list[str] = []  # advisory-validator failures: reported, but not task-failing
     for name in names:
         checked.append(name)
         validator = _VALIDATORS.get(name)
@@ -671,11 +680,19 @@ def validate_task(
         except Exception as exc:  # noqa: BLE001 - a broken validator must not end the job
             ok, detail = False, f"raised {type(exc).__name__}: {exc}"
             logger.warning("validate_task: %s raised on task %s: %s", name, task.id, exc)
-        (passes if ok else failures).append(f"{name}: {detail}")
+        if ok:
+            passes.append(f"{name}: {detail}")
+        elif name in _ADVISORY_VALIDATORS:
+            advisories.append(f"{name}: {detail}")  # noted, does not fail the task
+        else:
+            failures.append(f"{name}: {detail}")
 
+    advisory_note = ("advisory (not blocking): " + "; ".join(advisories)) if advisories else ""
     if failures:
-        return ValidationResult(passed=False, detail=_trim("; ".join(failures)), checked=checked)
-    return ValidationResult(passed=True, detail=_trim("; ".join(passes)), checked=checked)
+        detail = "; ".join(failures) + ((" | " + advisory_note) if advisory_note else "")
+        return ValidationResult(passed=False, detail=_trim(detail), checked=checked)
+    detail = "; ".join(passes + ([advisory_note] if advisory_note else [])) or "no blocking issues"
+    return ValidationResult(passed=True, detail=_trim(detail), checked=checked)
 
 
 def infer_validators(task: Task) -> list[str]:
