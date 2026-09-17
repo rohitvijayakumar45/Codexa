@@ -52,6 +52,7 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     "gemini/gemini-3.8-flash": ("Gemini 3.8 Flash", 1048576, "heavy", "gemini"),
     "nvidia_nim/deepseek-ai/deepseek-v4-pro-0813": ("DeepSeek V4 Pro", 128000, "heavy", "nvidia"),
     "nvidia_nim/z-ai/glm-5.3": ("GLM 5.3 (NVIDIA NIM)", 200000, "heavy", "nvidia"),
+    "nvidia_nim/moonshotai/kimi-k3": ("Kimi K3 (NVIDIA NIM)", 256000, "heavy", "nvidia"),
     "nvidia_nim/nvidia/nemotron-3-super-120b-a12b": ("Nemotron 3 Super 120B", 1000000, "heavy", "nvidia"),
     "groq/openai/gpt-oss-120b": ("GPT-OSS 120B (Groq)", 131072, "heavy", "groq"),
     "zai/glm-4.7-flash": ("GLM 4.7 Flash (Z.ai)", 128000, "heavy", "zai"),
@@ -75,12 +76,6 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     "groq/groq/compound-mini": ("Compound Mini (Groq)", 131072, "light", "groq"),
     "gemini/gemini-2.5-flash": ("Gemini 2.5 Flash", 1048576, "light", "gemini"),
     "openrouter/nvidia/nemotron-3.5-lightning:free": ("Nemotron 3.5 Lightning (free)", 1000000, "light", "openrouter"),
-    # Tier is "ultra_heavy", not "balanced": tier_of() is what jobs.py's run_round uses to pick the
-    # failover ring for a rate-limited orchestrator. Left as "balanced" it resolved the balanced
-    # ring and walked GLM straight onto Gemini — spending the exact quota its delegated workers run
-    # on. It still appears in the heavy/balanced _TIER_ORDER lists (those are "who can serve this
-    # task", a separate question) so nothing loses GLM as a fallback option.
-    "tokenrouter/z-ai/glm-5.3-free": ("GLM 5.3 (free, TokenRouter)", 128000, "ultra_heavy", "tokenrouter"),
     "aerolink/gpt-5.6-sol": ("GPT-5.6 Sol (Aerolink)", 200000, "ultra_heavy", "aerolink"),
     "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash": ("DeepSeek V4.1 Flash (SiliconFlow)", 128000, "heavy", "siliconflow"),
     "upstage/solar-pro4": ("Solar Pro 4 (Upstage)", 128000, "heavy", "upstage"),
@@ -144,7 +139,6 @@ _TIER_ORDER: dict[str, list[str]] = {
     # orchestrator and its own workers compete for the same buckets.
     "ultra_heavy": [
         "aerolink/gpt-5.6-sol",
-        "tokenrouter/z-ai/glm-5.3-free",
     ],
     # Working-first ordering (verified live 2026-09-15): solar-pro4, gemini-3.8/3.7 and groq's
     # gpt-oss-120b all answer; siliconflow's DeepSeek (insufficient account balance) and
@@ -159,11 +153,11 @@ _TIER_ORDER: dict[str, list[str]] = {
         "gemini/gemini-3.7-flash",
         "groq/openai/gpt-oss-120b",
         "nvidia_nim/z-ai/glm-5.3",
+        "nvidia_nim/moonshotai/kimi-k3",
         "nvidia_nim/nvidia/nemotron-3-super-120b-a12b",
         "zai/glm-4.7-flash",
-        # Dead as of 2026-09-15 — kept last so manual/tier lookups still resolve them if revived.
+        # Dead as of 2026-09-15 — kept last so manual/tier lookups still resolve it if revived.
         "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash",
-        "tokenrouter/z-ai/glm-5.3-free",
     ],
     "balanced": [
         "gemini/gemini-3.7-flash",
@@ -171,7 +165,6 @@ _TIER_ORDER: dict[str, list[str]] = {
         "groq/qwen/qwen3.6-27b",
         "cerebras/qwen-3.8-27b",
         "groq/openai/gpt-oss-120b",
-        "tokenrouter/z-ai/glm-5.3-free",
         "mistral/mistral-medium-latest",
     ],
     "light": [
@@ -211,7 +204,6 @@ _FAILOVER_RING: dict[str, list[str]] = {
     # migrating the orchestrator onto the worker pool.
     "ultra_heavy": [
         "aerolink/gpt-5.6-sol",
-        "tokenrouter/z-ai/glm-5.3-free",
         # Working tail (2026-09-15): both GLM and aerolink are down, so a manually-selected
         # ultra_heavy job would otherwise loop forever over two dead endpoints (observed). These
         # let it recover instead of hanging. Remove once GLM/aerolink are healthy again.
@@ -306,7 +298,6 @@ DEFAULT_CONTEXT = 32768
 # Per-model (calls, window_seconds) caps for providers with a hard rate limit — sleep to stay under
 # it instead of eating a 429. Model not listed here means unthrottled.
 _RATE_LIMITS: dict[str, tuple[int, float]] = {
-    "tokenrouter/z-ai/glm-5.3-free": (8, 60.0),
     # Gemini free tier meters ~5 requests/min PER MODEL PER PROJECT. Throttling proactively here is
     # strictly better than discovering the limit as a 429: the 429 costs a full network round-trip
     # and burns a rotation step, whereas waiting ~12s reuses the same bucket. Crucially these
