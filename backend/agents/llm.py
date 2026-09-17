@@ -37,6 +37,7 @@ TOKENROUTER_API_BASE = "https://api.tokenrouter.com/v1"
 AEROLINK_API_BASE = "https://cgapi.aerolink.lat/v1"
 SILICONFLOW_API_BASE = "https://api.siliconflow.com/v1"
 UPSTAGE_API_BASE = "https://api.upstage.ai/v1"
+INCEPTION_API_BASE = "https://api.inceptionlabs.ai/v1"
 
 # id -> (label, context_window, tier, provider). Context windows are the models' documented limits.
 #
@@ -79,6 +80,7 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     "aerolink/gpt-5.6-sol": ("GPT-5.6 Sol (Aerolink)", 200000, "ultra_heavy", "aerolink"),
     "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash": ("DeepSeek V4.1 Flash (SiliconFlow)", 128000, "heavy", "siliconflow"),
     "upstage/solar-pro4": ("Solar Pro 4 (Upstage)", 128000, "heavy", "upstage"),
+    "inception/mercury-2.5": ("Mercury 2.5 (Inception)", 128000, "balanced", "inception"),
     # Dedicated debug/testing model for Solar Pro - uses UPSTAGE_DEBUG_API_KEY. Kept in "debug"
     # tier so automatic task routing and failover rings never pick it up; reachable explicitly by
     # name (e.g. for testing, benchmarks, or overrides) without consuming primary key quota.
@@ -113,6 +115,7 @@ _PROVIDER_ENV = {
     "aerolink": "AEROLINK_API_KEY",
     "siliconflow": "SILICONFLOW_API_KEY",
     "upstage": "UPSTAGE_API_KEY",
+    "inception": "INCEPTION_API_KEY",
     "upstage_debug": "UPSTAGE_DEBUG_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
     "tokenrouter": "TOKENROUTER_API_KEY",
@@ -645,23 +648,26 @@ class LLMClient:
         # exactly like every other provider. These two branches used to hardcode os.getenv(...) and
         # return early, silently bypassing the entire rotation mechanism: adding a second GLM key
         # did literally nothing, and a single key's quota was the hard ceiling for every GLM call.
-        if model.startswith("zai/") or model.startswith("tokenrouter/") or model.startswith("aerolink/") or model.startswith("siliconflow/") or model.startswith("upstage/") or model.startswith("upstage_debug/"):
+        if model.startswith("zai/") or model.startswith("tokenrouter/") or model.startswith("aerolink/") or model.startswith("siliconflow/") or model.startswith("upstage/") or model.startswith("upstage_debug/") or model.startswith("inception/"):
             is_zai = model.startswith("zai/")
             is_aerolink = model.startswith("aerolink/")
             is_siliconflow = model.startswith("siliconflow/")
             is_upstage = model.startswith("upstage/")
             is_upstage_debug = model.startswith("upstage_debug/")
-            
+            is_inception = model.startswith("inception/")
+
             if is_aerolink: provider = "aerolink"
             elif is_siliconflow: provider = "siliconflow"
             elif is_upstage: provider = "upstage"
             elif is_upstage_debug: provider = "upstage_debug"
+            elif is_inception: provider = "inception"
             elif is_zai: provider = "zai"
             else: provider = "tokenrouter"
-            
+
             if is_aerolink: api_base = AEROLINK_API_BASE
             elif is_siliconflow: api_base = SILICONFLOW_API_BASE
             elif is_upstage or is_upstage_debug: api_base = UPSTAGE_API_BASE
+            elif is_inception: api_base = INCEPTION_API_BASE
             elif is_zai: api_base = ZAI_API_BASE
             else: api_base = TOKENROUTER_API_BASE
             
