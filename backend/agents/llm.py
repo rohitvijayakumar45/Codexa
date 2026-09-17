@@ -51,6 +51,7 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     # Heavy tier
     "gemini/gemini-3.8-flash": ("Gemini 3.8 Flash", 1048576, "heavy", "gemini"),
     "nvidia_nim/deepseek-ai/deepseek-v4-pro-0813": ("DeepSeek V4 Pro", 128000, "heavy", "nvidia"),
+    "nvidia_nim/z-ai/glm-5.3": ("GLM 5.3 (NVIDIA NIM)", 200000, "heavy", "nvidia"),
     "nvidia_nim/nvidia/nemotron-3-super-120b-a12b": ("Nemotron 3 Super 120B", 1000000, "heavy", "nvidia"),
     "groq/openai/gpt-oss-120b": ("GPT-OSS 120B (Groq)", 131072, "heavy", "groq"),
     "zai/glm-4.7-flash": ("GLM 4.7 Flash (Z.ai)", 128000, "heavy", "zai"),
@@ -157,6 +158,7 @@ _TIER_ORDER: dict[str, list[str]] = {
         # keys exhausted) still leaves 3.7 reachable moments later once the window rolls.
         "gemini/gemini-3.7-flash",
         "groq/openai/gpt-oss-120b",
+        "nvidia_nim/z-ai/glm-5.3",
         "nvidia_nim/nvidia/nemotron-3-super-120b-a12b",
         "zai/glm-4.7-flash",
         # Dead as of 2026-09-15 — kept last so manual/tier lookups still resolve them if revived.
