@@ -1,0 +1,21 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 5,
+  "status": "done",
+  "duration_seconds": 58.028809785842896,
+  "input_tokens": 233673,
+  "output_tokens": 4090,
+  "total_tokens": 237763,
+  "tool_calls_total": 12,
+  "tool_counts": {
+    "tree": 1,
+    "read_files": 1,
+    "read_file": 10
+  },
+  "job_id": "d3b79405-5e6e-4242-9a1e-6089e7b98e05",
+  "answer": "Let me get the remaining parts of ExamWindow.tsx for the detection logic, and the final portion of AdminDashboard.tsx for the activities display.",
+  "answer_chars": 145
+}

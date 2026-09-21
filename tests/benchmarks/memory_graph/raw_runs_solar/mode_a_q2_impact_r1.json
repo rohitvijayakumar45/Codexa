@@ -1,0 +1,20 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 1,
+  "status": "done",
+  "duration_seconds": 78.08969235420227,
+  "input_tokens": 121700,
+  "output_tokens": 3267,
+  "total_tokens": 124967,
+  "tool_calls_total": 22,
+  "tool_counts": {
+    "search_code": 8,
+    "read_file": 14
+  },
+  "job_id": "78cc70c1-318b-409b-8c3d-ca95d62c4331",
+  "answer": "Now let me check where the severity field is rendered in the frontend and what components display proctoring data:",
+  "answer_chars": 114
+}

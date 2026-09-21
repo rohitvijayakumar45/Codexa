@@ -1,0 +1,20 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 1,
+  "status": "error",
+  "duration_seconds": 210.28699254989624,
+  "input_tokens": 677476,
+  "output_tokens": 3964,
+  "total_tokens": 681440,
+  "tool_calls_total": 81,
+  "tool_counts": {
+    "search_code": 37,
+    "read_file": 44
+  },
+  "job_id": "d8853041-a088-4f12-a2d2-399337377458",
+  "answer": "Let me find the actual API client file more systematically \u2014 the task requires `api/exam.ts` or equivalent to exist. Let me check what's in the frontend source structure:",
+  "answer_chars": 170
+}

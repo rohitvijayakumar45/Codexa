@@ -44,6 +44,7 @@ INCEPTION_API_BASE = "https://api.inceptionlabs.ai/v1"
 # strips any a given provider doesn't support.
 _MODEL_EXTRA_PARAMS: dict[str, dict[str, Any]] = {
     "inception/mercury-2.5": {"reasoning_effort": "high"},
+    "inception_debug/mercury-2.5": {"reasoning_effort": "high"},
 }
 
 # id -> (label, context_window, tier, provider). Context windows are the models' documented limits.
@@ -88,6 +89,10 @@ MODEL_REGISTRY: dict[str, tuple[str, int, str, str]] = {
     "siliconflow/deepseek-ai/DeepSeek-V4.1-Flash": ("DeepSeek V4.1 Flash (SiliconFlow)", 128000, "heavy", "siliconflow"),
     "upstage/solar-pro4": ("Solar Pro 4 (Upstage)", 128000, "heavy", "upstage"),
     "inception/mercury-2.5": ("Mercury 2.5 (Inception)", 128000, "balanced", "inception"),
+    # Second Mercury key, isolated in "debug" tier (like upstage_debug below) so auto task-routing
+    # and failover rings NEVER pick it — reachable only by explicit name for debugging/testing, so
+    # its quota stays separate from the primary inception/ key's. Uses INCEPTION_DEBUG_API_KEY.
+    "inception_debug/mercury-2.5": ("Mercury 2.5 (Debug/Testing)", 128000, "debug", "inception_debug"),
     # Dedicated debug/testing model for Solar Pro - uses UPSTAGE_DEBUG_API_KEY. Kept in "debug"
     # tier so automatic task routing and failover rings never pick it up; reachable explicitly by
     # name (e.g. for testing, benchmarks, or overrides) without consuming primary key quota.
@@ -123,6 +128,7 @@ _PROVIDER_ENV = {
     "siliconflow": "SILICONFLOW_API_KEY",
     "upstage": "UPSTAGE_API_KEY",
     "inception": "INCEPTION_API_KEY",
+    "inception_debug": "INCEPTION_DEBUG_API_KEY",
     "upstage_debug": "UPSTAGE_DEBUG_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
     "tokenrouter": "TOKENROUTER_API_KEY",
@@ -655,18 +661,20 @@ class LLMClient:
         # exactly like every other provider. These two branches used to hardcode os.getenv(...) and
         # return early, silently bypassing the entire rotation mechanism: adding a second GLM key
         # did literally nothing, and a single key's quota was the hard ceiling for every GLM call.
-        if model.startswith("zai/") or model.startswith("tokenrouter/") or model.startswith("aerolink/") or model.startswith("siliconflow/") or model.startswith("upstage/") or model.startswith("upstage_debug/") or model.startswith("inception/"):
+        if model.startswith("zai/") or model.startswith("tokenrouter/") or model.startswith("aerolink/") or model.startswith("siliconflow/") or model.startswith("upstage/") or model.startswith("upstage_debug/") or model.startswith("inception/") or model.startswith("inception_debug/"):
             is_zai = model.startswith("zai/")
             is_aerolink = model.startswith("aerolink/")
             is_siliconflow = model.startswith("siliconflow/")
             is_upstage = model.startswith("upstage/")
             is_upstage_debug = model.startswith("upstage_debug/")
+            is_inception_debug = model.startswith("inception_debug/")
             is_inception = model.startswith("inception/")
 
             if is_aerolink: provider = "aerolink"
             elif is_siliconflow: provider = "siliconflow"
             elif is_upstage: provider = "upstage"
             elif is_upstage_debug: provider = "upstage_debug"
+            elif is_inception_debug: provider = "inception_debug"
             elif is_inception: provider = "inception"
             elif is_zai: provider = "zai"
             else: provider = "tokenrouter"
@@ -674,7 +682,7 @@ class LLMClient:
             if is_aerolink: api_base = AEROLINK_API_BASE
             elif is_siliconflow: api_base = SILICONFLOW_API_BASE
             elif is_upstage or is_upstage_debug: api_base = UPSTAGE_API_BASE
-            elif is_inception: api_base = INCEPTION_API_BASE
+            elif is_inception or is_inception_debug: api_base = INCEPTION_API_BASE
             elif is_zai: api_base = ZAI_API_BASE
             else: api_base = TOKENROUTER_API_BASE
             

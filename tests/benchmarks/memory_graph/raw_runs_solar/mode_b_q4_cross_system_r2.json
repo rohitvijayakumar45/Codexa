@@ -1,0 +1,20 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 2,
+  "status": "done",
+  "duration_seconds": 88.08666634559631,
+  "input_tokens": 20992,
+  "output_tokens": 2371,
+  "total_tokens": 23363,
+  "tool_calls_total": 14,
+  "tool_counts": {
+    "search_code": 9,
+    "read_file": 5
+  },
+  "job_id": "d8ae2f29-9a97-4d83-bede-70a0dd330ccf",
+  "answer": "Let me read the key sections to trace the full flow.",
+  "answer_chars": 52
+}

@@ -1,0 +1,336 @@
+{
+  "repository": "FitQuest",
+  "n_symbols": 40,
+  "raw_total_tokens": 124443,
+  "graph_total_tokens": 3997,
+  "overall_reduction_x": 31.134100575431574,
+  "mean_per_symbol_reduction_x": 37.41426452622305,
+  "median_reduction_x": 19.027020202020203,
+  "usd_per_1M_input": 0.25,
+  "raw_cost_usd": 0.03111075,
+  "graph_cost_usd": 0.00099925,
+  "memory_records": 8,
+  "memory_payload_tokens": 7577,
+  "rows": [
+    {
+      "symbol": "spoonRecipeInfo",
+      "def_file": "frontend/src/pages/RecipesPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 7360,
+      "graph_tokens": 57,
+      "reduction_x": 129.12280701754386
+    },
+    {
+      "symbol": "spoonSearch",
+      "def_file": "frontend/src/pages/RecipesPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 7360,
+      "graph_tokens": 57,
+      "reduction_x": 129.12280701754386
+    },
+    {
+      "symbol": "removeEx",
+      "def_file": "frontend/src/pages/WorkoutPlanPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 6451,
+      "graph_tokens": 56,
+      "reduction_x": 115.19642857142857
+    },
+    {
+      "symbol": "updateEx",
+      "def_file": "frontend/src/pages/WorkoutPlanPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 6451,
+      "graph_tokens": 56,
+      "reduction_x": 115.19642857142857
+    },
+    {
+      "symbol": "getNutrient",
+      "def_file": "frontend/src/pages/RecipesPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 7360,
+      "graph_tokens": 65,
+      "reduction_x": 113.23076923076923
+    },
+    {
+      "symbol": "opacity",
+      "def_file": "frontend/src/pages/WorkoutPlanPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 6451,
+      "graph_tokens": 59,
+      "reduction_x": 109.33898305084746
+    },
+    {
+      "symbol": "fill",
+      "def_file": "frontend/src/pages/WorkoutPlanPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 6451,
+      "graph_tokens": 59,
+      "reduction_x": 109.33898305084746
+    },
+    {
+      "symbol": "isOn",
+      "def_file": "frontend/src/pages/WorkoutPlanPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 6451,
+      "graph_tokens": 66,
+      "reduction_x": 97.74242424242425
+    },
+    {
+      "symbol": "handleDelete",
+      "def_file": "frontend/src/pages/RecipesPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 7360,
+      "graph_tokens": 170,
+      "reduction_x": 43.294117647058826
+    },
+    {
+      "symbol": "handleDelete",
+      "def_file": "frontend/src/pages/WorkoutPlanPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 6451,
+      "graph_tokens": 170,
+      "reduction_x": 37.94705882352941
+    },
+    {
+      "symbol": "resetForm",
+      "def_file": "frontend/src/pages/RecipesPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 7360,
+      "graph_tokens": 197,
+      "reduction_x": 37.36040609137056
+    },
+    {
+      "symbol": "resetForm",
+      "def_file": "frontend/src/pages/WorkoutPlanPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 6451,
+      "graph_tokens": 197,
+      "reduction_x": 32.746192893401016
+    },
+    {
+      "symbol": "awardXP",
+      "def_file": "backend/controllers/gamificationController.js",
+      "n_ref_files": 3,
+      "raw_tokens": 3677,
+      "graph_tokens": 113,
+      "reduction_x": 32.53982300884956
+    },
+    {
+      "symbol": "resetForm",
+      "def_file": "frontend/src/pages/DietPlannerPage.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 4325,
+      "graph_tokens": 197,
+      "reduction_x": 21.95431472081218
+    },
+    {
+      "symbol": "createWorkout",
+      "def_file": "backend/controllers/workoutController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1666,
+      "graph_tokens": 79,
+      "reduction_x": 21.088607594936708
+    },
+    {
+      "symbol": "deleteGroceryItem",
+      "def_file": "backend/controllers/recipeController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1721,
+      "graph_tokens": 82,
+      "reduction_x": 20.98780487804878
+    },
+    {
+      "symbol": "deleteWorkout",
+      "def_file": "backend/controllers/workoutController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1666,
+      "graph_tokens": 81,
+      "reduction_x": 20.567901234567902
+    },
+    {
+      "symbol": "getRecipes",
+      "def_file": "backend/controllers/recipeController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1721,
+      "graph_tokens": 87,
+      "reduction_x": 19.7816091954023
+    },
+    {
+      "symbol": "getWeekStats",
+      "def_file": "backend/controllers/workoutController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1666,
+      "graph_tokens": 85,
+      "reduction_x": 19.6
+    },
+    {
+      "symbol": "updateRecipe",
+      "def_file": "backend/controllers/recipeController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1721,
+      "graph_tokens": 90,
+      "reduction_x": 19.122222222222224
+    },
+    {
+      "symbol": "createLog",
+      "def_file": "backend/controllers/workoutController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1666,
+      "graph_tokens": 88,
+      "reduction_x": 18.931818181818183
+    },
+    {
+      "symbol": "toggleGrocery",
+      "def_file": "backend/controllers/recipeController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1721,
+      "graph_tokens": 91,
+      "reduction_x": 18.912087912087912
+    },
+    {
+      "symbol": "deleteLog",
+      "def_file": "backend/controllers/workoutController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1666,
+      "graph_tokens": 91,
+      "reduction_x": 18.307692307692307
+    },
+    {
+      "symbol": "getWorkout",
+      "def_file": "backend/controllers/workoutController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1666,
+      "graph_tokens": 93,
+      "reduction_x": 17.913978494623656
+    },
+    {
+      "symbol": "getRecipe",
+      "def_file": "backend/controllers/recipeController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1721,
+      "graph_tokens": 101,
+      "reduction_x": 17.03960396039604
+    },
+    {
+      "symbol": "updateWorkout",
+      "def_file": "backend/controllers/workoutController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1666,
+      "graph_tokens": 102,
+      "reduction_x": 16.333333333333332
+    },
+    {
+      "symbol": "createRecipe",
+      "def_file": "backend/controllers/recipeController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1721,
+      "graph_tokens": 125,
+      "reduction_x": 13.768
+    },
+    {
+      "symbol": "getAchievements",
+      "def_file": "backend/controllers/gamificationController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1316,
+      "graph_tokens": 96,
+      "reduction_x": 13.708333333333334
+    },
+    {
+      "symbol": "getWeeklyMeals",
+      "def_file": "backend/controllers/mealController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1093,
+      "graph_tokens": 89,
+      "reduction_x": 12.280898876404494
+    },
+    {
+      "symbol": "updateMeal",
+      "def_file": "backend/controllers/mealController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1093,
+      "graph_tokens": 91,
+      "reduction_x": 12.010989010989011
+    },
+    {
+      "symbol": "getMeals",
+      "def_file": "backend/controllers/mealController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1093,
+      "graph_tokens": 92,
+      "reduction_x": 11.880434782608695
+    },
+    {
+      "symbol": "createMeal",
+      "def_file": "backend/controllers/mealController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1093,
+      "graph_tokens": 95,
+      "reduction_x": 11.505263157894737
+    },
+    {
+      "symbol": "getDashboardStats",
+      "def_file": "backend/controllers/analyticsController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1090,
+      "graph_tokens": 103,
+      "reduction_x": 10.58252427184466
+    },
+    {
+      "symbol": "getWorkoutHistory",
+      "def_file": "backend/controllers/analyticsController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1090,
+      "graph_tokens": 105,
+      "reduction_x": 10.380952380952381
+    },
+    {
+      "symbol": "getFriends",
+      "def_file": "backend/controllers/socialController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 807,
+      "graph_tokens": 79,
+      "reduction_x": 10.215189873417721
+    },
+    {
+      "symbol": "getLeaderboard",
+      "def_file": "backend/controllers/userController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 700,
+      "graph_tokens": 77,
+      "reduction_x": 9.090909090909092
+    },
+    {
+      "symbol": "sendFriendRequest",
+      "def_file": "backend/controllers/socialController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 807,
+      "graph_tokens": 93,
+      "reduction_x": 8.67741935483871
+    },
+    {
+      "symbol": "getNote",
+      "def_file": "backend/controllers/userController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 700,
+      "graph_tokens": 87,
+      "reduction_x": 8.045977011494253
+    },
+    {
+      "symbol": "acceptFriend",
+      "def_file": "backend/controllers/socialController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 807,
+      "graph_tokens": 134,
+      "reduction_x": 6.022388059701493
+    },
+    {
+      "symbol": "removeFriend",
+      "def_file": "backend/controllers/socialController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 807,
+      "graph_tokens": 142,
+      "reduction_x": 5.683098591549296
+    }
+  ]
+}

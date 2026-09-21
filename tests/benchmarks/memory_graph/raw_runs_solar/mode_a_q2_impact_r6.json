@@ -1,0 +1,20 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 6,
+  "status": "done",
+  "duration_seconds": 47.04051685333252,
+  "input_tokens": 41051,
+  "output_tokens": 2977,
+  "total_tokens": 44028,
+  "tool_calls_total": 15,
+  "tool_counts": {
+    "search_code": 5,
+    "read_file": 10
+  },
+  "job_id": "72bee525-fc92-4546-880d-3bfee5cc247e",
+  "answer": "Now let me check how the frontend consumes these logs and how the other controllers expose them:",
+  "answer_chars": 96
+}

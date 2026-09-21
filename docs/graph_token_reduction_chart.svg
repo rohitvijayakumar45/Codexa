@@ -1,0 +1,22 @@
+<svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" font-family="Inter, system-ui, sans-serif">
+<style>
+ :root { --raw:#c85a17; --gph:#2a7d4a; --ink:#1a1a1a; --mut:#8a8a8a; --grid:#eceae6; }
+ .title { font-size:20px; font-weight:700; fill:var(--ink); }
+ .sub { font-size:13px; fill:var(--mut); }
+ .lbl { font-size:14px; font-weight:600; fill:var(--ink); }
+ .tok { font-size:11px; fill:var(--mut); }
+ .mult { font-size:16px; font-weight:700; fill:var(--gph); }
+ .axis { font-size:11px; fill:var(--mut); }
+ .grid { stroke:var(--grid); stroke-width:1; }
+ .leg { font-size:12px; fill:var(--ink); }
+</style>
+<rect width="900" height="520" fill="#ffffff"/>
+<text x="40" y="38" class="title">Context tokens to answer a code-navigation query</text>
+<text x="40" y="58" class="sub">Codexa knowledge graph vs raw file reading — same question, 174 symbols, 5 repositories (log scale)</text>
+<rect x="560" y="26" width="12" height="12" rx="2" fill="var(--raw)"/><text x="578" y="36" class="leg">Raw file read</text>
+<rect x="680" y="26" width="12" height="12" rx="2" fill="var(--gph)"/><text x="698" y="36" class="leg">Graph retrieval</text>
+<line x1="372.5" y1="80" x2="372.5" y2="450" class="grid"/><text x="372.5" y="468" text-anchor="middle" class="axis">1K</text><line x1="535.0" y1="80" x2="535.0" y2="450" class="grid"/><text x="535.0" y="468" text-anchor="middle" class="axis">10K</text><line x1="697.5" y1="80" x2="697.5" y2="450" class="grid"/><text x="697.5" y="468" text-anchor="middle" class="axis">100K</text><line x1="860.0" y1="80" x2="860.0" y2="450" class="grid"/><text x="860.0" y="468" text-anchor="middle" class="axis">1M</text>
+<text x="196" y="130.0" text-anchor="end" class="lbl">gods-eye-view</text><rect x="210" y="111.0" width="635.5" height="13" rx="2" fill="var(--raw)"/><text x="851.5" y="122.0" class="tok">813,852</text><rect x="210" y="127.0" width="256.0" height="13" rx="2" fill="var(--gph)"/><text x="472.0" y="138.0" class="tok">3,764</text><text x="860" y="130.0" text-anchor="end" class="mult">216x</text><text x="196" y="202.0" text-anchor="end" class="lbl">Exam-Proctoring</text><rect x="210" y="183.0" width="615.1" height="13" rx="2" fill="var(--raw)"/><text x="831.1" y="194.0" class="tok">609,888</text><rect x="210" y="199.0" width="310.0" height="13" rx="2" fill="var(--gph)"/><text x="526.0" y="210.0" class="tok">8,081</text><text x="860" y="202.0" text-anchor="end" class="mult">75x</text><text x="196" y="274.0" text-anchor="end" class="lbl">Tourism-Management</text><rect x="210" y="255.0" width="559.7" height="13" rx="2" fill="var(--raw)"/><text x="775.7" y="266.0" class="tok">278,000</text><rect x="210" y="271.0" width="276.4" height="13" rx="2" fill="var(--gph)"/><text x="492.4" y="282.0" class="tok">5,026</text><text x="860" y="274.0" text-anchor="end" class="mult">55x</text><text x="196" y="346.0" text-anchor="end" class="lbl">MOMENTUM</text><rect x="210" y="327.0" width="412.6" height="13" rx="2" fill="var(--raw)"/><text x="628.6" y="338.0" class="tok">34,620</text><rect x="210" y="343.0" width="148.1" height="13" rx="2" fill="var(--gph)"/><text x="364.1" y="354.0" class="tok">816</text><text x="860" y="346.0" text-anchor="end" class="mult">42x</text><text x="196" y="418.0" text-anchor="end" class="lbl">FitQuest</text><rect x="210" y="399.0" width="502.9" height="13" rx="2" fill="var(--raw)"/><text x="718.9" y="410.0" class="tok">124,443</text><rect x="210" y="415.0" width="260.3" height="13" rx="2" fill="var(--gph)"/><text x="476.3" y="426.0" class="tok">3,997</text><text x="860" y="418.0" text-anchor="end" class="mult">31x</text>
+<text x="210" y="490" class="sub">Aggregate: 1,860,803 → 21,684 tokens = <tspan font-weight="700" fill="var(--gph)">85.8x fewer (98.8%)</tspan>. Deterministic, model-free, reproducible.</text>
+<text x="860" y="60" text-anchor="end" class="sub">reduction</text>
+</svg>

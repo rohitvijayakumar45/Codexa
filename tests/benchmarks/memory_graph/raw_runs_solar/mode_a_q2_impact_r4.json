@@ -1,0 +1,21 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 4,
+  "status": "done",
+  "duration_seconds": 56.05323266983032,
+  "input_tokens": 98552,
+  "output_tokens": 3158,
+  "total_tokens": 101710,
+  "tool_calls_total": 15,
+  "tool_counts": {
+    "tree": 1,
+    "read_file": 11,
+    "search_code": 3
+  },
+  "job_id": "a954ffc8-7e14-4d18-8945-03839687d84d",
+  "answer": "Now let me look at the frontend components that display proctoring data \u2014 specifically the AdminDashboard and how it renders the activity logs / suspicious activities.",
+  "answer_chars": 167
+}

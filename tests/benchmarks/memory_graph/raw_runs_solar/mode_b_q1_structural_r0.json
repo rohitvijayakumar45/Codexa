@@ -1,0 +1,22 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 0,
+  "status": "error",
+  "duration_seconds": 382.3949291706085,
+  "input_tokens": 922563,
+  "output_tokens": 20561,
+  "total_tokens": 943124,
+  "tool_calls_total": 49,
+  "tool_counts": {
+    "search_code": 17,
+    "read_file": 19,
+    "list_symbols": 4,
+    "lookup_symbol": 9
+  },
+  "job_id": "6902a172-8968-4670-b500-8d1d68443636",
+  "answer": "Good \u2014 the knowledge graph now confirms `handleSubmitExam`, `submitAnswers`, and `protect` exist. Let me use the graph for the remaining trace points and get the complete sequence.",
+  "answer_chars": 180
+}

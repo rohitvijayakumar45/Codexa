@@ -1,0 +1,21 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 4,
+  "status": "error",
+  "duration_seconds": 117.1837055683136,
+  "input_tokens": 279540,
+  "output_tokens": 2445,
+  "total_tokens": 281985,
+  "tool_calls_total": 37,
+  "tool_counts": {
+    "read_file": 7,
+    "search_code": 28,
+    "lookup_symbol": 2
+  },
+  "job_id": "30419b20-dbc6-4c38-b347-38777d8771ac",
+  "answer": "The required file `frontend/src/api/exam.ts` does not exist in this repo. The submission API call is not wrapped in a dedicated service \u2014 it's fired directly from `ExamWindow.tsx` with a plain `fetch` (already identified). I'll locate any other api layer file to report the equivalent, then finish this task.",
+  "answer_chars": 308
+}

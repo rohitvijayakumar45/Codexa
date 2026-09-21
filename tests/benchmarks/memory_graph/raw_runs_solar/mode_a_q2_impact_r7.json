@@ -1,0 +1,22 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 7,
+  "status": "done",
+  "duration_seconds": 114.08297038078308,
+  "input_tokens": 234732,
+  "output_tokens": 4418,
+  "total_tokens": 239150,
+  "tool_calls_total": 13,
+  "tool_counts": {
+    "read_file": 3,
+    "tree": 1,
+    "read_files": 3,
+    "search_code": 6
+  },
+  "job_id": "3c1e2d07-d357-4cc6-acf8-6da133376154",
+  "answer": "Now let me also check the `ExamDetailView` to see if it renders proctoring data directly.",
+  "answer_chars": 89
+}

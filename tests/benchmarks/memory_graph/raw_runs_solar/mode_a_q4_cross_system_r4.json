@@ -1,0 +1,21 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 4,
+  "status": "done",
+  "duration_seconds": 93.05073571205139,
+  "input_tokens": 107520,
+  "output_tokens": 5772,
+  "total_tokens": 113292,
+  "tool_calls_total": 3,
+  "tool_counts": {
+    "tree": 1,
+    "read_files": 1,
+    "read_file": 1
+  },
+  "job_id": "6713bda9-bdda-4992-bb9c-a516f3836e05",
+  "answer": "Let me explore the project structure to understand the cheating detection system.",
+  "answer_chars": 81
+}

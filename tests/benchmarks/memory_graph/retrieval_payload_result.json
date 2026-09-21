@@ -1,0 +1,336 @@
+{
+  "repository": "gods-eye-view",
+  "n_symbols": 40,
+  "raw_total_tokens": 813852,
+  "graph_total_tokens": 3764,
+  "overall_reduction_x": 216.21997874601487,
+  "mean_per_symbol_reduction_x": 240.82878543328135,
+  "median_reduction_x": 176.62198535745048,
+  "usd_per_1M_input": 0.25,
+  "raw_cost_usd": 0.203463,
+  "graph_cost_usd": 0.000941,
+  "memory_records": 8,
+  "memory_payload_tokens": 7396,
+  "rows": [
+    {
+      "symbol": "cockpitContactDotImage",
+      "def_file": "src/data/cockpitContactDot.js",
+      "n_ref_files": 2,
+      "raw_tokens": 66312,
+      "graph_tokens": 68,
+      "reduction_x": 975.1764705882352
+    },
+    {
+      "symbol": "_modelKeepDistM",
+      "def_file": "src/data/flights.js",
+      "n_ref_files": 1,
+      "raw_tokens": 65852,
+      "graph_tokens": 77,
+      "reduction_x": 855.2207792207793
+    },
+    {
+      "symbol": "_normalizeTrackedIcao",
+      "def_file": "src/data/flights.js",
+      "n_ref_files": 1,
+      "raw_tokens": 65852,
+      "graph_tokens": 97,
+      "reduction_x": 678.8865979381443
+    },
+    {
+      "symbol": "refreshProjectionTextures",
+      "def_file": "src/data/cctv.js",
+      "n_ref_files": 1,
+      "raw_tokens": 49315,
+      "graph_tokens": 74,
+      "reduction_x": 666.418918918919
+    },
+    {
+      "symbol": "normalizeCoverageMode",
+      "def_file": "src/data/cctv.js",
+      "n_ref_files": 1,
+      "raw_tokens": 49315,
+      "graph_tokens": 76,
+      "reduction_x": 648.8815789473684
+    },
+    {
+      "symbol": "sh",
+      "def_file": "scripts/qa-l9-matrix.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 34494,
+      "graph_tokens": 68,
+      "reduction_x": 507.2647058823529
+    },
+    {
+      "symbol": "buildingHeightFromTags",
+      "def_file": "src/annotations/annotationResolver.js",
+      "n_ref_files": 1,
+      "raw_tokens": 25118,
+      "graph_tokens": 70,
+      "reduction_x": 358.8285714285714
+    },
+    {
+      "symbol": "subjectFromContext",
+      "def_file": "src/data/militaryAwareness.js",
+      "n_ref_files": 1,
+      "raw_tokens": 19004,
+      "graph_tokens": 53,
+      "reduction_x": 358.5660377358491
+    },
+    {
+      "symbol": "consider",
+      "def_file": "src/data/cctv.js",
+      "n_ref_files": 2,
+      "raw_tokens": 63658,
+      "graph_tokens": 178,
+      "reduction_x": 357.6292134831461
+    },
+    {
+      "symbol": "skip",
+      "def_file": "scripts/track-regression.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 53968,
+      "graph_tokens": 153,
+      "reduction_x": 352.73202614379085
+    },
+    {
+      "symbol": "cellAccent",
+      "def_file": "src/data/firmsHeatmap.js",
+      "n_ref_files": 1,
+      "raw_tokens": 15988,
+      "graph_tokens": 53,
+      "reduction_x": 301.66037735849056
+    },
+    {
+      "symbol": "formatLatLon",
+      "def_file": "src/data/firmsHeatmap.js",
+      "n_ref_files": 1,
+      "raw_tokens": 15988,
+      "graph_tokens": 59,
+      "reduction_x": 270.9830508474576
+    },
+    {
+      "symbol": "subjectCohortFeedUnknown",
+      "def_file": "src/data/militaryAwareness.js",
+      "n_ref_files": 1,
+      "raw_tokens": 19004,
+      "graph_tokens": 71,
+      "reduction_x": 267.6619718309859
+    },
+    {
+      "symbol": "normalizeContextId",
+      "def_file": "src/data/militaryAwareness.js",
+      "n_ref_files": 1,
+      "raw_tokens": 19004,
+      "graph_tokens": 71,
+      "reduction_x": 267.6619718309859
+    },
+    {
+      "symbol": "heatScore",
+      "def_file": "src/data/firmsHeatmap.js",
+      "n_ref_files": 1,
+      "raw_tokens": 15988,
+      "graph_tokens": 64,
+      "reduction_x": 249.8125
+    },
+    {
+      "symbol": "appendSelectedVesselTrailFix",
+      "def_file": "src/data/aisLiveVessels.js",
+      "n_ref_files": 1,
+      "raw_tokens": 19603,
+      "graph_tokens": 89,
+      "reduction_x": 220.25842696629215
+    },
+    {
+      "symbol": "selectNavigationTargets",
+      "def_file": "src/data/militaryAwareness.js",
+      "n_ref_files": 1,
+      "raw_tokens": 19004,
+      "graph_tokens": 89,
+      "reduction_x": 213.52808988764045
+    },
+    {
+      "symbol": "deriveAisFeedError",
+      "def_file": "src/data/aisLiveVessels.js",
+      "n_ref_files": 1,
+      "raw_tokens": 19603,
+      "graph_tokens": 96,
+      "reduction_x": 204.19791666666666
+    },
+    {
+      "symbol": "vesselDatumHeightM",
+      "def_file": "src/data/aisLiveVessels.js",
+      "n_ref_files": 1,
+      "raw_tokens": 19603,
+      "graph_tokens": 102,
+      "reduction_x": 192.18627450980392
+    },
+    {
+      "symbol": "_buildMetaText",
+      "def_file": "src/data/manager.js",
+      "n_ref_files": 1,
+      "raw_tokens": 19607,
+      "graph_tokens": 108,
+      "reduction_x": 181.5462962962963
+    },
+    {
+      "symbol": "scheduleProximityCheck",
+      "def_file": "src/data/bikeshare.js",
+      "n_ref_files": 1,
+      "raw_tokens": 14766,
+      "graph_tokens": 86,
+      "reduction_x": 171.69767441860466
+    },
+    {
+      "symbol": "beginPath",
+      "def_file": "src/data/cockpitDetectionSubjects.test.mjs",
+      "n_ref_files": 2,
+      "raw_tokens": 15927,
+      "graph_tokens": 108,
+      "reduction_x": 147.47222222222223
+    },
+    {
+      "symbol": "firstClean",
+      "def_file": "src/data/localGeojson.js",
+      "n_ref_files": 1,
+      "raw_tokens": 7937,
+      "graph_tokens": 55,
+      "reduction_x": 144.3090909090909
+    },
+    {
+      "symbol": "createRouteFlight",
+      "def_file": "src/cameraVerbs.js",
+      "n_ref_files": 1,
+      "raw_tokens": 14685,
+      "graph_tokens": 105,
+      "reduction_x": 139.85714285714286
+    },
+    {
+      "symbol": "bannerPaints",
+      "def_file": "src/data/detectionHost.test.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 8308,
+      "graph_tokens": 60,
+      "reduction_x": 138.46666666666667
+    },
+    {
+      "symbol": "billboard",
+      "def_file": "src/data/firmsHorizonCull.test.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 6474,
+      "graph_tokens": 53,
+      "reduction_x": 122.15094339622641
+    },
+    {
+      "symbol": "toggle",
+      "def_file": "src/data/manager.js",
+      "n_ref_files": 1,
+      "raw_tokens": 19607,
+      "graph_tokens": 169,
+      "reduction_x": 116.01775147928994
+    },
+    {
+      "symbol": "stalePayload",
+      "def_file": "scripts/qa-firms.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 5390,
+      "graph_tokens": 58,
+      "reduction_x": 92.93103448275862
+    },
+    {
+      "symbol": "initializeRenderer",
+      "def_file": "src/cockpitCloudEffects.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4771,
+      "graph_tokens": 70,
+      "reduction_x": 68.15714285714286
+    },
+    {
+      "symbol": "percentile",
+      "def_file": "scripts/qa-labels.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 5887,
+      "graph_tokens": 107,
+      "reduction_x": 55.018691588785046
+    },
+    {
+      "symbol": "projX",
+      "def_file": "src/data/flowMatch.js",
+      "n_ref_files": 1,
+      "raw_tokens": 2707,
+      "graph_tokens": 57,
+      "reduction_x": 47.49122807017544
+    },
+    {
+      "symbol": "getOpt",
+      "def_file": "scripts/qa-focus-evidence.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 7280,
+      "graph_tokens": 158,
+      "reduction_x": 46.075949367088604
+    },
+    {
+      "symbol": "stamp",
+      "def_file": "src/cockpitTracking.test.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 2248,
+      "graph_tokens": 58,
+      "reduction_x": 38.758620689655174
+    },
+    {
+      "symbol": "_draw",
+      "def_file": "src/celestialRing.js",
+      "n_ref_files": 1,
+      "raw_tokens": 7598,
+      "graph_tokens": 202,
+      "reduction_x": 37.613861386138616
+    },
+    {
+      "symbol": "isLikelyCsv",
+      "def_file": "src/data/firmsCsv.js",
+      "n_ref_files": 1,
+      "raw_tokens": 1968,
+      "graph_tokens": 59,
+      "reduction_x": 33.355932203389834
+    },
+    {
+      "symbol": "parsePoints",
+      "def_file": "src/data/fireAnchors.test.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 1747,
+      "graph_tokens": 54,
+      "reduction_x": 32.351851851851855
+    },
+    {
+      "symbol": "json",
+      "def_file": "scripts/qa-floor-hold.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 3351,
+      "graph_tokens": 110,
+      "reduction_x": 30.463636363636365
+    },
+    {
+      "symbol": "replaceChildren",
+      "def_file": "src/cockpitSignalFocus.test.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 2609,
+      "graph_tokens": 153,
+      "reduction_x": 17.052287581699346
+    },
+    {
+      "symbol": "findChromeExecutable",
+      "def_file": "scripts/qa-traffic-preset-ab.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 3226,
+      "graph_tokens": 216,
+      "reduction_x": 14.935185185185185
+    },
+    {
+      "symbol": "median",
+      "def_file": "scripts/focus-allocation-check.mjs",
+      "n_ref_files": 1,
+      "raw_tokens": 1086,
+      "graph_tokens": 110,
+      "reduction_x": 9.872727272727273
+    }
+  ]
+}

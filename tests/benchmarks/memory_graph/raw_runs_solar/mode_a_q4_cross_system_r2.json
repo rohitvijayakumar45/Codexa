@@ -1,0 +1,21 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 2,
+  "status": "done",
+  "duration_seconds": 49.03373622894287,
+  "input_tokens": 116720,
+  "output_tokens": 2772,
+  "total_tokens": 119492,
+  "tool_calls_total": 5,
+  "tool_counts": {
+    "tree": 1,
+    "read_files": 2,
+    "search_code": 2
+  },
+  "job_id": "5595fff7-8b93-4e6b-824d-f524388bc496",
+  "answer": "Let me find the AdminDashboard and report files:",
+  "answer_chars": 48
+}

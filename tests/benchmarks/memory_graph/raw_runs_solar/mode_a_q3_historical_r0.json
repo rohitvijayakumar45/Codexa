@@ -1,0 +1,21 @@
+{
+  "question_id": "q3_historical",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 0,
+  "status": "done",
+  "duration_seconds": 41.04532790184021,
+  "input_tokens": 22525,
+  "output_tokens": 1465,
+  "total_tokens": 23990,
+  "tool_calls_total": 8,
+  "tool_counts": {
+    "tree": 1,
+    "read_file": 3,
+    "search_code": 4
+  },
+  "job_id": "f342f98e-57b7-4444-8d2b-7e1742e66ce9",
+  "answer": "Let me re-verify the actual file paths in the project.",
+  "answer_chars": 54
+}

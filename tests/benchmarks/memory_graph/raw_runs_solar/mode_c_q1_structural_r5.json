@@ -1,0 +1,20 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_c",
+  "mode_name": "Full Codexa",
+  "model": "upstage/solar-pro4",
+  "rep": 5,
+  "status": "done",
+  "duration_seconds": 89.07389187812805,
+  "input_tokens": 103398,
+  "output_tokens": 3216,
+  "total_tokens": 106614,
+  "tool_calls_total": 24,
+  "tool_counts": {
+    "search_code": 11,
+    "read_file": 13
+  },
+  "job_id": "da7c5955-eb1a-486c-a7bd-b7990d87b5b0",
+  "answer": "Let me verify the remaining pieces to fully document the failure path and auth middleware chain.",
+  "answer_chars": 96
+}

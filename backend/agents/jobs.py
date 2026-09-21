@@ -311,6 +311,25 @@ _MAX_ROUND_SECONDS = 9 * 60.0
 if os.getenv("CODEXA_ROUND_SECONDS", "").strip().lower() in ("0", "unlimited", "none"):
     _MAX_ROUND_SECONDS = float("inf")
 
+# Model-scoped tightening of that backstop. The 9-minute default exists to protect a slow free-tier
+# provider legitimately streaming a long write_file for minutes — cutting that is worse than the
+# hang. But it assumes the thing taking minutes is COUNTED output (reasoning_content or content),
+# which the two character budgets can also see and cap. A model whose deliberation happens
+# server-side and never arrives as either — Inception's mercury diffusion models — is invisible to
+# the character budgets, so the wall-clock is the ONLY guard that sees it, and at 9 minutes a
+# stalled/thrashing round grinds that whole time (observed repeatedly: mercury build jobs sitting
+# 5-9 min on a single round). A tighter per-model leash makes such a stall die in ~2.5 min without
+# shortening the budget for the slow-honest-writer case the default is for. Never tightens past the
+# global value, and the CODEXA_ROUND_SECONDS=0 escape hatch (inf above) still wins.
+_MODEL_ROUND_SECONDS: dict[str, float] = {
+    "inception/mercury-2.5": 150.0,
+    "inception_debug/mercury-2.5": 150.0,
+}
+
+
+def _round_seconds_for(model: str) -> float:
+    return min(_MODEL_ROUND_SECONDS.get(model, _MAX_ROUND_SECONDS), _MAX_ROUND_SECONDS)
+
 
 # Back-compat alias: the exception was named for the reasoning channel before it learned to
 # count both. Kept so existing imports resolve to the same class rather than silently catching
@@ -1383,7 +1402,7 @@ class JobManager:
                 # that cannot be evaded by emitting through an unexpected field, which is exactly
                 # how the last deadlock survived two other guards.
                 elapsed = time.time() - started_at
-                if elapsed > _MAX_ROUND_SECONDS:
+                if elapsed > _round_seconds_for(model):
                     raise _GenerationBudgetExceeded(spent, elapsed, "wall-clock")
                 chunks.append(chunk)
                 round_timer.mark_first_token()

@@ -1,0 +1,21 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 7,
+  "status": "error",
+  "duration_seconds": 269.2538092136383,
+  "input_tokens": 940551,
+  "output_tokens": 3095,
+  "total_tokens": 943646,
+  "tool_calls_total": 61,
+  "tool_counts": {
+    "search_code": 22,
+    "read_file": 38,
+    "tree": 1
+  },
+  "job_id": "8afcd0c8-eda0-4eb4-ae9f-09ad470bfcaa",
+  "answer": "The required file does not exist at the target path, so I'll create it as a faithful copy of the real `ExamWindow.tsx` with the Submit Exam handler visible.",
+  "answer_chars": 156
+}

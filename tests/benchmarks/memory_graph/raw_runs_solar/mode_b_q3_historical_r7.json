@@ -1,0 +1,21 @@
+{
+  "question_id": "q3_historical",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 7,
+  "status": "done",
+  "duration_seconds": 13.032180309295654,
+  "input_tokens": 4936,
+  "output_tokens": 753,
+  "total_tokens": 5689,
+  "tool_calls_total": 7,
+  "tool_counts": {
+    "search_code": 3,
+    "list_symbols": 1,
+    "read_file": 3
+  },
+  "job_id": "523551c7-e463-40de-9a83-b14d0d85bf1a",
+  "answer": "",
+  "answer_chars": 0
+}

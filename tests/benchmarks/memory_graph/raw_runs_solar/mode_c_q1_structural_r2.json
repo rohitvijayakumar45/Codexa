@@ -1,0 +1,20 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_c",
+  "mode_name": "Full Codexa",
+  "model": "upstage/solar-pro4",
+  "rep": 2,
+  "status": "done",
+  "duration_seconds": 159.2229573726654,
+  "input_tokens": 245116,
+  "output_tokens": 4633,
+  "total_tokens": 249749,
+  "tool_calls_total": 53,
+  "tool_counts": {
+    "search_code": 39,
+    "read_file": 14
+  },
+  "job_id": "a3b58a22-221c-4d4f-a324-642d2ff9b6cc",
+  "answer": "Let me read the `ExamWindow.tsx` file to trace the Submit Exam button click handler.",
+  "answer_chars": 84
+}

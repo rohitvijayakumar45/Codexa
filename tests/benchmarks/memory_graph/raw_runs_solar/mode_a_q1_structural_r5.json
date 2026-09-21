@@ -1,0 +1,20 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 5,
+  "status": "error",
+  "duration_seconds": 279.2575149536133,
+  "input_tokens": 967636,
+  "output_tokens": 4123,
+  "total_tokens": 971759,
+  "tool_calls_total": 53,
+  "tool_counts": {
+    "search_code": 19,
+    "read_file": 34
+  },
+  "job_id": "88b0037b-91a8-4a6c-8a41-f32c8afc9294",
+  "answer": "The search results confirm `frontend/src/components/ExamWindow.tsx` exists. Let me try that exact path.",
+  "answer_chars": 103
+}

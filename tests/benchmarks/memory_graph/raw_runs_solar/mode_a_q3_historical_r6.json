@@ -1,0 +1,21 @@
+{
+  "question_id": "q3_historical",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 6,
+  "status": "done",
+  "duration_seconds": 46.07982087135315,
+  "input_tokens": 14496,
+  "output_tokens": 2486,
+  "total_tokens": 16982,
+  "tool_calls_total": 7,
+  "tool_counts": {
+    "search_code": 5,
+    "read_file": 1,
+    "tree": 1
+  },
+  "job_id": "cec585d8-d311-48d5-af03-1f0a17cc9cdc",
+  "answer": "Let me read the auth middleware directly to give you the full picture of the conventions there.",
+  "answer_chars": 95
+}

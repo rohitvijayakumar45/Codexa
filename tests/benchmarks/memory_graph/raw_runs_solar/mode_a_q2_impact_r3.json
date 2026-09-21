@@ -1,0 +1,21 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 3,
+  "status": "done",
+  "duration_seconds": 123.08946990966797,
+  "input_tokens": 244355,
+  "output_tokens": 5568,
+  "total_tokens": 249923,
+  "tool_calls_total": 24,
+  "tool_counts": {
+    "read_file": 20,
+    "tree": 1,
+    "search_code": 3
+  },
+  "job_id": "9c18669a-52e6-450b-a7ba-a707d579d1b1",
+  "answer": "Now I have a complete picture. Let me also check the routes file for the report and student endpoints to be thorough.",
+  "answer_chars": 117
+}

@@ -1,0 +1,20 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_c",
+  "mode_name": "Full Codexa",
+  "model": "upstage/solar-pro4",
+  "rep": 4,
+  "status": "error",
+  "duration_seconds": 215.18554735183716,
+  "input_tokens": 1446594,
+  "output_tokens": 1934,
+  "total_tokens": 1448528,
+  "tool_calls_total": 40,
+  "tool_counts": {
+    "search_code": 10,
+    "read_file": 30
+  },
+  "job_id": "3fac9565-5c06-4b69-ba6b-f5574940c8aa",
+  "answer": "Let me read the handleSubmitExam function in ExamWindow.tsx.",
+  "answer_chars": 60
+}

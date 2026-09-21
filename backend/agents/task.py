@@ -73,6 +73,22 @@ _RUN = re.compile(
     re.IGNORECASE,
 )
 
+# An explicit imperative to LAUNCH a runnable thing. This is the operative command even when an
+# analyze verb opens the sentence — "Inspect the repository and run the Brick-Breaker game" reads as
+# ANALYZE under the position scan ("Inspect" at column 0 beats "run" 24 chars later), which routes a
+# pure run request onto the read-only, auto-continuing ANALYZE path. There the run succeeds on the
+# first round but nothing marks the task done, so the model manufactures endless "verify the output"
+# work (observed: a run request that launched the game once, then re-ran it 15 times over 50 rounds).
+# RUN's contract is lean and completes the moment run_command executes, so recognising these as RUN
+# is what makes "run it" actually finish. Tight object list so it fires only on a genuine launch.
+_RUN_STRONG = re.compile(
+    r"\b(run|launch|start|execute|play|serve)\b[^.\n]{0,60}?\b("
+    r"game|app|application|server|demo|script|program|binary|executable|project|"
+    r"\.py|\.js|\.ts|\.exe|\.sh)\b"
+    r"|\b(run|launch|start|execute|re-?run) it\b",
+    re.IGNORECASE,
+)
+
 _ANALYZE = re.compile(
     r"\b(analy[sz]e|inspect|examine|review|audit|investigate|explore|"
     r"understand|map out|trace|profile|benchmark|measure|compare|"
@@ -236,6 +252,13 @@ def classify_intent(message: str, system_note: str = "") -> TaskIntent:
         or (_LEADS_QUESTION.match(text) and _IMPACT_QUESTION.search(text))
     ):
         return TaskIntent.ANALYZE
+    # An explicit launch command is a RUN even when an analyze verb ("inspect", "review") opens the
+    # sentence — the imperative deliverable is running the thing, not analysing it. Gated on
+    # _command_lead so "build and run the game" still wins CREATE (building is the real work; running
+    # is the smoke test that follows), and skipped when the run is only a hypothetical inside a
+    # question ("what happens if I run it?" leads with a question → left to EXPLAIN/ANALYZE).
+    if not _command_lead and not _LEADS_QUESTION.match(_lead) and _RUN_STRONG.search(text):
+        return TaskIntent.RUN
     best_intent: TaskIntent | None = None
     best_key: tuple[int, int] | None = None
     for intent, pattern in _INTENT_PATTERNS:

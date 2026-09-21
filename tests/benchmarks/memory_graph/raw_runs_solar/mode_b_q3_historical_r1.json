@@ -1,0 +1,20 @@
+{
+  "question_id": "q3_historical",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 1,
+  "status": "done",
+  "duration_seconds": 70.03659987449646,
+  "input_tokens": 13806,
+  "output_tokens": 2192,
+  "total_tokens": 15998,
+  "tool_calls_total": 7,
+  "tool_counts": {
+    "search_code": 6,
+    "read_files": 1
+  },
+  "job_id": "753e6a6f-4639-4bfd-a164-f987eb660dd6",
+  "answer": "Let me read the key files to give you the full picture.",
+  "answer_chars": 55
+}

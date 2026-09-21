@@ -1,0 +1,128 @@
+{
+  "repository": "MOMENTUM",
+  "n_symbols": 14,
+  "raw_total_tokens": 34620,
+  "graph_total_tokens": 816,
+  "overall_reduction_x": 42.4264705882353,
+  "mean_per_symbol_reduction_x": 45.38573624411477,
+  "median_reduction_x": 43.57880220646179,
+  "usd_per_1M_input": 0.25,
+  "raw_cost_usd": 0.008655,
+  "graph_cost_usd": 0.000204,
+  "memory_records": 7,
+  "memory_payload_tokens": 219,
+  "rows": [
+    {
+      "symbol": "pad",
+      "def_file": "frontend/src/components/DecisionDetail.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 3687,
+      "graph_tokens": 50,
+      "reduction_x": 73.74
+    },
+    {
+      "symbol": "fmtDateTime",
+      "def_file": "frontend/src/components/DecisionDetail.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 3687,
+      "graph_tokens": 52,
+      "reduction_x": 70.90384615384616
+    },
+    {
+      "symbol": "handleOption",
+      "def_file": "frontend/src/components/DecisionDetail.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 3687,
+      "graph_tokens": 52,
+      "reduction_x": 70.90384615384616
+    },
+    {
+      "symbol": "fmtDate",
+      "def_file": "frontend/src/components/DecisionDetail.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 3687,
+      "graph_tokens": 52,
+      "reduction_x": 70.90384615384616
+    },
+    {
+      "symbol": "handleStrikeNote",
+      "def_file": "frontend/src/components/DecisionDetail.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 3687,
+      "graph_tokens": 61,
+      "reduction_x": 60.442622950819676
+    },
+    {
+      "symbol": "announce",
+      "def_file": "frontend/src/components/DecisionDetail.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 3687,
+      "graph_tokens": 61,
+      "reduction_x": 60.442622950819676
+    },
+    {
+      "symbol": "getOne",
+      "def_file": "backend/controllers/decisionsController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 2246,
+      "graph_tokens": 47,
+      "reduction_x": 47.787234042553195
+    },
+    {
+      "symbol": "last",
+      "def_file": "backend/controllers/decisionsController.js",
+      "n_ref_files": 1,
+      "raw_tokens": 2126,
+      "graph_tokens": 54,
+      "reduction_x": 39.370370370370374
+    },
+    {
+      "symbol": "describeFilters",
+      "def_file": "frontend/src/components/DecisionList.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 1897,
+      "graph_tokens": 52,
+      "reduction_x": 36.48076923076923
+    },
+    {
+      "symbol": "yearLabel",
+      "def_file": "frontend/src/components/DecisionList.jsx",
+      "n_ref_files": 1,
+      "raw_tokens": 1897,
+      "graph_tokens": 52,
+      "reduction_x": 36.48076923076923
+    },
+    {
+      "symbol": "qs",
+      "def_file": "frontend/src/api/decisions.js",
+      "n_ref_files": 1,
+      "raw_tokens": 1083,
+      "graph_tokens": 48,
+      "reduction_x": 22.5625
+    },
+    {
+      "symbol": "isAbort",
+      "def_file": "frontend/src/api/decisions.js",
+      "n_ref_files": 1,
+      "raw_tokens": 1083,
+      "graph_tokens": 50,
+      "reduction_x": 21.66
+    },
+    {
+      "symbol": "normalizeDecision",
+      "def_file": "frontend/src/api/decisions.js",
+      "n_ref_files": 1,
+      "raw_tokens": 1083,
+      "graph_tokens": 82,
+      "reduction_x": 13.207317073170731
+    },
+    {
+      "symbol": "request",
+      "def_file": "frontend/src/api/decisions.js",
+      "n_ref_files": 1,
+      "raw_tokens": 1083,
+      "graph_tokens": 103,
+      "reduction_x": 10.514563106796116
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_c",
+  "mode_name": "Full Codexa",
+  "model": "upstage/solar-pro4",
+  "rep": 1,
+  "status": "error",
+  "duration_seconds": 134.05989456176758,
+  "input_tokens": 169702,
+  "output_tokens": 2953,
+  "total_tokens": 172655,
+  "tool_calls_total": 18,
+  "tool_counts": {
+    "read_file": 17,
+    "search_code": 1
+  },
+  "job_id": "c6834ce6-e704-45b0-a78b-88b444700d95",
+  "answer": "I need to find the `ExamWindow.tsx` file and identify the submit exam flow. Let me start by exploring the repository structure.",
+  "answer_chars": 127
+}

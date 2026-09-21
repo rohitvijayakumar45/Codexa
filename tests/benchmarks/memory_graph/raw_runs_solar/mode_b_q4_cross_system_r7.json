@@ -1,0 +1,20 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 7,
+  "status": "done",
+  "duration_seconds": 17.010214805603027,
+  "input_tokens": 79791,
+  "output_tokens": 294,
+  "total_tokens": 80085,
+  "tool_calls_total": 3,
+  "tool_counts": {
+    "tree": 1,
+    "read_files": 2
+  },
+  "job_id": "039d6b67-31d4-4979-a69c-c45d594eecb9",
+  "answer": "Now let me examine the Admin Dashboard and the routes to complete the full picture:",
+  "answer_chars": 83
+}

@@ -1,0 +1,22 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 1,
+  "status": "done",
+  "duration_seconds": 97.05966877937317,
+  "input_tokens": 527925,
+  "output_tokens": 4617,
+  "total_tokens": 532542,
+  "tool_calls_total": 8,
+  "tool_counts": {
+    "tree": 1,
+    "read_files": 3,
+    "search_code": 3,
+    "read_file": 1
+  },
+  "job_id": "13c9be6e-fb42-44d3-a986-af63ba9e11d8",
+  "answer": "",
+  "answer_chars": 0
+}

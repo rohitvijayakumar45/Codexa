@@ -1,0 +1,20 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 4,
+  "status": "done",
+  "duration_seconds": 11.007800102233887,
+  "input_tokens": 95160,
+  "output_tokens": 306,
+  "total_tokens": 95466,
+  "tool_calls_total": 3,
+  "tool_counts": {
+    "tree": 1,
+    "read_files": 2
+  },
+  "job_id": "f550b3c9-f28c-4c79-ae08-b267688ae012",
+  "answer": "Now let me also read the report controller and routes to complete the picture of how data flows back to the Admin Dashboard.",
+  "answer_chars": 124
+}

@@ -1,0 +1,20 @@
+{
+  "question_id": "q3_historical",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 5,
+  "status": "done",
+  "duration_seconds": 69.03630685806274,
+  "input_tokens": 4093,
+  "output_tokens": 747,
+  "total_tokens": 4840,
+  "tool_calls_total": 2,
+  "tool_counts": {
+    "tree": 1,
+    "read_files": 1
+  },
+  "job_id": "43a2d96a-9752-4550-a2b8-a7f3bd4d2bab",
+  "answer": "Let me look at the auth middleware and existing error handling patterns in the project.",
+  "answer_chars": 87
+}

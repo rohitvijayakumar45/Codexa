@@ -1,0 +1,20 @@
+{
+  "question_id": "q3_historical",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 4,
+  "status": "done",
+  "duration_seconds": 33.01589632034302,
+  "input_tokens": 18572,
+  "output_tokens": 1758,
+  "total_tokens": 20330,
+  "tool_calls_total": 10,
+  "tool_counts": {
+    "tree": 1,
+    "read_file": 9
+  },
+  "job_id": "deda864c-1d9a-401f-ac6a-b9704cf1e97c",
+  "answer": "Let me verify those files exist before making any claims about them:",
+  "answer_chars": 68
+}

@@ -1,0 +1,21 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 3,
+  "status": "done",
+  "duration_seconds": 76.04313349723816,
+  "input_tokens": 67232,
+  "output_tokens": 4381,
+  "total_tokens": 71613,
+  "tool_calls_total": 7,
+  "tool_counts": {
+    "tree": 1,
+    "read_file": 5,
+    "read_files": 1
+  },
+  "job_id": "ba651b35-4696-47e3-b0f6-8a15b2e0f025",
+  "answer": "Let me trace the full flow. I need to find the React frontend component that handles proctoring detection.",
+  "answer_chars": 106
+}

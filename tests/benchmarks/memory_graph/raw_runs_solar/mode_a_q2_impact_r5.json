@@ -1,0 +1,21 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 5,
+  "status": "done",
+  "duration_seconds": 43.05561828613281,
+  "input_tokens": 6881,
+  "output_tokens": 1652,
+  "total_tokens": 8533,
+  "tool_calls_total": 7,
+  "tool_counts": {
+    "read_files": 1,
+    "tree": 1,
+    "search_code": 5
+  },
+  "job_id": "0326a939-2352-4629-9d69-2326de9444d2",
+  "answer": "Let me check the project structure first.",
+  "answer_chars": 41
+}

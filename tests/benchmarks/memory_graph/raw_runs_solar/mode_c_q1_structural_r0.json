@@ -1,0 +1,20 @@
+{
+  "question_id": "q1_structural",
+  "mode": "mode_c",
+  "mode_name": "Full Codexa",
+  "model": "upstage/solar-pro4",
+  "rep": 0,
+  "status": "done",
+  "duration_seconds": 108.11183285713196,
+  "input_tokens": 220978,
+  "output_tokens": 3781,
+  "total_tokens": 224759,
+  "tool_calls_total": 24,
+  "tool_counts": {
+    "search_code": 8,
+    "read_file": 16
+  },
+  "job_id": "93beee85-1bb4-4a23-afd1-fe397828fefa",
+  "answer": "",
+  "answer_chars": 0
+}

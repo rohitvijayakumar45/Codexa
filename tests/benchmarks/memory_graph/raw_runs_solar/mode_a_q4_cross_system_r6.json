@@ -1,0 +1,22 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 6,
+  "status": "done",
+  "duration_seconds": 79.0479347705841,
+  "input_tokens": 218493,
+  "output_tokens": 5178,
+  "total_tokens": 223671,
+  "tool_calls_total": 10,
+  "tool_counts": {
+    "tree": 1,
+    "read_files": 1,
+    "search_code": 2,
+    "read_file": 6
+  },
+  "job_id": "eda8f9b8-2b79-411a-80ff-6427652af00c",
+  "answer": "Now let me finish reading the rest of the AdminDashboard and ExamDetailView to complete the full picture of the display layer.",
+  "answer_chars": 126
+}

@@ -1,0 +1,19 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 1,
+  "status": "done",
+  "duration_seconds": 230.12424755096436,
+  "input_tokens": 1781,
+  "output_tokens": 1195,
+  "total_tokens": 2976,
+  "tool_calls_total": 1,
+  "tool_counts": {
+    "tree": 1
+  },
+  "job_id": "a93ba314-1e15-40e5-8a21-56c07af9ec4d",
+  "answer": "",
+  "answer_chars": 0
+}

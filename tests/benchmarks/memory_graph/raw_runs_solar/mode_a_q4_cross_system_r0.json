@@ -1,0 +1,21 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 0,
+  "status": "done",
+  "duration_seconds": 92.0662477016449,
+  "input_tokens": 36204,
+  "output_tokens": 2897,
+  "total_tokens": 39101,
+  "tool_calls_total": 17,
+  "tool_counts": {
+    "tree": 1,
+    "search_code": 7,
+    "read_file": 9
+  },
+  "job_id": "5c72abbd-ceef-434e-a93b-e1e2cec12bcc",
+  "answer": "Now let me read the route file and one more piece to complete the chain.",
+  "answer_chars": 72
+}

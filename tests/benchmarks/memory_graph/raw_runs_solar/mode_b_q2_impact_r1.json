@@ -1,0 +1,21 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 1,
+  "status": "done",
+  "duration_seconds": 106.06078815460205,
+  "input_tokens": 172348,
+  "output_tokens": 4765,
+  "total_tokens": 177113,
+  "tool_calls_total": 16,
+  "tool_counts": {
+    "tree": 1,
+    "read_file": 13,
+    "search_code": 2
+  },
+  "job_id": "bf675e32-6e84-4e65-a282-7bcbb8b84e6e",
+  "answer": "Now let me read the `addToActivityLog` function and the `ExamDetailView.tsx` to see how severity is used in the frontend:",
+  "answer_chars": 121
+}

@@ -1,0 +1,336 @@
+{
+  "repository": "Exam-Proctoring",
+  "n_symbols": 40,
+  "raw_total_tokens": 609888,
+  "graph_total_tokens": 8081,
+  "overall_reduction_x": 75.47184754362084,
+  "mean_per_symbol_reduction_x": 73.93951648193443,
+  "median_reduction_x": 80.39838209219857,
+  "usd_per_1M_input": 0.25,
+  "raw_cost_usd": 0.152472,
+  "graph_cost_usd": 0.00202025,
+  "memory_records": 8,
+  "memory_payload_tokens": 17645,
+  "rows": [
+    {
+      "symbol": "stopCamera",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 179,
+      "reduction_x": 124.0391061452514
+    },
+    {
+      "symbol": "handleAnswerChange",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 182,
+      "reduction_x": 121.99450549450549
+    },
+    {
+      "symbol": "handleAnswerChange",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 182,
+      "reduction_x": 121.99450549450549
+    },
+    {
+      "symbol": "toPixel",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 194,
+      "reduction_x": 114.44845360824742
+    },
+    {
+      "symbol": "checkOpenCV",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 199,
+      "reduction_x": 111.57286432160804
+    },
+    {
+      "symbol": "formatTime",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 209,
+      "reduction_x": 106.23444976076556
+    },
+    {
+      "symbol": "formatTime",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 209,
+      "reduction_x": 106.23444976076556
+    },
+    {
+      "symbol": "smooth",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 212,
+      "reduction_x": 104.73113207547169
+    },
+    {
+      "symbol": "smooth",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 212,
+      "reduction_x": 104.73113207547169
+    },
+    {
+      "symbol": "handleStartExam",
+      "def_file": "frontend/src/components/StudentDashboard.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 9586,
+      "graph_tokens": 92,
+      "reduction_x": 104.19565217391305
+    },
+    {
+      "symbol": "updateAvailability",
+      "def_file": "frontend/src/components/StudentDashboard.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 9586,
+      "graph_tokens": 93,
+      "reduction_x": 103.0752688172043
+    },
+    {
+      "symbol": "startCamera",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 222,
+      "reduction_x": 100.01351351351352
+    },
+    {
+      "symbol": "loadFaceDetectionModel",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 229,
+      "reduction_x": 96.95633187772926
+    },
+    {
+      "symbol": "loadFaceDetectionModel",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 229,
+      "reduction_x": 96.95633187772926
+    },
+    {
+      "symbol": "handleSubmitExam",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 242,
+      "reduction_x": 91.74793388429752
+    },
+    {
+      "symbol": "handleSubmitExam",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 242,
+      "reduction_x": 91.74793388429752
+    },
+    {
+      "symbol": "handleAutoSubmit",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 259,
+      "reduction_x": 85.72586872586872
+    },
+    {
+      "symbol": "loadFaceLandmarksDetector",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 268,
+      "reduction_x": 82.84701492537313
+    },
+    {
+      "symbol": "loadFaceLandmarksDetector",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 268,
+      "reduction_x": 82.84701492537313
+    },
+    {
+      "symbol": "fetchOverviewStats",
+      "def_file": "frontend/src/components/AdminDashboard.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 7637,
+      "graph_tokens": 94,
+      "reduction_x": 81.24468085106383
+    },
+    {
+      "symbol": "fetchExams",
+      "def_file": "frontend/src/components/AdminDashboard.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 7637,
+      "graph_tokens": 96,
+      "reduction_x": 79.55208333333333
+    },
+    {
+      "symbol": "calculateHeadPose3D",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 311,
+      "reduction_x": 71.39228295819936
+    },
+    {
+      "symbol": "removeQuestion",
+      "def_file": "frontend/src/components/CreateExam.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 5146,
+      "graph_tokens": 81,
+      "reduction_x": 63.53086419753087
+    },
+    {
+      "symbol": "detectWithBlazeFace",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 350,
+      "reduction_x": 63.43714285714286
+    },
+    {
+      "symbol": "detectFaces",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 352,
+      "reduction_x": 63.07670454545455
+    },
+    {
+      "symbol": "detectFaces",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 352,
+      "reduction_x": 63.07670454545455
+    },
+    {
+      "symbol": "handleOptionChange",
+      "def_file": "frontend/src/components/CreateExam.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 5146,
+      "graph_tokens": 82,
+      "reduction_x": 62.75609756097561
+    },
+    {
+      "symbol": "validateForm",
+      "def_file": "frontend/src/components/CreateExam.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 5146,
+      "graph_tokens": 82,
+      "reduction_x": 62.75609756097561
+    },
+    {
+      "symbol": "sendFlagToBackend",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 383,
+      "reduction_x": 57.97127937336815
+    },
+    {
+      "symbol": "handleQuestionChange",
+      "def_file": "frontend/src/components/CreateExam.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 5146,
+      "graph_tokens": 94,
+      "reduction_x": 54.744680851063826
+    },
+    {
+      "symbol": "addToActivityLog",
+      "def_file": "frontend/src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 407,
+      "reduction_x": 54.55282555282555
+    },
+    {
+      "symbol": "addToActivityLog",
+      "def_file": "src/components/ExamWindow.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 22203,
+      "graph_tokens": 407,
+      "reduction_x": 54.55282555282555
+    },
+    {
+      "symbol": "useSidebar",
+      "def_file": "frontend/src/components/ui/sidebar.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 5378,
+      "graph_tokens": 103,
+      "reduction_x": 52.213592233009706
+    },
+    {
+      "symbol": "getSubmissionDetails",
+      "def_file": "backend/controllers/submissioncontroller.js",
+      "n_ref_files": 2,
+      "raw_tokens": 2434,
+      "graph_tokens": 98,
+      "reduction_x": 24.836734693877553
+    },
+    {
+      "symbol": "useChart",
+      "def_file": "frontend/src/components/ui/chart.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 2257,
+      "graph_tokens": 92,
+      "reduction_x": 24.532608695652176
+    },
+    {
+      "symbol": "fetchExamDetails",
+      "def_file": "frontend/src/components/ExamDetailView.tsx",
+      "n_ref_files": 1,
+      "raw_tokens": 5737,
+      "graph_tokens": 299,
+      "reduction_x": 19.187290969899667
+    },
+    {
+      "symbol": "getSubmission",
+      "def_file": "backend/controllers/submissioncontroller.js",
+      "n_ref_files": 2,
+      "raw_tokens": 2434,
+      "graph_tokens": 134,
+      "reduction_x": 18.16417910447761
+    },
+    {
+      "symbol": "storeCameraData",
+      "def_file": "backend/controllers/proctoringLogController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1271,
+      "graph_tokens": 95,
+      "reduction_x": 13.378947368421052
+    },
+    {
+      "symbol": "getProctoringLogs",
+      "def_file": "backend/controllers/proctoringLogController.js",
+      "n_ref_files": 2,
+      "raw_tokens": 1271,
+      "graph_tokens": 106,
+      "reduction_x": 11.99056603773585
+    },
+    {
+      "symbol": "submitAnswers",
+      "def_file": "src/controllers/examController.ts",
+      "n_ref_files": 1,
+      "raw_tokens": 1204,
+      "graph_tokens": 141,
+      "reduction_x": 8.539007092198581
+    }
+  ]
+}

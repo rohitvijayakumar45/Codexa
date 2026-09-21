@@ -1,0 +1,20 @@
+{
+  "question_id": "q3_historical",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 2,
+  "status": "done",
+  "duration_seconds": 82.0520248413086,
+  "input_tokens": 22704,
+  "output_tokens": 3324,
+  "total_tokens": 26028,
+  "tool_calls_total": 8,
+  "tool_counts": {
+    "search_code": 5,
+    "read_file": 3
+  },
+  "job_id": "27524921-04a3-48e1-bd7e-550255494be8",
+  "answer": "Let me read the actual middleware and controller files to understand the conventions fully.",
+  "answer_chars": 91
+}

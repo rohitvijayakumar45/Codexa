@@ -1,0 +1,20 @@
+{
+  "question_id": "q2_impact",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 3,
+  "status": "done",
+  "duration_seconds": 82.06932711601257,
+  "input_tokens": 25315,
+  "output_tokens": 1833,
+  "total_tokens": 27148,
+  "tool_calls_total": 12,
+  "tool_counts": {
+    "search_code": 7,
+    "read_file": 5
+  },
+  "job_id": "7e57e4a6-f3a1-46ef-ab1f-c1f237fa8f51",
+  "answer": "",
+  "answer_chars": 0
+}

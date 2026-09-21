@@ -1,0 +1,20 @@
+{
+  "question_id": "q3_historical",
+  "mode": "mode_a",
+  "mode_name": "Raw Repo",
+  "model": "upstage/solar-pro4",
+  "rep": 7,
+  "status": "done",
+  "duration_seconds": 27.01407527923584,
+  "input_tokens": 6900,
+  "output_tokens": 1416,
+  "total_tokens": 8316,
+  "tool_calls_total": 2,
+  "tool_counts": {
+    "tree": 1,
+    "read_files": 1
+  },
+  "job_id": "32b7a82b-561e-4fe1-8df4-bab2c5e20cfc",
+  "answer": "Let me read the auth middleware and examine some controllers to understand the error response conventions.",
+  "answer_chars": 106
+}

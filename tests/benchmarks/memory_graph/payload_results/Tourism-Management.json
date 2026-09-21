@@ -1,0 +1,336 @@
+{
+  "repository": "Tourism-Management",
+  "n_symbols": 40,
+  "raw_total_tokens": 278000,
+  "graph_total_tokens": 5026,
+  "overall_reduction_x": 55.312375646637484,
+  "mean_per_symbol_reduction_x": 76.51245984202785,
+  "median_reduction_x": 73.90297092288242,
+  "usd_per_1M_input": 0.25,
+  "raw_cost_usd": 0.0695,
+  "graph_cost_usd": 0.0012565,
+  "memory_records": 7,
+  "memory_payload_tokens": 406,
+  "rows": [
+    {
+      "symbol": "encodeReviewComment",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 57,
+      "reduction_x": 154.73684210526315
+    },
+    {
+      "symbol": "extractDurationDays",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 57,
+      "reduction_x": 154.73684210526315
+    },
+    {
+      "symbol": "persistSearchState",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 57,
+      "reduction_x": 154.73684210526315
+    },
+    {
+      "symbol": "closeReviewModal",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 57,
+      "reduction_x": 154.73684210526315
+    },
+    {
+      "symbol": "buildGuideMetaMap",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 56,
+      "reduction_x": 148.78571428571428
+    },
+    {
+      "symbol": "hasLocationMatch",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 63,
+      "reduction_x": 132.25396825396825
+    },
+    {
+      "symbol": "renderStars",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 70,
+      "reduction_x": 126.0
+    },
+    {
+      "symbol": "ensureTouristSession",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 70,
+      "reduction_x": 126.0
+    },
+    {
+      "symbol": "getTodayDate",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 70,
+      "reduction_x": 126.0
+    },
+    {
+      "symbol": "renderReviewStars",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 70,
+      "reduction_x": 126.0
+    },
+    {
+      "symbol": "getTravelImage",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 81,
+      "reduction_x": 108.88888888888889
+    },
+    {
+      "symbol": "assignGuideToBooking",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 95,
+      "reduction_x": 87.70526315789473
+    },
+    {
+      "symbol": "getEntityRating",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 107,
+      "reduction_x": 82.42990654205607
+    },
+    {
+      "symbol": "loadAdminData",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 102,
+      "reduction_x": 81.68627450980392
+    },
+    {
+      "symbol": "getGuideRecommendations",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 104,
+      "reduction_x": 80.11538461538461
+    },
+    {
+      "symbol": "decodeReviewComment",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 113,
+      "reduction_x": 78.05309734513274
+    },
+    {
+      "symbol": "parseLanguages",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 54,
+      "reduction_x": 76.81481481481481
+    },
+    {
+      "symbol": "prepareNewHotelForm",
+      "def_file": "frontend/pages/hotel/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4180,
+      "graph_tokens": 55,
+      "reduction_x": 76.0
+    },
+    {
+      "symbol": "computeAverageRating",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 56,
+      "reduction_x": 74.07142857142857
+    },
+    {
+      "symbol": "getTourImage",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 56,
+      "reduction_x": 74.07142857142857
+    },
+    {
+      "symbol": "decodeReviewComment",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 113,
+      "reduction_x": 73.73451327433628
+    },
+    {
+      "symbol": "encodeGuideMeta",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 58,
+      "reduction_x": 71.51724137931035
+    },
+    {
+      "symbol": "parseGuideLanguageRows",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 58,
+      "reduction_x": 71.51724137931035
+    },
+    {
+      "symbol": "loadReviews",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 129,
+      "reduction_x": 68.37209302325581
+    },
+    {
+      "symbol": "renderTrips",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 135,
+      "reduction_x": 65.33333333333333
+    },
+    {
+      "symbol": "populateHotelForm",
+      "def_file": "frontend/pages/hotel/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4180,
+      "graph_tokens": 75,
+      "reduction_x": 55.733333333333334
+    },
+    {
+      "symbol": "renderAdminDashboard",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 167,
+      "reduction_x": 49.89221556886228
+    },
+    {
+      "symbol": "redirectToLogin",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 187,
+      "reduction_x": 47.16577540106952
+    },
+    {
+      "symbol": "renderStats",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 212,
+      "reduction_x": 39.301886792452834
+    },
+    {
+      "symbol": "getInitials",
+      "def_file": "frontend/pages/hotel/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4180,
+      "graph_tokens": 113,
+      "reduction_x": 36.991150442477874
+    },
+    {
+      "symbol": "getInitials",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 113,
+      "reduction_x": 36.70796460176991
+    },
+    {
+      "symbol": "formatStatusLabel",
+      "def_file": "frontend/pages/hotel/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4180,
+      "graph_tokens": 131,
+      "reduction_x": 31.908396946564885
+    },
+    {
+      "symbol": "formatStatusLabel",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 131,
+      "reduction_x": 31.66412213740458
+    },
+    {
+      "symbol": "loadGuideData",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 133,
+      "reduction_x": 31.18796992481203
+    },
+    {
+      "symbol": "formatCurrency",
+      "def_file": "frontend/pages/tourist/tourist-app.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8820,
+      "graph_tokens": 290,
+      "reduction_x": 30.413793103448278
+    },
+    {
+      "symbol": "formatCurrency",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 290,
+      "reduction_x": 28.73103448275862
+    },
+    {
+      "symbol": "escapeHtml",
+      "def_file": "frontend/pages/admin/admin.js",
+      "n_ref_files": 1,
+      "raw_tokens": 8332,
+      "graph_tokens": 329,
+      "reduction_x": 25.325227963525837
+    },
+    {
+      "symbol": "formatCurrency",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 290,
+      "reduction_x": 14.303448275862069
+    },
+    {
+      "symbol": "showMessage",
+      "def_file": "frontend/pages/hotel/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4180,
+      "graph_tokens": 293,
+      "reduction_x": 14.266211604095563
+    },
+    {
+      "symbol": "escapeHtml",
+      "def_file": "frontend/pages/tourguide/dashboard.js",
+      "n_ref_files": 1,
+      "raw_tokens": 4148,
+      "graph_tokens": 329,
+      "reduction_x": 12.60790273556231
+    }
+  ]
+}

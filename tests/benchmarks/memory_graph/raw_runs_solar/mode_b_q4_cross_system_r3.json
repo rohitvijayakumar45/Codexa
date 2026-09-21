@@ -1,0 +1,21 @@
+{
+  "question_id": "q4_cross_system",
+  "mode": "mode_b",
+  "mode_name": "Graph Only",
+  "model": "upstage/solar-pro4",
+  "rep": 3,
+  "status": "error",
+  "duration_seconds": 79.0451078414917,
+  "input_tokens": 93434,
+  "output_tokens": 6146,
+  "total_tokens": 99580,
+  "tool_calls_total": 17,
+  "tool_counts": {
+    "tree": 1,
+    "read_file": 15,
+    "search_code": 1
+  },
+  "job_id": "402a34f8-c2fa-4b18-92b8-85801fa386d9",
+  "answer": "Let me get the remaining critical pieces: the rest of the detection/transmission logic in ExamWindow, the admin dashboard, and the proctoring routes in the frontend.",
+  "answer_chars": 165
+}

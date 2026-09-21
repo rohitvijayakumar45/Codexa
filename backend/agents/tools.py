@@ -1765,22 +1765,80 @@ def _resolve_python(command: str) -> str:
     return command[: match.start(1)] + replacement + command[match.end(1) :]
 
 
-def _run_command_structured(command: str, repository: str) -> tuple[str, int | None]:
+def _kill_process_tree(proc: "subprocess.Popen[str]") -> None:
+    """Kill a shell command and EVERY process it spawned, not just the shell.
+
+    `subprocess.run(..., shell=True)`'s own timeout kills only the shell (cmd.exe / sh). Any
+    grandchild the shell launched — a GUI app, a dev server, a game loop — is orphaned and keeps
+    running, and because it inherited the captured stdout pipe it holds that pipe open, so the
+    parent's post-timeout cleanup blocks FOREVER waiting to drain it. That is exactly how `python
+    snake.py --help` (pygame opens a window and loops) wedged a round with no way out but a manual
+    kill. Killing the whole tree is the only thing that both stops the runaway and frees the pipe.
+    """
+    if proc.poll() is not None:
+        return
+    if os.name == "nt":
+        # taskkill /T walks the child tree; /F forces. Reaches the grandchild the shell spawned,
+        # which proc.kill() (shell only) does not. Swallow output — this is best-effort teardown.
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                capture_output=True, timeout=10,
+            )
+        except Exception:  # noqa: BLE001
+            proc.kill()
+    else:
+        import signal as _signal
+        try:
+            os.killpg(os.getpgid(proc.pid), _signal.SIGKILL)  # whole session/group
+        except Exception:  # noqa: BLE001
+            proc.kill()
+
+
+def _run_command_structured(command: str, repository: str, *, timeout: int = 30) -> tuple[str, int | None]:
     """Same as _run_command but also returns the real exit code (None if the process never ran —
     timeout or launch failure). Used where a caller needs to bind a pass/fail claim to a genuine
-    exit code (backend/agents/verification.py) rather than trust the model's reading of the text."""
+    exit code (backend/agents/verification.py) rather than trust the model's reading of the text.
+
+    On timeout it kills the ENTIRE process tree (see _kill_process_tree): a bare
+    subprocess.run(timeout=) only kills the shell and then hangs draining a pipe an orphaned
+    grandchild still holds open, so a command that launches a GUI/server/game loop would wedge the
+    round indefinitely despite the timeout being set."""
     try:
         root = repo_root(repository)
-        proc = subprocess.run(
-            _resolve_python(command), shell=True, capture_output=True, text=True,
-            timeout=30, cwd=str(root), env=_scrubbed_env(),
-        )
-        out = (proc.stdout or "") + (("\n[stderr]\n" + proc.stderr) if proc.stderr else "")
-        return _truncate(out.strip() or "(no output)"), proc.returncode
-    except subprocess.TimeoutExpired:
-        return "Command timed out (30s limit).", None
     except Exception as exc:  # noqa: BLE001
         return f"Command failed: {exc}", None
+    # New process group/session so the whole tree can be signalled as a unit on timeout.
+    popen_kwargs: dict[str, Any] = {}
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        popen_kwargs["start_new_session"] = True
+    try:
+        proc = subprocess.Popen(
+            _resolve_python(command), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, cwd=str(root), env=_scrubbed_env(), **popen_kwargs,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return f"Command failed: {exc}", None
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_process_tree(proc)
+        # Drain the now-dead tree's pipes; the tree is gone so this returns promptly. A second
+        # timeout guards the pathological case where a handle somehow survives the kill.
+        try:
+            stdout, stderr = proc.communicate(timeout=5)
+        except Exception:  # noqa: BLE001
+            stdout, stderr = "", ""
+        partial = ((stdout or "") + (("\n[stderr]\n" + stderr) if stderr else "")).strip()
+        note = f"Command timed out ({timeout}s limit) — process tree killed."
+        return _truncate(f"{note}\n{partial}" if partial else note), None
+    except Exception as exc:  # noqa: BLE001
+        _kill_process_tree(proc)
+        return f"Command failed: {exc}", None
+    out = (stdout or "") + (("\n[stderr]\n" + stderr) if stderr else "")
+    return _truncate(out.strip() or "(no output)"), proc.returncode
 
 
 def _semantic_search(query: str, repository: str, *, graph: Any, llm: Any, k: int = 8) -> str:
@@ -2835,17 +2893,21 @@ def _browser_console(level: str = "") -> str:
     page's JavaScript was throwing. A build whose script failed on load therefore looked identical
     to one that worked.
     """
-    if not _LAST_CONSOLE_URL:
-        return ("No console output yet - take a screenshot first; the console is captured while "
-                "that page loads.")
+    # Prefer the live persistent-session buffer (kept current as the page keeps logging after
+    # navigate/click) and fall back to the last stateless screenshot's capture.
+    from backend.agents.browser_session import SESSION
+    live_url = SESSION.current_url or _LAST_CONSOLE_URL
+    entries = list(SESSION.console) if SESSION.console else _LAST_CONSOLE
+    if not entries and not (_LAST_CONSOLE_URL or SESSION.current_url):
+        return ("No console output yet - navigate (browser_navigate) or take a screenshot first; "
+                "the console is captured while that page loads.")
     wanted = (level or "").strip().lower()
-    entries = _LAST_CONSOLE
     if wanted in ("error", "warning"):
         entries = [e for e in entries if e.startswith(f"[{wanted}")] or (
             [e for e in entries if e.startswith("[pageerror]")] if wanted == "error" else [])
     if not entries:
-        return f"No {wanted or 'console'} messages from the last load of {_LAST_CONSOLE_URL}."
-    return f"Console from {_LAST_CONSOLE_URL}:\n" + "\n".join(f"  {e[:400]}" for e in entries[:40])
+        return f"No {wanted or 'console'} messages from the last load of {live_url}."
+    return f"Console from {live_url}:\n" + "\n".join(f"  {e[:400]}" for e in entries[:40])
 
 
 
@@ -2902,25 +2964,156 @@ def _inspect_element(selector: str, url: str = "") -> str:
         return f"Inspect failed: {exc}"
 
 
-def _browser_network(url: str = "", status: int | None = None) -> str:
-    """Inspect network requests."""
-    return "(network inspection requires an active Playwright session — use inspect_page instead)"
+# ── Persistent-session browser tools ───────────────────────────────────────
+# navigate/click/type/scroll/network drive ONE long-lived page (backend.agents.browser_session)
+# so an interaction sequence survives across separate tool calls: navigate -> type -> click ->
+# read the console/network/DOM that resulted. They used to be dead stubs ("requires an active
+# Playwright session") precisely because nothing kept a page alive between calls.
+
+_REVEAL_JS = (
+    "async () => {"
+    "  const H = document.body.scrollHeight;"
+    "  for (let y = 0; y < H; y += Math.max(200, window.innerHeight * 0.8)) {"
+    "    window.scrollTo(0, y); await new Promise(r => setTimeout(r, 120));"
+    "  }"
+    "  window.scrollTo(0, 0); await new Promise(r => setTimeout(r, 400));"
+    "}"
+)
+_STATS_JS = (
+    "() => ({"
+    "  text: (document.body.innerText || '').trim().length,"
+    "  nodes: document.querySelectorAll('body *').length,"
+    "  height: document.body.scrollHeight, url: location.href,"
+    "})"
+)
+
+
+def _browser_op(action, *, label, reveal=False, full_page=False, timeout=40.0):
+    """Run `action(page)` on the persistent browser thread, then report the resulting page state
+    (rendered text length, element count, console errors) and save a screenshot — so every
+    interactive tool gives the model real feedback about what its action did, not just "ok"."""
+    global _LAST_CONSOLE, _LAST_CONSOLE_URL
+    from backend.agents.browser_session import SESSION
+
+    def _job(page):
+        note = action(page)
+        if reveal:
+            try:
+                page.evaluate(_REVEAL_JS)
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            page.wait_for_timeout(300)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            stats = page.evaluate(_STATS_JS)
+        except Exception:  # noqa: BLE001
+            stats = {}
+        if stats.get("url"):
+            SESSION.current_url = stats["url"]
+        shot = repo_root("codexa-os") / ".codexa-screenshot.png"
+        try:
+            page.screenshot(path=str(shot), full_page=full_page)
+        except Exception:  # noqa: BLE001
+            shot = None
+        return note, stats, list(SESSION.console), str(shot) if shot else ""
+
+    try:
+        note, stats, console, shot = SESSION.run(_job, timeout=timeout)
+    except Exception as exc:  # noqa: BLE001
+        return f"{label} failed: {exc}"
+
+    _LAST_CONSOLE, _LAST_CONSOLE_URL = list(console), stats.get("url", _LAST_CONSOLE_URL)
+    lines = [note] if note else []
+    text_len, nodes = stats.get("text", -1), stats.get("nodes", -1)
+    if stats.get("url"):
+        lines.append(f"Now at: {stats['url']}")
+    if 0 <= text_len < _BLANK_TEXT_CHARS:
+        lines.append(f"WARNING: page rendered almost nothing — {text_len} chars across {nodes} "
+                     f"elements. Likely blank/broken; check console errors below.")
+    elif text_len >= 0:
+        lines.append(f"Rendered: {text_len} chars of text, {nodes} elements, "
+                     f"{stats.get('height', -1)}px tall.")
+    if shot:
+        lines.append(f"Screenshot saved: {shot}")
+    errors = [c for c in console if c.startswith("[error]") or c.startswith("[pageerror]")]
+    if errors:
+        lines.append(f"{len(errors)} console error(s):")
+        lines += [f"  {e[:300]}" for e in errors[:8]]
+    else:
+        lines.append("No console errors.")
+    return "\n".join(lines)
 
 
 def _browser_navigate(url: str) -> str:
-    return _screenshot(url)
+    url = _resolve_repo_file_url("codexa-os", url or "http://localhost:3000")
+    from backend.agents.browser_session import SESSION
+
+    def _go(page):
+        SESSION.reset_capture()  # a fresh page's console/network shouldn't inherit the last page's
+        page.goto(url, wait_until="load", timeout=25000)
+        try:
+            page.wait_for_load_state("networkidle", timeout=6000)
+        except Exception:  # noqa: BLE001 - a page with a poll/animation loop never idles
+            pass
+        try:
+            page.evaluate("document.fonts && document.fonts.ready")
+        except Exception:  # noqa: BLE001
+            pass
+        return f"Navigated to {url}"
+
+    return _browser_op(_go, label="Navigate", reveal=True)
 
 
 def _browser_click(selector: str) -> str:
-    return f"(click requires an active Playwright session — use inspect_page to interact)"
+    def _click(page):
+        page.click(selector, timeout=8000)
+        return f"Clicked {selector!r}"
+    return _browser_op(_click, label="Click")
 
 
 def _browser_type(selector: str, text: str) -> str:
-    return f"(typing requires an active Playwright session — use inspect_page to interact)"
+    def _type(page):
+        # fill() is right for <input>/<textarea>; fall back to keyboard typing for contenteditable
+        # or custom widgets that reject fill().
+        try:
+            page.fill(selector, text, timeout=8000)
+        except Exception:  # noqa: BLE001
+            page.click(selector, timeout=8000)
+            page.keyboard.type(text)
+        return f"Typed into {selector!r}: {text[:80]!r}"
+    return _browser_op(_type, label="Type")
 
 
 def _browser_scroll(x: int = 0, y: int = 300) -> str:
-    return f"(scroll requires an active Playwright session — use inspect_page to interact)"
+    def _scroll(page):
+        page.evaluate(f"window.scrollBy({int(x)}, {int(y)})")
+        return f"Scrolled by ({int(x)}, {int(y)})"
+    return _browser_op(_scroll, label="Scroll")
+
+
+def _browser_network(url: str = "", status: int | None = None) -> str:
+    """Report requests captured on the persistent page. Filter by URL substring and/or status."""
+    from backend.agents.browser_session import SESSION
+    try:
+        entries = SESSION.run(lambda _p: list(SESSION.network), timeout=10.0)
+    except Exception as exc:  # noqa: BLE001
+        return f"Network read failed: {exc}"
+    if not entries:
+        return ("No network activity captured — navigate with browser_navigate first; requests are "
+                "recorded on the persistent page as it loads.")
+    want = (url or "").strip().lower()
+    filtered = [
+        e for e in entries
+        if (not want or want in e.get("url", "").lower())
+        and (status is None or e.get("status") == status)
+    ]
+    if not filtered:
+        return f"No requests match (url~{url!r}, status={status}). {len(entries)} total captured."
+    lines = [f"{len(filtered)} request(s):"]
+    lines += [f"  {e.get('status')} {e.get('method'):<4} {e.get('url', '')[:160]}" for e in filtered[:40]]
+    return "\n".join(lines)
 
 
 # ── Phase 6: Design Intelligence handlers ──────────────────────────────────
