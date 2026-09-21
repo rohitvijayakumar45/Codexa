@@ -17,24 +17,23 @@ to reproduce it.
 
 ---
 
-## What's actually implemented
+## What's implemented
 
-This section states plainly what exists today, not what's planned — Codexa's own code carries the
+This section states  what exists — Codexa's own code carries the
 same discipline (`backend/seed.py` seeds an honest self-description of the architecture into its
 own graph, including the alternatives it rejected).
 
 | Layer | Status |
 |---|---|
-| **Structural graph** | Real — parsed via [tree-sitter](https://tree-sitter.github.io/) (Python, JavaScript, TypeScript, TSX) into nodes (files/functions/classes) and edges (imports/calls/dependencies). In-memory by default; durable when `CODEXA_DATABASE_URL` points at Postgres (event-sourced, JSONB-backed, idempotent schema bootstrap). |
-| **Symbol annotations** | Real — an LLM pass writes a one-line semantic gloss per symbol on top of the structural parse, cached by content hash so unchanged code is never re-annotated. |
-| **Project memory** | Real — four durable, model-agnostic memory types: `semantic`, `episodic`, `procedural`, `organizational`. Shared by every LLM working on the project, persisted to disk, survives restarts. |
-| **Blast radius / impact analysis** | Real — reverse-dependency graph traversal surfaces every node reachable from a change before the change is made. The same traversal also drives graph-distance-aware context eviction, so stale tool payloads are dropped based on structural relevance, not a flat round-count. |
-| **Quorum** | Real — multiple agents answer independently and are checked against the graph *before* seeing a peer's answer; only genuine ties reach a debate round, and that round exchanges structured, verified belief cards rather than free-text — closing the sycophancy vector unrestricted LLM debate opens. |
-| **Multi-provider LLM routing** | Real — [litellm](https://github.com/BerriAI/litellm)-based router across 14+ providers (NVIDIA NIM, Gemini, Groq, Upstage, Cerebras, Mistral, Z.ai, OpenRouter, Bedrock, local Ollama, and more), with tier-based model selection, per-key rotation, and error-classified failover (rate-limit vs. transient-upstream vs. dead-key). |
-| **Browser tools** | Real — a persistent, thread-marshalled headless-browser session (Playwright) so an agent can navigate, click, type, and read console/network output across a sequence of tool calls, not just one-shot screenshots. |
-| **Neo4j / Qdrant projections** | **Not implemented, and not planned** — evaluated and explicitly rejected as unjustified infrastructure/sync complexity at single-repository scale. Python traversal over the graph (in-memory or Postgres-backed) covers current needs; there is no separate vector/semantic-search database — see `backend/repository/semantic.py` for the embedding-based approach actually used. |
+| **Structural graph** |   parsed via [tree-sitter](https://tree-sitter.github.io/) (Python, JavaScript, TypeScript, TSX) into nodes (files/functions/classes) and edges (imports/calls/dependencies). In-memory by default; durable when `CODEXA_DATABASE_URL` points at Postgres (event-sourced, JSONB-backed, idempotent schema bootstrap). |
+| **Symbol annotations** |   an LLM pass writes a one-line semantic gloss per symbol on top of the structural parse, cached by content hash so unchanged code is never re-annotated. |
+| **Project memory** | four durable, model-agnostic memory types: `semantic`, `episodic`, `procedural`, `organizational`. Shared by every LLM working on the project, persisted to disk, survives restarts. |
+| **Blast radius / impact analysis** |  reverse-dependency graph traversal surfaces every node reachable from a change before the change is made. The same traversal also drives graph-distance-aware context eviction, so stale tool payloads are dropped based on structural relevance, not a flat round-count. |
+| **Quorum** | multiple agents answer independently and are checked against the graph *before* seeing a peer's answer; only genuine ties reach a debate round, and that round exchanges structured, verified belief cards rather than free-text — closing the sycophancy vector unrestricted LLM debate opens. |
+| **Multi-provider LLM routing** | [litellm](https://github.com/BerriAI/litellm)-based router across 14+ providers (NVIDIA NIM, Gemini, Groq, Upstage, Cerebras, Mistral, Z.ai, OpenRouter, Bedrock, local Ollama, and more), with tier-based model selection, per-key rotation, and error-classified failover (rate-limit vs. transient-upstream vs. dead-key). |
+| **Browser tools** |  a persistent, thread-marshalled headless-browser session (Playwright) so an agent can navigate, click, type, and read console/network output across a sequence of tool calls, not just one-shot screenshots. |
 | **Docker execution sandbox** | Modeled (`backend/execution/sandbox.py` defines the request/status contract — `blocked` / `scheduled`) but not wired to a live container runtime yet. |
-| **MCP agent coordination** | Not implemented. Agent orchestration is direct (`backend/agents/jobs.py`, `controller.py`), not MCP-based. |
+
 
 ## Why the graph, not raw file search
 
