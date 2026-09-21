@@ -17,3 +17,4 @@ backend/data/
 .overnight.out
 .freebuff/
 *.png
+backup_claude/
