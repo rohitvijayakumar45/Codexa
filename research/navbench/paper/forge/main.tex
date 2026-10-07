@@ -22,7 +22,7 @@
 \begin{abstract}
 Repository-graph tools for coding agents are promoted with large token-reduction ratios.
 We ask how much such a ratio depends on how it is measured.
-We contribute a fully automatic, model-free benchmark with three label layers that never treat an evaluated tool as ground truth:
+We contribute \textsc{NavBench}, a fully automatic, model-free benchmark with three label layers that never treat an evaluated tool as ground truth:
 seeded fixtures whose call sites are known by construction,
 17 public Python and TypeScript repositories with independently sampled query targets,
 and calls observed while running the Python repositories' test suites.
@@ -35,13 +35,15 @@ We release the harness and data, and recommend that efficiency claims report bas
 \end{abstract}
 
 \section{Introduction}
-Coding agents spend much of their context budget locating code, and graph-based navigation tools promise to answer structural questions such as ``who calls $X$?'' from a pre-built index~\cite{repograph,codexgraph,locagent,codebasememory}.
+Foundation-model coding agents spend much of their context budget locating code~\cite{bai_tokens}, and graph-based navigation tools, typically exposed to the model as MCP tools, promise to answer structural questions such as ``who calls $X$?'' from a pre-built index~\cite{repograph,codexgraph,locagent,codebasememory}.
 Such tools are often promoted with a token ratio.
 A ratio, however, has three hidden parameters that are not properties of the tool:
 the \emph{baseline} (whole files, grep, or a language server),
 the \emph{query sample} (often symbols the graph already connects),
 and the \emph{output form} (names only, locations, or source).
-Our starting point was a research prototype, G1, whose own benchmark reported 85.8$\times$ fewer tokens than reading the referencing files, measured on graph-selected symbols.
+Every token such a tool returns is placed in the model's context, so measured payload directly shapes the efficiency claims made for agent tooling.
+
+Our starting point was a research prototype developed by the authors, G1, whose own benchmark reported 85.8$\times$ fewer tokens than reading the referencing files, measured on graph-selected symbols. We include G1 as one of the evaluated tools and report its shortcomings.
 
 We ask:
 \textbf{Q1} How does the baseline change measured payload ratios?
@@ -49,7 +51,7 @@ We ask:
 \textbf{Q3} Under the same output form, and with labels no evaluated tool produced, which tools reach useful token--quality operating points?
 
 \emph{Contributions:}
-(1)~an open benchmark harness with three independent label layers, automatic validity gates, and output-form control;
+(1)~\textsc{NavBench}, an open benchmark harness with three independent label layers, automatic validity gates, and output-form control;
 (2)~evidence that, for identical graph outputs, the measured ratio spans more than two orders of magnitude depending on baseline and output form;
 (3)~evidence that graph-conditioned sampling substantially overstates graph-tool coverage and recall;
 (4)~pattern-level correctness profiles, and recall on runtime-observed calls, for graph, lexical, and language-server retrieval.
@@ -85,7 +87,7 @@ We report recall on observed calls, a different population from all calls; unobs
 
 \textbf{Arms.}
 \rg with 0 and 3 context lines (bare name);
-pyright 1.1.414 and the TypeScript 5.9.3 language service (\texttt{references} at the declaration);
+pyright 1.1.414 and the TypeScript 5.9.3 language service (\texttt{references} at the declaration; its native form is the LSP \texttt{Location} JSON rebuilt from the returned URIs and ranges);
 G1 \texttt{find\_references}, and G1's original \texttt{lookup\_symbol}+\texttt{get\_dependencies} pair;
 and \cbm~\cite{codebasememory} at its paper-era release v0.5.7 and at the current main branch.
 The \cbm versions are queried through persistent MCP sessions; when a tool reports ambiguity, the follow-up call uses the target's qualified name and both calls are counted.
@@ -110,9 +112,9 @@ One post-freeze adapter fix is reported in \S\ref{sec:threats}.
 \section{Results}
 \subsection{Q1: the baseline determines the ratio}
 Fig.~\ref{fig:q1} and Table~\ref{tab:q1} give the ratios.
-Applying G1's original definition to the public repositories reproduces its headline: 85.3$\times$ as a repository geometric mean (152.8$\times$ pooled, 328 targets), against 85.8$\times$ originally reported.
+Applying G1's original definition to the public repositories reproduces its headline: 85.3$\times$ as a repository geometric mean (95\% CI 56.9--126.8; 152.8$\times$ pooled; 328 targets), consistent with the 85.8$\times$ originally reported.
 That definition uses graph-conditioned targets, whole files selected by the graph, and the \texttt{lookup}+\texttt{deps} output.
-Against \rg, the \emph{same} outputs are 3.0$\times$ smaller.
+Against \rg, the \emph{same} outputs are 3.0$\times$ smaller (2.4--4.0).
 Output form alone can flip the sign: the language server's results are larger than every graph tool's output as raw JSON, but smaller in the location form (ratios 0.44--0.93).
 In an exploratory regression, the \rg/graph ratio rises with the number of occurrences of the target's name in the repository, with an elasticity of $\approx$0.75 (95\% CI 0.66--0.88).
 Lexical retrieval is costly mainly for common, ambiguous names.
@@ -224,7 +226,7 @@ On 323 Python targets with observed calls, caller recall was:
 language server 0.79 [0.64, 0.90];
 G1 0.75 and 0.69;
 \cbm 0.70 (current) and 0.64 (v0.5.7).
-The language server's misses concentrate in repositories that ship \texttt{.pyi} stubs, because pyright binds public-API calls to the stub declarations rather than the implementation.
+The language server's misses concentrate in repositories that ship \texttt{.pyi} stubs, because pyright binds public-API calls to the stub declarations rather than the implementation. The graph tools' 0.64--0.75 recall is in the range PyCG reports for static Python call graphs ($\approx$0.70~\cite{pycg}). Their position below lexical search is consistent with Codebase-Memory's agent-level comparison against a grep-and-read explorer (83\% vs.\ 92\% answer quality~\cite{codebasememory}).
 
 \section{Recommendations}
 \begin{itemize}
@@ -243,6 +245,7 @@ Static possible-target labels encode one semantics.
 Caller-level scoring credits any location inside a true caller.
 
 \textbf{Internal.}
+G1 was developed by the authors; to limit bias, every tool is queried through its own interface under one frozen configuration, and G1's failures are reported in full.
 After freezing, we found that pyright answers before its workspace is indexed.
 We added a readiness wait (0/80 reference sets changed on re-query 30\,s later) and re-ran all Python jobs.
 This raised layer-C language-server recall from 0.73 to 0.79 and changed no conclusion; pre-fix results are released.
