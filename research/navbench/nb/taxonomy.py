@@ -36,7 +36,12 @@ def main():
     outdir = Path(sys.argv[1])
     rows = [json.loads(l) for l in open(outdir / "scored.jsonl")]
     by_repo = defaultdict(list)
+    seen = set()  # a declaration drawn into both natural samples is counted once
     for r in rows:
+        k = (r["repo"], r["target"], r["task"], r["arm"])
+        if k in seen:
+            continue
+        seen.add(k)
         if r["task"] == "T1" and r["arm"] in ("codexa_refs", "codexa_orig", "cbm_cur", "cbm_057") and \
                 ((r["layer"] == "fixture" and r.get("split") != "calib" and r.get("A_n_gold")) or r.get("C_n_gold")):
             by_repo[(r["repo"], r["lang"], r["layer"])].append(r)

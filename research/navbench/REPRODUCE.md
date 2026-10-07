@@ -30,6 +30,16 @@ CODEXA_DATA_DIR=/work/nb python -m nb.score /work/nb/out-main
 python -m nb.analyze /work/nb/out-main/scored.jsonl /work/nb/out-main/analysis
 python -m nb.figures /work/nb/out-main/scored.jsonl /work/nb/out-main/figs
 CODEXA_DATA_DIR=/work/nb python -m nb.taxonomy /work/nb/out-main
+
+# 6. Post-freeze supplement: codebase-memory-mcp v0.5.5 on the frozen targets, then robustness analyses
+git -C cbm worktree add ../cbm055 v0.5.5 && (cd cbm055 && make -f Makefile.cbm cbm CC=gcc CXX=g++ -j4) && cp cbm055/build/c/codebase-memory-mcp /work/nb/bin/cbm-055
+# run repositories one at a time (concurrent runs sharing one cache directory can hang)
+python -m nb.run_extra_arm /work/nb/out-main <repo> <py|ts> <fixture|natural> /work/nb/out-055   # for every repo in run_all.sh
+python -m nb.compare_versions /work/nb/out-main cbm_057 /work/nb/out-055 cbm_055 results/main/supplement_cbm_versions/cbm055_vs_057.json
+# run-to-run stability: re-run an existing version on the same targets (label + binary), then compare
+python -m nb.run_extra_arm /work/nb/out-main <repo> <py|ts> natural /work/nb/out-057rerun 057 /work/nb/bin/cbm-057
+python -m nb.run_extra_arm /work/nb/out-main <repo> <py|ts> natural /work/nb/out-currerun cur /work/nb/bin/cbm-cur
+CODEXA_DATA_DIR=/work/nb python -m nb.robustness /work/nb/out-main /work/nb/out-main/scored.jsonl /work/nb/out-main/analysis
 ```
 
 Re-analysis without re-running: `results/main/scored.jsonl.gz` holds every scored row. Gunzip it and pass it to `nb.analyze` / `nb.figures`. Raw per-query tool outputs (facts, statuses, token counts) are in `results/main/raw_results.tar.gz`.

@@ -1,3 +1,5 @@
+> **Superseded.** The submission text is `forge/main.tex`. Numbers in this draft predate the post-freeze scoring fix and the round-3 review changes (see `../FREEZE.md`); do not cite them.
+
 # Methods (draft, results-independent)
 
 ## Study design

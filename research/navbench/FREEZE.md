@@ -72,3 +72,34 @@ None by outcome. Every target receives every arm; failures, timeouts, empty answ
 - All 25 Python jobs (16 held-out fixtures, 9 natural repositories) were re-run. Because pyright fan-out also stratifies Python sampling, Python natural targets were re-drawn with the same seed and rules. TypeScript results are unaffected (the TS language service computes synchronously). Pre-fix results are kept in `results/pre-fix/` for comparison.
 - Not changed: tools, sampling rules, scoring, analysis or the primary contrast.
 - Separate, genuine behaviour (not an artefact): in repositories that ship `.pyi` stubs (more-itertools, attrs), pyright binds public-API calls to the stub declarations, so references requested on the implementation miss those call sites.
+
+## Post-freeze supplementary run and analyses (added in response to review; labelled post hoc)
+- **Scoring fix (found during this review; affects natural-repository S-ind rows only).**
+  - The bug: 76 declarations were drawn into both S-ind and S-cond, but `nb/score.py` keyed rows by declaration alone, so each was scored once and labelled S-cond. The analysed S-ind therefore had 585 targets instead of the 661 drawn. The dropped targets are the ones that have G1 edges, so this biased S-ind against G1.
+  - The fix: rows are now keyed by (declaration, sample). Layer-C pooled metrics and the error taxonomy count each target once.
+  - Effect: all 8,780 previously scored rows are unchanged, and 532 rows were added. Every number in `results/main` was regenerated; the earlier report is kept as `analysis/report_before_scoring_fix.md`.
+  - Main changes:
+    - S-ind non-empty rates: G1 47→54% and 36→44%; codebase-memory 56→60% (current) and 59→62% (v0.5.7);
+    - Q1 ratios: whole files 48–139×, rg 2.9–6.0×;
+    - layer C, fixtures, the primary contrast and the original-method replication (S-cond): unchanged.
+  - `results/pre-fix/` was re-scored in the same way.
+- **codebase-memory-mcp v0.5.5** (`da7e7758`).
+  - The Codebase-Memory preprint names v0.5.5 as its evaluated release; the frozen design used v0.5.7 (`b31d1770`, two days before the preprint) as "paper era".
+  - v0.5.5 was built from source and queried on the **frozen targets** of `out-main` with the unchanged v0.5.7 adapter (`nb/run_extra_arm.py`, arm `cbm_055`).
+  - Comparison: `nb/compare_versions.py` (output in `results/main/supplement_cbm_versions/`).
+    - Fixtures: identical facts and tokens on all 384 queries.
+    - Natural code: different facts on 58 of 992 queries (5.8%).
+    - A re-run of v0.5.7 itself differs from the main run on 53 of 992 (5.3%; same-named declarations resolve differently between runs).
+    - The current version differs from its own re-run on only 4 of 992.
+  - The version difference is therefore within v0.5.7's own run-to-run variation, and the aggregate metrics agree within 0.03:
+    - S-ind non-empty 0.63 vs 0.62;
+    - layer-C recall 0.67 vs 0.64;
+    - fixtures identical.
+  - The paper reports v0.5.5 and v0.5.7 as one row.
+- **Robustness analyses** (`nb/robustness.py`, report `results/main/analysis/robustness.md`):
+  - R1: full-workload Layer A metrics and ratios, with no completeness conditioning;
+  - R2: composition of the jointly-complete subsets;
+  - R3: the primary contrast in the common location and source-enriched forms;
+  - R4: strict caller credit for location arms (only gold call sites credit a caller);
+  - R5: S-cond vs S-ind, post-stratified on repository × kind × language-server call fan-out bucket.
+- Apart from the scoring fix above, none of these change the frozen tools, targets, scoring or primary contrast.

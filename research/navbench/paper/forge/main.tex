@@ -27,11 +27,11 @@ seeded fixtures whose call sites are known by construction,
 17 public Python and TypeScript repositories with independently sampled query targets,
 and calls observed while running the Python repositories' test suites.
 We apply it to two Tree-sitter code-graph tools (one in two versions), ripgrep, and two language servers.
-A published-style method reproduces its headline on public code: graph answers are 85$\times$ smaller than the whole files they replace.
-The same graph outputs are only 3.0$\times$ smaller than \rg output, and 1.1--2.3$\times$ \emph{larger} than language-server results printed one location per line.
-Sampling targets from the graph's own edges raises graph tools' answer rates from 36--59\% to 84--100\%, and their recall on observed calls by 0.15--0.24.
-At matched completeness on held-out fixtures, the most complete graph tool used as many tokens as ripgrep (ratio 1.03, 95\% CI 0.94--1.13).
-We release the harness and data, and recommend that efficiency claims report baseline, sampling frame, output form, and completeness together.
+Re-applying our own prototype's earlier benchmark definition to public code reproduces its headline: graph answers are 85$\times$ smaller than the whole files they replace.
+The same graph outputs are only 3.0$\times$ smaller than \rg output, and 1.1--2.2$\times$ \emph{larger} than language-server results printed one location per line.
+Sampling targets from that prototype's own graph edges raises its answer rate from 44--54\% to 99--100\%; after adjusting for call fan-out and declaration kind, +32 to +42 points remain, whereas for the other graph tool most of the smaller gap is explained by target composition.
+On held-out fixture targets that both answer completely, the most complete graph tool returned as many tokens as ripgrep (ratio 1.03, 95\% CI 0.94--1.13) but far fewer wrong candidates (caller precision 0.98 vs.\ 0.35): its advantage was precision, not payload.
+We release the harness and data, and recommend that efficiency claims report baseline, sampling frame, output form, completeness, and precision together.
 \end{abstract}
 
 \section{Introduction}
@@ -53,8 +53,8 @@ We ask:
 \emph{Contributions:}
 (1)~\textsc{NavBench}, an open benchmark harness with three independent label layers, automatic validity gates, and output-form control;
 (2)~evidence that, for identical graph outputs, the measured ratio spans more than two orders of magnitude depending on baseline and output form;
-(3)~evidence that graph-conditioned sampling substantially overstates graph-tool coverage and recall;
-(4)~pattern-level correctness profiles, and recall on runtime-observed calls, for graph, lexical, and language-server retrieval.
+(3)~evidence that sampling targets from a tool's own edges overstates that tool's coverage beyond what target composition explains;
+(4)~token--recall--precision profiles by call pattern, and recall on runtime-observed calls, for graph, lexical, and language-server retrieval.
 
 \section{Benchmark Design}
 \textbf{Tasks.}
@@ -75,8 +75,8 @@ We use 4+4 calibration and 16+16 held-out fixtures: 224 targets, 160 with explic
 \textbf{Layer B: natural repositories.}
 We use 9 Python and 8 TS/JS libraries, selected by fixed criteria before results were observed, plus 3 pilot repositories excluded from all results.
 Declarations are enumerated by tools that share no code with any graph: Python \texttt{ast} and the TypeScript compiler API.
-\emph{S-ind}, the primary sample, is drawn from a random pool of $\le$300 non-test declarations, stratified by kind and by the language server's call fan-out, with inclusion weights recorded; it has 585 targets.
-\emph{S-cond}, a diagnostic sample of 331 targets, is drawn from declarations with $\ge$1 incoming G1 edge, which is the original benchmark's rule.
+\emph{S-ind}, the primary sample, is drawn from a random pool of $\le$300 non-test declarations, stratified by kind and by the language server's call fan-out, with inclusion weights recorded; it has 661 targets.
+\emph{S-cond}, a diagnostic sample of 331 targets, is drawn from declarations with $\ge$1 incoming G1 edge, which is the original benchmark's rule; 76 declarations fall in both samples.
 Layer B supports agreement, availability, size, and failure rates, but not accuracy.
 
 \textbf{Layer C: runtime-observed calls.}
@@ -89,17 +89,19 @@ We report recall on observed calls, a different population from all calls; unobs
 \rg with 0 and 3 context lines (bare name);
 pyright 1.1.414 and the TypeScript 5.9.3 language service (\texttt{references} at the declaration; its native form is the LSP \texttt{Location} JSON rebuilt from the returned URIs and ranges);
 G1 \texttt{find\_references}, and G1's original \texttt{lookup\_symbol}+\texttt{get\_dependencies} pair;
-and \cbm~\cite{codebasememory} at its paper-era release v0.5.7 and at the current main branch.
+and \cbm~\cite{codebasememory} at v0.5.5, the release its paper evaluates, at v0.5.7, and at current main (commit \texttt{bf93f0b7}).
+v0.5.5 and v0.5.7 gave identical answers on every fixture query; on natural code they differed on 5.8\% of queries, no more than v0.5.7 differs from its own re-run (5.3\%), so they share one row (``v0.5.5/7'').
 The \cbm versions are queried through persistent MCP sessions; when a tool reports ambiguity, the follow-up call uses the target's qualified name and both calls are counted.
 
 \textbf{Scoring and statistics.}
 Returned facts are mapped to call sites (location tools only), enclosing caller declarations, and files.
+A returned location credits its enclosing caller; under a strict rule crediting only locations that are themselves gold call sites, recall of \rg and the language servers changed by $\le$0.01 and no contrast changed.
 An answer is \emph{complete} when caller-level recall is 1.
 Tokens (cl100k) are counted on each tool's native output, a common one-location-per-line form, and a source-enriched form.
 An automatic check confirms identical fact sets across forms for every query.
 Estimates are repository-macro means with 95\% hierarchical-bootstrap intervals over repositories, then targets.
 The primary contrast and a 1.5$\times$ margin were frozen before held-out data.
-One post-freeze adapter fix is reported in \S\ref{sec:threats}.
+Post-freeze changes are reported in \S\ref{sec:threats}.
 
 \begin{figure*}[t]
 \centering
@@ -112,11 +114,12 @@ One post-freeze adapter fix is reported in \S\ref{sec:threats}.
 \section{Results}
 \subsection{Q1: the baseline determines the ratio}
 Fig.~\ref{fig:q1} and Table~\ref{tab:q1} give the ratios.
-Applying G1's original definition to the public repositories reproduces its headline: 85.3$\times$ as a repository geometric mean (95\% CI 56.9--126.8; 152.8$\times$ pooled; 328 targets), consistent with the 85.8$\times$ originally reported.
+Applying G1's original definition to the public repositories reproduces its headline: 85.3$\times$ as a repository geometric mean (95\% CI 57.2--126.9; 152.8$\times$ pooled; 328 targets), consistent with the 85.8$\times$ originally reported.
 That definition uses graph-conditioned targets, whole files selected by the graph, and the \texttt{lookup}+\texttt{deps} output.
+This reproduces G1's own earlier measurement; it neither reproduces nor tests \cbm's agent-level 10$\times$ result, which measures a different workflow.
 Against \rg, the \emph{same} outputs are 3.0$\times$ smaller (2.4--4.0).
-Output form alone can flip the sign: the language server's results are larger than every graph tool's output as raw JSON, but smaller in the location form (ratios 0.44--0.93).
-In an exploratory regression, the \rg/graph ratio rises with the number of occurrences of the target's name in the repository, with an elasticity of $\approx$0.75 (95\% CI 0.66--0.88).
+Output form alone can flip the sign: the language server's results are larger than every graph tool's output as raw JSON, but smaller in the location form (ratios 0.45--0.88).
+In an exploratory regression, the \rg/graph ratio rises with the number of occurrences of the target's name in the repository, with an elasticity of $\approx$0.77 (95\% CI 0.69--0.87).
 Lexical retrieval is costly mainly for common, ambiguous names.
 
 \begin{table}[t]
@@ -128,10 +131,10 @@ Lexical retrieval is costly mainly for common, ambiguous names.
 \toprule
 Graph tool & whole files & \rg & LSP JSON & LSP loc.\\
 \midrule
-G1 find\_references & 131.7 & 6.32 & 3.04 & 0.93\\
-G1 lookup+deps & 84.8 & 3.00 & 2.18 & 0.49\\
-\cbm current & 42.6 & 3.01 & 1.93 & 0.46\\
-\cbm v0.5.7 & 54.4 & 3.54 & 1.31 & 0.44\\
+G1 find\_references & 139.3 & 6.01 & 3.10 & 0.88\\
+G1 lookup+deps & 85.6 & 3.27 & 2.46 & 0.54\\
+\cbm current & 48.0 & 2.92 & 1.92 & 0.45\\
+\cbm v0.5.5/7 & 60.8 & 3.54 & 1.46 & 0.46\\
 \bottomrule
 \end{tabular}
 \vspace{-1em}
@@ -139,28 +142,31 @@ G1 lookup+deps & 84.8 & 3.00 & 2.18 & 0.49\\
 
 \subsection{Q2: graph-conditioned sampling overstates coverage}
 Table~\ref{tab:q2} compares the two samples.
-Some of the drop in answer rate is legitimate: 39\% of S-ind targets have no call sites according to the language server.
-The recall comparison, however, uses only targets with at least one observed call, so it isolates the effect of conditioning on graph edges.
-S-cond selects precisely the symbols the graph already connects.
-Independently sampled declarations are often absent from the graph: 16\% of S-ind targets are missing from G1.
+S-cond is conditioned on G1's edges, which also changes target composition: 9\% of S-cond but 35\% of S-ind targets have no call site according to the language server, and declaration kinds and name frequencies differ.
+For those targets an empty answer is correct.
+We therefore post-stratify S-cond to S-ind's distribution over repository $\times$ kind $\times$ fan-out bucket (0, 1--2, 3--9, $\ge$10 call sites).
+The adjustment removes composition effects: the language server, on which S-cond is not conditioned, shows no adjusted difference.
+For G1, the conditioning tool, the answer-rate gap remains large (+32 and +42 points), while its observed-call recall gap shrinks to +0.13 (95\% CIs reaching 0).
+For \cbm the adjusted gaps are small (+8 to +9 points; recall +0.08--0.09, CIs including 0): conditioning inflates mainly the coverage of the tool whose edges define the sample.
+Independently sampled declarations are often absent from G1: 14\% of S-ind targets are missing.
 G1's coverage of non-test declarations is 91--100\% in the Python repositories, but 47--68\% in five of the eight TS/JS repositories.
 The causes are unindexed object-literal arrow functions, and same-named nested declarations that collapse into one node (e.g., 303 test-local classes in one repository).
 
 \begin{table}[t]
 \centering
-\caption{Q2: S-cond $\rightarrow$ S-ind. Non-empty answers (\%), and caller recall on runtime-observed calls (Python).}
+\caption{Q2: S-cond $\rightarrow$ S-ind. Non-empty answers (\%), the S-cond$-$S-ind difference after post-stratification [95\% CI], and caller recall on runtime-observed calls (Python).}
 \label{tab:q2}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lcc@{}}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lccc@{}}
 \toprule
-Arm & non-empty \% & observed-call recall\\
+Arm & non-empty \% & adjusted $\Delta$ (pts) & obs.-call recall\\
 \midrule
-G1 find\_references & 100 $\rightarrow$ 47 & 0.85 $\rightarrow$ 0.65\\
-G1 lookup+deps & \phantom{0}99 $\rightarrow$ 36 & 0.81 $\rightarrow$ 0.57\\
-\cbm current & \phantom{0}88 $\rightarrow$ 56 & 0.79 $\rightarrow$ 0.61\\
-\cbm v0.5.7 & \phantom{0}84 $\rightarrow$ 59 & 0.72 $\rightarrow$ 0.57\\
-language server & \phantom{0}97 $\rightarrow$ 81 & 0.84 $\rightarrow$ 0.73\\
-\rg & 100 $\rightarrow$ 100 & 0.97 $\rightarrow$ 0.94\\
+G1 find\_references & 100 $\rightarrow$ 54 & +32 [21, 41] & 0.85 $\rightarrow$ 0.70\\
+G1 lookup+deps & \phantom{0}99 $\rightarrow$ 44 & +42 [29, 53] & 0.81 $\rightarrow$ 0.63\\
+\cbm current & \phantom{0}88 $\rightarrow$ 60 & \phantom{0}+9 [2, 17] & 0.79 $\rightarrow$ 0.66\\
+\cbm v0.5.5/7 & \phantom{0}84 $\rightarrow$ 62 & \phantom{0}+8 [0, 15] & 0.72 $\rightarrow$ 0.60\\
+language server & \phantom{0}97 $\rightarrow$ 83 & \phantom{0}$-$1 [$-$5, 3] & 0.84 $\rightarrow$ 0.77\\
+\rg & 100 $\rightarrow$ 100 & \phantom{$-$}0 & 0.97 $\rightarrow$ 0.95\\
 \bottomrule
 \end{tabular}
 \vspace{-1em}
@@ -168,15 +174,25 @@ language server & \phantom{0}97 $\rightarrow$ 81 & 0.84 $\rightarrow$ 0.73\\
 
 \subsection{Q3: correctness and tokens at matched quality}
 Table~\ref{tab:q3} and Fig.~\ref{fig:q3} report the held-out fixtures.
-For the primary contrast we compute the geometric-mean token ratio of each arm to \rg over targets on which both are complete:
+For the primary contrast we compute the geometric-mean token ratio of each arm to \rg over the targets on which \emph{both} are complete.
+These subsets differ by arm (n of 160 below); they are conditioned on success and are not globally matched operating points.
+A saving counts as meaningful only if the whole interval lies below $1/1.5\approx0.667$.
 \begin{itemize}
-\item G1 \texttt{find\_references}: 0.35 [0.33, 0.37], a saving, but it was complete on only 40\% of targets, against 80\% for \rg;
-\item G1 \texttt{lookup}+\texttt{deps}: 0.65 [0.62, 0.67], not a meaningful saving under the frozen margin;
-\item \cbm current: 1.03 [0.94, 1.13], no difference, and the only graph tool as complete as the baselines (89\%);
-\item \cbm v0.5.7: 0.58 [0.56, 0.62], a saving at 49\% completeness;
-\item language-server JSON: 1.75 [1.65, 1.85], a cost.
+\item G1 \texttt{find\_references}: 0.35 [0.33, 0.37] (n=64), a saving, but complete on only 40\% of targets, against 80\% for \rg;
+\item G1 \texttt{lookup}+\texttt{deps}: 0.65 [0.62, 0.672] (n=64), a 1.5$\times$ point saving whose interval crosses the threshold, so not meaningful;
+\item \cbm current: 1.03 [0.94, 1.13] (n=127), no evidence of a substantial saving (this is not an equivalence test); it is the only graph tool as complete as the baselines (89\%);
+\item \cbm v0.5.5/7: 0.58 [0.56, 0.62] (n=79), a saving at 49\% completeness;
+\item language-server JSON: 1.75 [1.65, 1.85] (n=128), a cost.
 \end{itemize}
+Over all 160 targets, without conditioning on completeness, \cbm current's ratio is 1.01 [0.93, 1.09], and the less complete arms' ratios fall to 0.33--0.63.
 Small outputs coincided with incomplete answers.
+
+Matched recall is not matched quality.
+\cbm current and \rg have the same recall and similar tokens, but \cbm returns almost no wrong callers (precision 0.98 vs.\ 0.35; F1 0.95 vs.\ 0.50).
+The fixtures plant same-named methods, shadowing locals, and comment and string mentions, so they are deliberately hard for lexical search; we do not measure precision on natural code.
+Output form also matters here: in the common one-fact-per-line form, every graph tool needs only 0.24--0.28 of \rg's tokens on the same jointly complete targets.
+The forms differ in content, though: graph lines name callers, while \rg lines list every occurrence of the name.
+\cbm's native parity with \rg comes from its verbose tree output (160 native vs.\ 19 location-form tokens).
 
 Failures by pattern are as follows.
 \rg misses only calls through import aliases.
@@ -186,7 +202,7 @@ Of G1's 240 missed callers (\texttt{lookup}+\texttt{deps}):
 32 are module-level calls, which it never attributes to a caller;
 and 112 are relations it does not record (re-exports, TS constructor calls, and typed-receiver or \texttt{super} calls).
 Ambiguous names lower G1's recall from 0.73 to 0.53, but leave \cbm current unaffected (0.95 vs.\ 0.94).
-\cbm v0.5.7 misses the typed-receiver and constructor calls that the current version finds.
+\cbm v0.5.5/7 misses the typed-receiver and constructor calls that the current version finds.
 In T2 (definition lookup), every arm found every definition.
 Only the language server returned exactly one answer (precision 1.00); the other arms returned same-named candidates (precision 0.68--0.76), at 37--98 tokens.
 
@@ -201,20 +217,20 @@ Only the language server returned exactly one answer (precision 1.00); the other
 
 \begin{table}[t]
 \centering
-\caption{Q3: held-out fixtures, T1, caller level, 160 targets.}
+\caption{Q3: held-out fixtures, T1, caller level, 160 targets. Tokens: mean native, and mean in the common location form.}
 \label{tab:q3}
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{@{}lrrrr@{}}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrr@{}}
 \toprule
-Arm & recall & precision & complete \% & tokens\\
+Arm & recall & precision & complete \% & native & loc.\\
 \midrule
-\rg & 0.95 & 0.35 & 80.0 & 140\\
-\rg\,-C3 & 0.95 & 0.35 & 80.0 & 465\\
-language server & 0.97 & 0.64 & 90.0 & 236\\
-G1 find\_references & 0.63 & 0.68 & 40.0 & 50\\
-G1 lookup+deps & 0.47 & 1.00 & 40.0 & 94\\
-\cbm current & 0.94 & 0.98 & 89.4 & 160\\
-\cbm v0.5.7 & 0.71 & 0.90 & 49.4 & 70\\
+\rg & 0.95 & 0.35 & 80.0 & 140 & 65\\
+\rg\,-C3 & 0.95 & 0.35 & 80.0 & 465 & 65\\
+language server & 0.97 & 0.64 & 90.0 & 236 & 39\\
+G1 find\_references & 0.63 & 0.68 & 40.0 & 50 & 18\\
+G1 lookup+deps & 0.47 & 1.00 & 40.0 & 94 & 6\\
+\cbm current & 0.94 & 0.98 & 89.4 & 160 & 19\\
+\cbm v0.5.5/7 & 0.71 & 0.90 & 49.4 & 70 & 15\\
 \bottomrule
 \end{tabular}
 \vspace{-1em}
@@ -225,15 +241,15 @@ On 323 Python targets with observed calls, caller recall was:
 \rg 0.95 [0.92, 0.98];
 language server 0.79 [0.64, 0.90];
 G1 0.75 and 0.69;
-\cbm 0.70 (current) and 0.64 (v0.5.7).
+\cbm 0.70 (current) and 0.64 (v0.5.5/7).
 The language server's misses concentrate in repositories that ship \texttt{.pyi} stubs, because pyright binds public-API calls to the stub declarations rather than the implementation. The graph tools' 0.64--0.75 recall is in the range PyCG reports for static Python call graphs ($\approx$0.70~\cite{pycg}). Their position below lexical search is consistent with Codebase-Memory's agent-level comparison against a grep-and-read explorer (83\% vs.\ 92\% answer quality~\cite{codebasememory}).
 
 \section{Recommendations}
 \begin{itemize}
-\item Report the baseline, and more than one: the same graph outputs measured 0.44$\times$ to 134$\times$.
-\item Sample targets independently of the tool under test: edge-conditioned sampling raised graph tools' answer rates by 25--64 points.
+\item Report the baseline, and more than one: the same graph outputs measured 0.45$\times$ to 141$\times$.
+\item Sample targets independently of the tool under test: sampling from G1's own edges raised its answer rate by 32--42 points even after adjusting for target composition.
 \item Count tokens in a common output form, and state what each form contains: names-only outputs carry less information.
-\item Report completeness next to tokens: at matched completeness, the most complete graph tool saved nothing over \rg.
+\item Report completeness and precision next to tokens: on jointly complete targets, the most complete graph tool saved no tokens over \rg, but was far more precise.
 \item Do not equate payload tokens with agent cost. Agent behaviour and prompt caching are out of scope here, and agent-level studies~\cite{codebasememory,xu_lsp} measure something different.
 \end{itemize}
 
@@ -242,13 +258,15 @@ The language server's misses concentrate in repositories that ship \texttt{.pyi}
 \textbf{Construct.}
 Payload tokens are not agent cost~\cite{bai_tokens,weinberger}.
 Static possible-target labels encode one semantics.
-Caller-level scoring credits any location inside a true caller.
+Caller-level scoring credits any location inside a true caller; a strict variant changes no result.
 
 \textbf{Internal.}
 G1 was developed by the authors; to limit bias, every tool is queried through its own interface under one frozen configuration, and G1's failures are reported in full.
 After freezing, we found that pyright answers before its workspace is indexed.
 We added a readiness wait (0/80 reference sets changed on re-query 30\,s later) and re-ran all Python jobs.
 This raised layer-C language-server recall from 0.73 to 0.79 and changed no conclusion; pre-fix results are released.
+Also after freezing, and in response to review: we fixed a scoring error that had dropped the 76 S-ind targets also drawn into S-cond (S-ind numbers changed, no conclusion did; both versions are released); we added \cbm v0.5.5 on the frozen targets with the v0.5.7 adapter; and we added four post-hoc analyses (full-workload ratios, output-form contrasts, strict caller credit, post-stratified sampling), labelled as such in the released reports.
+\cbm v0.5.x answers for same-named declarations vary between runs (5\% of natural queries; current version 0.4\%).
 Before freezing, name-resolution rules were corrected so that tool outputs are not penalised by our own matching.
 Unresolved output (0--6\%) still counts against the tool.
 Tokens were counted with gpt-tokenizer's bundled cl100k ranks, validated against known token ids.
@@ -262,11 +280,11 @@ There is no human audit, so accuracy on natural code is not measured.
 \section{Related Work}
 Code graphs for agents improve repository-level tasks~\cite{repograph,codexgraph,locagent}.
 Codebase-Memory~\cite{codebasememory} reports about 10$\times$ fewer agent tokens than an agent using file reading and grep, at somewhat lower answer quality (83\% vs.\ 92\%).
-Xu~\cite{xu_lsp} finds that language servers seldom save agent tokens.
+Xu~\cite{xu_lsp} compares semantic and lexical retrieval inside an agent, including task success, output enrichment, and when token savings arise; we instead measure tools without a model, across graph, lexical, and language-server retrieval, against labels no evaluated tool produced, and quantify sampling effects.
 CodeNib~\cite{codenib} compares static and live navigation on graph-derived queries.
-Lexical search is a strong agent baseline~\cite{grep}.
+For agent memory over long conversations, not code, grep often beats vector retrieval~\cite{grep}.
 PyCG bounds what static call graphs achieve~\cite{pycg}.
-We complement these studies with a model-free, cross-tool measurement whose labels are independent of every evaluated tool, and we quantify how sampling and output form change conclusions.
+We complement these agent-level studies with a model-free, cross-tool measurement.
 
 \section{Data Availability}
 Harness, fixtures generator, pinned corpus commits, raw per-query outputs, traces, analysis, and the frozen protocol: \url{https://anonymous.4open.science/r/XXXX} (anonymized).

@@ -1,3 +1,5 @@
+> **Superseded.** The submission text is `forge/main.tex`. Numbers in this draft predate the post-freeze scoring fix and the round-3 review changes (see `../FREEZE.md`); do not cite them.
+
 # What Does "N× Fewer Tokens" Measure? Baselines, Sampling and Output Format in the Evaluation of Repository-Navigation Tools
 
 *Draft. Every number is from `research/navbench/results/main`, unless the text says pre-fix or pilot. Venue formatting and page limits are not yet applied: the FORGE Data & Benchmarking track is 4+1 pages and the SANER RENE track 10+2, so this draft must be condensed.*

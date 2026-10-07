@@ -62,7 +62,8 @@ def score_repo(outdir: Path, repo: str, lang: str, layer: str, trace_file: Path 
     ix = I.load(root, lang, tsc)
     if tsc:
         tsc.close()
-    targets = {t["decl"]: t for t in json.loads((outdir / f"{repo}.targets.json").read_text())}
+    # a declaration can be drawn into both natural samples; key by (declaration, sample)
+    targets = {(t["decl"], t["sample"]): t for t in json.loads((outdir / f"{repo}.targets.json").read_text())}
     traced = None
     if trace_file and trace_file.exists() and lang == "py":
         tm = trace_map.load(ix.py, trace_file)
@@ -84,9 +85,9 @@ def score_repo(outdir: Path, repo: str, lang: str, layer: str, trace_file: Path 
     by_target_arm: dict = {}
     for line in open(outdir / f"{repo}.results.jsonl"):
         r = json.loads(line)
-        by_target_arm[(r["target"], r["task"], r["arm"])] = r
-    for (tid, task, arm), r in by_target_arm.items():
-        t = targets[tid]
+        by_target_arm[(r["target"], r["sample"], r["task"], r["arm"])] = r
+    for (tid, samp, task, arm), r in by_target_arm.items():
+        t = targets[(tid, samp)]
         d = ix.decls[tid]
         u = units(ix, r)
         out = {k: r[k] for k in ("repo", "lang", "layer", "target", "sample", "task", "arm", "status", "truncated",
@@ -141,8 +142,8 @@ def score_repo(outdir: Path, repo: str, lang: str, layer: str, trace_file: Path 
         rows.append(out)
     # original-benchmark style whole-file payload (Q1): def file + files the Codexa graph says reference X
     # and the provider-based whole-file payload: def file + files of provider (LSP) call-site facts
-    lsp = {r["target"]: r for (tid, task, arm), r in by_target_arm.items() if arm == "lsp" and task == "T1"}
-    cxo = {r["target"]: r for (tid, task, arm), r in by_target_arm.items() if arm == "codexa_refs" and task == "T1"}
+    lsp = {r["target"]: r for (tid, samp, task, arm), r in by_target_arm.items() if arm == "lsp" and task == "T1"}
+    cxo = {r["target"]: r for (tid, samp, task, arm), r in by_target_arm.items() if arm == "codexa_refs" and task == "T1"}
     for o in rows:
         if o["task"] != "T1":
             continue

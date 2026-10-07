@@ -1,0 +1,130 @@
+{
+ "summary": {
+  "queries": 992,
+  "same_facts": 988,
+  "same_tokens": 989,
+  "missing_b": 384
+ },
+ "differences": [
+  {
+   "key": [
+    "attrs",
+    "typing_tests/baseline.py:47:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "tests/test_annotations.py:100:8",
+     "tests/test_annotations.py:174:8",
+     "tests/test_annotations.py:441:8",
+     "tests/test_annotations.py:454:8",
+     "tests/test_annotations.py:475:8"
+    ],
+    1413
+   ],
+   "b": [
+    "ok",
+    [
+     "tests/test_cmp.py:359:8",
+     "module:typing_tests/mypy.py",
+     "tests/test_make.py:361:8",
+     "tests/test_make.py:373:8",
+     "tests/test_make.py:769:8"
+    ],
+    1413
+   ]
+  },
+  {
+   "key": [
+    "commander.js",
+    "lib/command.js:14:13",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "lib/command.js:193:2",
+     "module:tests/command.parse.test.js",
+     "module:tests/options.env.test.js",
+     "module:tests/command.executableSubcommand.search.test.cjs",
+     "module:tests/command.help.test.js"
+    ],
+    1793
+   ],
+   "b": [
+    "ok",
+    [
+     "lib/command.js:193:2",
+     "module:tests/help.suggestion.test.js",
+     "module:tests/options.version.test.js",
+     "module:tests/options.bool.test.js",
+     "module:tests/command.helpOption.test.js"
+    ],
+    1830
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/index.js:39:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "unresolved:src.index",
+     "module:test/plugin/duration.test.js",
+     "unresolved:src.plugin.utc.index",
+     "module:test/locale/is.test.js",
+     "module:test/locale/de.test.js"
+    ],
+    1811
+   ],
+   "b": [
+    "ok",
+    [
+     "unresolved:src.index",
+     "module:test/plugin/utc.test.js",
+     "module:test/display.test.js",
+     "src/plugin/customParseFormat/index.js:181:6",
+     "module:test/plugin/advancedFormat.test.js"
+    ],
+    1815
+   ]
+  },
+  {
+   "key": [
+    "ts-pattern",
+    "src/match.ts:32:16",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:tests/record.test.ts",
+     "tests/record.test.ts:165:10",
+     "tests/record.test.ts:267:10",
+     "module:tests/types.test.ts",
+     "tests/types.test.ts:295:10"
+    ],
+    1544
+   ],
+   "b": [
+    "ok",
+    [
+     "module:tests/select.test.ts",
+     "tests/select.test.ts:102:10",
+     "tests/select.test.ts:262:12",
+     "tests/select.test.ts:378:12",
+     "tests/select.test.ts:471:10"
+    ],
+    1518
+   ]
+  }
+ ]
+}
