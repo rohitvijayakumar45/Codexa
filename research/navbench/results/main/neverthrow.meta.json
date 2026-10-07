@@ -1,0 +1,59 @@
+{
+ "repo": "neverthrow",
+ "lang": "ts",
+ "layer": "natural",
+ "started": 1791394692.3155837,
+ "index_frame_s": 1.1631942299991351,
+ "frame": {
+  "files": 12,
+  "decls": 140,
+  "calls": 2306,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.3767182600004162,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 8.511096655000074,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.14008601200021076,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 107,
+  "codexa_has": 66,
+  "codexa_nodes": 82,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|10-inf": [
+   43,
+   14
+  ],
+  "method|3-9": [
+   19,
+   7
+  ],
+  "function|10-inf": [
+   24,
+   9
+  ],
+  "method|1-2": [
+   12,
+   4
+  ],
+  "function|1-2": [
+   5,
+   2
+  ],
+  "function|3-9": [
+   1,
+   2
+  ],
+  "class|10-inf": [
+   3,
+   2
+  ]
+ },
+ "n_cond_frame": 15,
+ "gate_messages": [],
+ "finished": 1791394715.5358183
+}

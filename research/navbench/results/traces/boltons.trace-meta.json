@@ -1,0 +1,24 @@
+{
+ "repo": "boltons",
+ "plain": {
+  "seconds": 3.2988455295562744,
+  "finished": true,
+  "tests_progressed": 525,
+  "last_pct": 100,
+  "tail": [
+   ".................................                                        [100%]",
+   "525 passed, 12 subtests passed in 3.00s"
+  ]
+ },
+ "traced": {
+  "seconds": 13.84592056274414,
+  "finished": true,
+  "tests_progressed": 525,
+  "last_pct": 100,
+  "tail": [
+   ".................................                                        [100%]",
+   "525 passed, 12 subtests passed in 13.48s"
+  ]
+ },
+ "trace_written": true
+}

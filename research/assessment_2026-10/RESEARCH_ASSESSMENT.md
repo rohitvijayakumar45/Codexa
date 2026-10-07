@@ -1,5 +1,8 @@
 # Codexa OS — Research Potential Assessment
 
+> **Update (2026-10-07):** Direction 1 has been executed. The study, results and paper draft are in `research/navbench/` (`paper/paper_draft.md`, `results/main/analysis/report.md`). Several pilot numbers below were superseded.
+
+
 Date: 2026-10-07. Scope: whole repository at commit `0ea016a`, plus a lightweight local re-measurement
 (no paid API calls, no training). "Quorum mode" is excluded throughout by instruction; it is not
 analysed, compared, or proposed.

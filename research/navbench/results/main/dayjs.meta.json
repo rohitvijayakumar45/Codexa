@@ -1,0 +1,63 @@
+{
+ "repo": "dayjs",
+ "lang": "ts",
+ "layer": "natural",
+ "started": 1791394735.736899,
+ "index_frame_s": 1.3164356910001516,
+ "frame": {
+  "files": 283,
+  "decls": 365,
+  "calls": 16157,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.6543084270006148,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 4.404947370999253,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.48023910200026876,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 354,
+  "codexa_has": 165,
+  "codexa_nodes": 172,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|3-9": [
+   5,
+   2
+  ],
+  "function|0-0": [
+   189,
+   21
+  ],
+  "function|3-9": [
+   14,
+   2
+  ],
+  "method|0-0": [
+   38,
+   5
+  ],
+  "method|1-2": [
+   17,
+   2
+  ],
+  "function|1-2": [
+   32,
+   4
+  ],
+  "class|1-2": [
+   2,
+   2
+  ],
+  "function|10-inf": [
+   3,
+   2
+  ]
+ },
+ "n_cond_frame": 77,
+ "gate_messages": [],
+ "finished": 1791394758.0189104
+}

@@ -1,0 +1,75 @@
+{
+ "repo": "click",
+ "lang": "py",
+ "layer": "natural",
+ "started": 1791394068.9164114,
+ "index_frame_s": 0.3706920380000156,
+ "frame": {
+  "files": 91,
+  "decls": 2078,
+  "calls": 7074,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.9218322940000689,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 8.143763273999866,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.3189836080000532,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 769,
+  "codexa_has": 709,
+  "codexa_nodes": 1671,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|1-2": [
+   53,
+   7
+  ],
+  "method|0-0": [
+   99,
+   8
+  ],
+  "method|3-9": [
+   12,
+   2
+  ],
+  "class|0-0": [
+   18,
+   2
+  ],
+  "function|0-0": [
+   42,
+   6
+  ],
+  "function|1-2": [
+   30,
+   4
+  ],
+  "class|3-9": [
+   6,
+   2
+  ],
+  "class|1-2": [
+   15,
+   2
+  ],
+  "function|3-9": [
+   21,
+   3
+  ],
+  "function|10-inf": [
+   3,
+   2
+  ],
+  "class|10-inf": [
+   1,
+   2
+  ]
+ },
+ "n_cond_frame": 308,
+ "gate_messages": [],
+ "finished": 1791394098.6953661
+}

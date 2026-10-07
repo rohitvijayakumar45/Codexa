@@ -1,0 +1,75 @@
+{
+ "repo": "zod",
+ "lang": "ts",
+ "layer": "natural",
+ "started": 1791394099.7601607,
+ "index_frame_s": 2.589600569999675,
+ "frame": {
+  "files": 522,
+  "decls": 2926,
+  "calls": 54225,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 3.7120294599999397,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 9.452086855999823,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 1.8060710939998899,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 2035,
+  "codexa_has": 1649,
+  "codexa_nodes": 2050,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "function|3-9": [
+   49,
+   7
+  ],
+  "method|10-inf": [
+   26,
+   3
+  ],
+  "function|0-0": [
+   33,
+   4
+  ],
+  "function|1-2": [
+   96,
+   9
+  ],
+  "class|1-2": [
+   12,
+   2
+  ],
+  "function|10-inf": [
+   32,
+   4
+  ],
+  "method|3-9": [
+   15,
+   2
+  ],
+  "method|0-0": [
+   22,
+   3
+  ],
+  "method|1-2": [
+   12,
+   2
+  ],
+  "class|3-9": [
+   1,
+   2
+  ],
+  "class|0-0": [
+   2,
+   2
+  ]
+ },
+ "n_cond_frame": 587,
+ "gate_messages": [],
+ "finished": 1791394145.4083474
+}

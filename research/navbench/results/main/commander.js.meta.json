@@ -1,0 +1,71 @@
+{
+ "repo": "commander.js",
+ "lang": "ts",
+ "layer": "natural",
+ "started": 1791394716.633958,
+ "index_frame_s": 0.9724876959999165,
+ "frame": {
+  "files": 170,
+  "decls": 398,
+  "calls": 10120,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.6990245619999769,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 4.909788003999893,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.28427670299970487,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 266,
+  "codexa_has": 234,
+  "codexa_nodes": 294,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|3-9": [
+   52,
+   7
+  ],
+  "method|1-2": [
+   70,
+   7
+  ],
+  "class|1-2": [
+   7,
+   2
+  ],
+  "method|10-inf": [
+   55,
+   7
+  ],
+  "function|0-0": [
+   28,
+   4
+  ],
+  "function|3-9": [
+   8,
+   2
+  ],
+  "function|1-2": [
+   36,
+   5
+  ],
+  "class|10-inf": [
+   5,
+   2
+  ],
+  "class|3-9": [
+   2,
+   2
+  ],
+  "method|0-0": [
+   3,
+   2
+  ]
+ },
+ "n_cond_frame": 143,
+ "gate_messages": [],
+ "finished": 1791394734.91603
+}

@@ -1,0 +1,24 @@
+{
+ "repo": "jinja",
+ "plain": {
+  "seconds": 2.5424752235412598,
+  "finished": true,
+  "tests_progressed": 911,
+  "last_pct": 100,
+  "tail": [
+   "...............................................                          [100%]",
+   "911 passed in 2.12s"
+  ]
+ },
+ "traced": {
+  "seconds": 30.903063535690308,
+  "finished": true,
+  "tests_progressed": 911,
+  "last_pct": 100,
+  "tail": [
+   "...............................................                          [100%]",
+   "911 passed in 30.29s"
+  ]
+ },
+ "trace_written": true
+}

@@ -1,0 +1,57 @@
+{
+ "C|codexa_refs": {
+  "gold_callers": 1995,
+  "missed": 989,
+  "target_missing": 2,
+  "no_relation": 503,
+  "module_level_caller": 9,
+  "caller_missing": 445,
+  "truncated": 30
+ },
+ "C|codexa_orig": {
+  "gold_callers": 1995,
+  "missed": 1151,
+  "target_missing": 3,
+  "no_relation": 500,
+  "module_level_caller": 9,
+  "truncated": 209,
+  "caller_missing": 403,
+  "wrong_resolution": 24,
+  "lookup_mismatch": 3
+ },
+ "C|cbm_cur": {
+  "gold_callers": 1995,
+  "missed": 1056,
+  "target_missing": 25,
+  "missed_relation_unobservable": 1031
+ },
+ "C|cbm_057": {
+  "gold_callers": 1995,
+  "missed": 1098,
+  "target_missing": 70,
+  "missed_relation_unobservable": 1028
+ },
+ "A|codexa_refs": {
+  "gold_callers": 352,
+  "missed": 144,
+  "module_level_caller": 32,
+  "no_relation": 112
+ },
+ "A|codexa_orig": {
+  "gold_callers": 352,
+  "missed": 240,
+  "wrong_resolution": 96,
+  "module_level_caller": 32,
+  "no_relation": 112
+ },
+ "A|cbm_cur": {
+  "gold_callers": 352,
+  "missed": 33,
+  "missed_relation_unobservable": 33
+ },
+ "A|cbm_057": {
+  "gold_callers": 352,
+  "missed": 129,
+  "missed_relation_unobservable": 129
+ }
+}

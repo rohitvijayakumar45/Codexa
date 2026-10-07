@@ -1,0 +1,67 @@
+{
+ "repo": "superstruct",
+ "lang": "ts",
+ "layer": "natural",
+ "started": 1791394673.3063426,
+ "index_frame_s": 0.7074012779994518,
+ "frame": {
+  "files": 259,
+  "decls": 136,
+  "calls": 1667,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.5476245750005546,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 3.9301629899991894,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.30747422500007815,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 128,
+  "codexa_has": 73,
+  "codexa_nodes": 80,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "function|10-inf": [
+   36,
+   9
+  ],
+  "function|3-9": [
+   35,
+   9
+  ],
+  "method|0-0": [
+   38,
+   10
+  ],
+  "function|0-0": [
+   7,
+   2
+  ],
+  "method|1-2": [
+   2,
+   2
+  ],
+  "function|1-2": [
+   5,
+   2
+  ],
+  "method|3-9": [
+   3,
+   2
+  ],
+  "class|10-inf": [
+   1,
+   2
+  ],
+  "class|1-2": [
+   1,
+   2
+  ]
+ },
+ "n_cond_frame": 16,
+ "gate_messages": [],
+ "finished": 1791394691.111928
+}

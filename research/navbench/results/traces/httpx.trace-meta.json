@@ -1,0 +1,24 @@
+{
+ "repo": "httpx",
+ "plain": {
+  "seconds": 18.319730043411255,
+  "finished": true,
+  "tests_progressed": 1442,
+  "last_pct": 100,
+  "tail": [
+   "    }",
+   "41 failed, 1376 passed, 1 skipped in 15.81s"
+  ]
+ },
+ "traced": {
+  "seconds": 23.499590158462524,
+  "finished": true,
+  "tests_progressed": 1442,
+  "last_pct": 100,
+  "tail": [
+   "    }",
+   "41 failed, 1376 passed, 1 skipped in 22.22s"
+  ]
+ },
+ "trace_written": true
+}

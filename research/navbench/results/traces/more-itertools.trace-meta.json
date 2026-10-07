@@ -1,0 +1,24 @@
+{
+ "repo": "more-itertools",
+ "plain": {
+  "seconds": 15.496141910552979,
+  "finished": true,
+  "tests_progressed": 768,
+  "last_pct": 100,
+  "tail": [
+   "..........................................................................................                                                               [100%]",
+   "768 passed, 21202 subtests passed in 14.99s"
+  ]
+ },
+ "traced": {
+  "seconds": 93.38050889968872,
+  "finished": true,
+  "tests_progressed": 768,
+  "last_pct": 100,
+  "tail": [
+   "..........................................................................................                                                               [100%]",
+   "768 passed, 21202 subtests passed in 92.95s (0:01:32)"
+  ]
+ },
+ "trace_written": true
+}

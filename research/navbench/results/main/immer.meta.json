@@ -1,0 +1,75 @@
+{
+ "repo": "immer",
+ "lang": "ts",
+ "layer": "natural",
+ "started": 1791394649.6690073,
+ "index_frame_s": 1.3159486060003474,
+ "frame": {
+  "files": 54,
+  "decls": 387,
+  "calls": 6948,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.4171176789996025,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 4.11658091299978,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.33996967100028996,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 241,
+  "codexa_has": 223,
+  "codexa_nodes": 334,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|0-0": [
+   15,
+   2
+  ],
+  "function|3-9": [
+   42,
+   7
+  ],
+  "function|0-0": [
+   70,
+   8
+  ],
+  "function|1-2": [
+   74,
+   9
+  ],
+  "class|3-9": [
+   1,
+   2
+  ],
+  "method|10-inf": [
+   6,
+   2
+  ],
+  "function|10-inf": [
+   14,
+   2
+  ],
+  "method|1-2": [
+   6,
+   2
+  ],
+  "method|3-9": [
+   10,
+   2
+  ],
+  "class|1-2": [
+   2,
+   2
+  ],
+  "class|0-0": [
+   1,
+   2
+  ]
+ },
+ "n_cond_frame": 120,
+ "gate_messages": [],
+ "finished": 1791394666.8773255
+}

@@ -16,6 +16,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.ticker  # noqa: E402,F401
 
 BLUE, ORANGE = "#2a78d6", "#eb6834"
 INK, INK2, GRID = "#0b0b0b", "#52514e", "#e4e3df"
@@ -23,6 +24,10 @@ ARMS = ["rg0", "rg3", "lsp", "codexa_refs", "codexa_orig", "cbm_cur", "cbm_057"]
 LABEL = {"rg0": "ripgrep -w", "rg3": "ripgrep -w -C3", "lsp": "language server", "codexa_refs": "Codexa find_references",
          "codexa_orig": "Codexa lookup+deps", "cbm_cur": "codebase-memory (current)", "cbm_057": "codebase-memory (v0.5.7)"}
 GRAPH = ["codexa_refs", "codexa_orig", "cbm_cur", "cbm_057"]
+OFFS = {"py": {"rg0": (-5, 5, "right"), "rg3": (0, 7, "center"), "lsp": (0, -12, "center"), "cbm_cur": (0, 7, "center"),
+               "cbm_057": (5, 2, "left"), "codexa_refs": (5, 2, "left"), "codexa_orig": (5, 2, "left")},
+        "ts": {"rg0": (-5, 5, "right"), "rg3": (0, 7, "center"), "lsp": (0, 7, "center"), "cbm_cur": (0, -12, "center"),
+               "cbm_057": (5, 2, "left"), "codexa_refs": (5, 2, "left"), "codexa_orig": (5, 2, "left")}}
 
 plt.rcParams.update({"font.size": 8, "axes.edgecolor": INK2, "axes.labelcolor": INK, "xtick.color": INK2,
                      "ytick.color": INK2, "axes.spines.top": False, "axes.spines.right": False, "font.family": "DejaVu Sans"})
@@ -97,9 +102,14 @@ def fig_layerA(rows, out):
                 per[r["repo"]].append(r)
             rec = st.mean([st.mean([x["A_caller_recall"] for x in v]) for v in per.values()])
             tok = st.mean([st.mean([x["tok_native_cl100k"] for x in v]) for v in per.values()])
-            ax.scatter(tok, rec, s=28, marker=markers[arm], c=col, edgecolors="white", linewidths=1.5, zorder=3)
-            ax.annotate(LABEL[arm], (tok, rec), xytext=(4, 3), textcoords="offset points", fontsize=6.5, color=INK)
+            ax.scatter(tok, rec, s=34, marker=markers[arm], c=col, edgecolors="white", linewidths=1.2, zorder=3)
+            dx, dy, ha = OFFS[lang].get(arm, (4, 3, "left"))
+            ax.annotate(LABEL[arm], (tok, rec), xytext=(dx, dy), textcoords="offset points", fontsize=6.5, color=INK, ha=ha)
         ax.set_xscale("log")
+        ax.set_xticks([50, 100, 200, 400])
+        ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+        ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+        ax.set_xlim(35, 700)
         ax.set_ylim(0, 1.05)
         ax.grid(color=GRID, lw=0.6)
         ax.set_title("Python fixtures" if lang == "py" else "TypeScript fixtures", fontsize=8)
