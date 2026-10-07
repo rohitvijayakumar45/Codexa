@@ -62,3 +62,6 @@ None by outcome. Every target receives every arm; failures, timeouts, empty answ
 - Output-form equivalence: 0 failures on calibration fixtures and on the 3 pilot repositories (178 targets).
 - Failure accounting: every target has a row for every arm; statuses ok/empty/error/timeout recorded with notes.
 - Labels never reach queries: graph tools receive the target's qualified name only after they report ambiguity themselves.
+
+## Post-freeze environment fix (no change to tools, sampling, scoring or analysis)
+- Layer C: five Python repositories (marshmallow, itsdangerous, jinja, attrs, rich) initially collected 0 tests because their test dependencies are declared as PEP 735 dependency groups, which the environment script did not install. The groups (plus `attrs` for rich's tests) were installed and these five suites were re-traced with the same budgets. Their first, empty traces were discarded.
