@@ -1,6 +1,6 @@
 # Frozen configuration (written before any held-out fixture or confirmatory repository was run)
 
-Status: DRAFT until the pilot gates pass; the commit that marks it FROZEN is recorded at the bottom.
+Status: **FROZEN** after the pilot gates passed (2026-10-07). Nothing below changed after held-out fixtures or confirmatory repositories were run.
 
 ## Tools and versions
 | Component | Version / commit |
@@ -36,7 +36,7 @@ No arm receives expected labels; graph tools only receive the target's qualified
 Complete answer = caller-level recall 1.0. Three output forms per result (native, common location, common source-enriched); an automatic check confirms identical fact sets across forms.
 
 ## Splits
-- Fixtures: calibration seeds 0–3 (adapter debugging only); held-out seeds 100–115 (16 per language, 112 targets per language, 64 with explicit call sites per language… exact counts in results).
+- Fixtures: calibration seeds 0–3 (adapter debugging only); held-out seeds 100–115 (16 fixture repositories per language, 7 targets each; 5 of the 7 patterns have explicit call sites).
 - Natural: pilot repositories `click`, `zod`, `axios` are development only and excluded from confirmatory tables; confirmatory = the other 17 repositories in `corpus.json`.
 - Natural sampling: S-ind = stratified (kind × provider call-fan-out bucket) draw of 40 targets from a random pool of ≤300 non-test declarations of the independent frame; S-cond = 20 targets drawn from declarations that have ≥1 incoming Codexa edge (the original benchmark rule). Seed 20261008.
 
@@ -47,3 +47,18 @@ Secondary (stated in advance): layer-A caller recall/precision by arm, pattern a
 
 ## Exclusions
 None by outcome. Every target receives every arm; failures, timeouts, empty answers and truncation are reported, never dropped.
+
+## Harness changes made during calibration and pilot (before freezing; none touch the evaluated tools)
+1. Manifest: added the `Svc()` constructor call in `run_all`, the `Sub(Svc)` base reference, and the decorator wrapper's implicit call (found by the trace-vs-manifest gate).
+2. Columns normalised to character offsets (ast reports UTF-8 bytes).
+3. Duplicate declarations sharing (file, qualified name) merged into one identity (found by the form-equivalence gate on click).
+4. codebase-memory-mcp queried through persistent MCP sessions instead of one CLI process per query (CLI start-up added ~5 s per call); `include_tests: true` passed explicitly; cold index (cache deleted) before timing.
+5. Name resolution for tool outputs: module names with file extensions or `__file__`; nested declarations reported as `module.<name>` (unique same-file bare-name match); Codexa's bare names for nested functions.
+6. TS/JS frame: constructors and accessors added as caller units (not sampled as targets).
+7. Layer C: lambda/generator callees counted separately as non-declaration callees; locally defined classes mapped; per-test timeout 120 s; traced run capped at 900 s wall clock (SIGTERM saves observed calls), plain run capped at 300 s.
+
+## Gate status at freeze
+- Fixture gate (manifest = independent index = runtime trace, all 40 fixtures): PASS.
+- Output-form equivalence: 0 failures on calibration fixtures and on the 3 pilot repositories (178 targets).
+- Failure accounting: every target has a row for every arm; statuses ok/empty/error/timeout recorded with notes.
+- Labels never reach queries: graph tools receive the target's qualified name only after they report ambiguity themselves.

@@ -24,7 +24,7 @@ def map_records(idx: PyIndex, raw: dict) -> dict:
     root = idx.root
     cache: dict = {}
     pairs: dict[tuple[str, str], dict] = {}
-    unmapped = {"site": 0, "callee": 0, "decorator_application": 0}
+    unmapped = {"site": 0, "callee": 0, "decorator_application": 0, "lambda_callee": 0}
     by_qual = {(d.file, d.qualname): d.id for d in idx.decls.values()}
     for r in raw["records"]:
         if r["line"] is None or r["bcol"] is None:
@@ -39,8 +39,11 @@ def map_records(idx: PyIndex, raw: dict) -> dict:
             unmapped["decorator_application" if (f, r["line"]) in idx.decorator_sites else "site"] += 1
             continue
         cf = r["callee_file"]
+        if r["callee_qualname"].endswith("<lambda>") or "<genexpr>" in r["callee_qualname"]:
+            unmapped["lambda_callee"] += 1  # anonymous callables are not declarations
+            continue
         if r["callee_kind"] == "class":
-            did = by_qual.get((cf, r["callee_qualname"]))
+            did = by_qual.get((cf, r["callee_qualname"].replace(".<locals>", "")))
         else:
             did = idx.by_codekey.get((cf, r["callee_firstline"]))
             if did is None or idx.decls[did].qualname.split(".")[-1] != r["callee_qualname"].split(".")[-1]:
