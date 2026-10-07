@@ -123,6 +123,34 @@ class PyrightClient:
         self.notify("textDocument/didOpen", {"textDocument": {
             "uri": uri(self.root / rel), "languageId": "python", "version": 1, "text": text}})
 
+    def warm(self, files: list[str], probes: list[tuple[str, int, int]], max_wait: float = 300.0) -> dict:
+        """Readiness: pyright answers before workspace analysis finishes, returning incomplete reference sets.
+        Open every source file, then wait until repeated probe queries return identical, non-shrinking
+        results twice in a row (2 s apart)."""
+        t0 = time.time()
+        for f in files:
+            self.open(f)
+        prev, stable_rounds, rounds = None, 0, 0
+        while time.time() - t0 < max_wait:
+            cur = [tuple(sorted(self._raw_refs(*p))) for p in probes]
+            rounds += 1
+            if prev is not None and cur == prev:
+                stable_rounds += 1
+                if stable_rounds >= 2:
+                    break
+            else:
+                stable_rounds = 0
+            prev = cur
+            time.sleep(2)
+        return {"warm_s": time.time() - t0, "probe_rounds": rounds, "stable": stable_rounds >= 2,
+                "probe_ref_counts": [len(x) for x in (prev or [])]}
+
+    def _raw_refs(self, rel, line, col):
+        res = self.request("textDocument/references", {
+            "textDocument": {"uri": uri(self.root / rel)}, "position": {"line": line - 1, "character": col},
+            "context": {"includeDeclaration": False}}) or []
+        return [self._loc(r) for r in res]
+
     def references(self, rel: str, line: int, col: int) -> list[tuple[str, int, int]]:
         self.open(rel)
         res = self.request("textDocument/references", {

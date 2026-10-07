@@ -107,6 +107,14 @@ def main() -> None:
     if lang == "py":
         venv_py = root.parent.parent / "venvs" / repo / "bin" / "python"
         provider = PyrightClient(root, python=str(venv_py) if venv_py.exists() else None)
+        # probes: the 5 declarations with the most same-name occurrences across the frame's call nodes
+        name_calls: dict = {}
+        for c_ in ix.calls.values():
+            if c_["name"]:
+                name_calls[c_["name"]] = name_calls.get(c_["name"], 0) + 1
+        probe_decls = sorted((d for d in ix.decls.values() if d["kind"] in ("function", "method", "class")),
+                             key=lambda d: -name_calls.get(d["name"], 0))[:5]
+        meta["provider_warmup"] = provider.warm(ix.files, [(d["file"], d["line"], d["col"]) for d in probe_decls])
     else:
         provider = ts_client
     t = time.perf_counter()

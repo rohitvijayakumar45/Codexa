@@ -65,3 +65,10 @@ None by outcome. Every target receives every arm; failures, timeouts, empty answ
 
 ## Post-freeze environment fix (no change to tools, sampling, scoring or analysis)
 - Layer C: five Python repositories (marshmallow, itsdangerous, jinja, attrs, rich) initially collected 0 tests because their test dependencies are declared as PEP 735 dependency groups, which the environment script did not install. The groups (plus `attrs` for rich's tests) were installed and these five suites were re-traced with the same budgets. Their first, empty traces were discarded.
+
+## Post-freeze adapter fix: pyright readiness (affects Python language-server results only)
+- Found during result review (layer C showed pyright recall of 0.29–0.54 in three repositories). A minimal reproduction showed pyright answers `references` before workspace analysis finishes: the first query returned only the `__all__` entry, and the same query 3 s later returned every reference.
+- Fix (`nb/lsp.py: warm`): open every source file, then wait until probe reference queries are stable twice in a row, 2 s apart. Warm-up time and probe counts are recorded per run (`meta.provider_warmup`). Validation: 0 of 80 reference sets changed when re-queried 30 s after warm-up (attrs, itsdangerous).
+- All 25 Python jobs (16 held-out fixtures, 9 natural repositories) were re-run. Because pyright fan-out also stratifies Python sampling, Python natural targets were re-drawn with the same seed and rules. TypeScript results are unaffected (the TS language service computes synchronously). Pre-fix results are kept in `results/pre-fix/` for comparison.
+- Not changed: tools, sampling rules, scoring, analysis or the primary contrast.
+- Separate, genuine behaviour (not an artefact): in repositories that ship `.pyi` stubs (more-itertools, attrs), pyright binds public-API calls to the stub declarations, so references requested on the implementation miss those call sites.
