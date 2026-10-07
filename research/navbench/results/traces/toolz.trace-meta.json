@@ -1,0 +1,24 @@
+{
+ "repo": "toolz",
+ "plain": {
+  "seconds": 1.136845350265503,
+  "finished": true,
+  "tests_progressed": 193,
+  "last_pct": 100,
+  "tail": [
+   ".................................................                        [100%]",
+   "192 passed, 1 skipped in 0.86s"
+  ]
+ },
+ "traced": {
+  "seconds": 1.5446739196777344,
+  "finished": true,
+  "tests_progressed": 193,
+  "last_pct": 100,
+  "tail": [
+   ".................................................                        [100%]",
+   "192 passed, 1 skipped in 1.23s"
+  ]
+ },
+ "trace_written": true
+}

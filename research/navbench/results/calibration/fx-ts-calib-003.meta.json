@@ -1,0 +1,29 @@
+{
+ "repo": "fx-ts-calib-003",
+ "lang": "ts",
+ "layer": "fixture",
+ "started": 1791392753.279909,
+ "index_frame_s": 1.0411834490000729,
+ "frame": {
+  "files": 5,
+  "decls": 29,
+  "calls": 36,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.04118845199991483,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 5.845994904000236,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.03088704699985101,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 29,
+  "codexa_has": 29,
+  "codexa_nodes": 29,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "split": "calib",
+ "gate_messages": [],
+ "finished": 1791392873.2698143
+}

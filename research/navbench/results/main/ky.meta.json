@@ -1,0 +1,71 @@
+{
+ "repo": "ky",
+ "lang": "ts",
+ "layer": "natural",
+ "started": 1791394667.94509,
+ "index_frame_s": 1.1855023299995082,
+ "frame": {
+  "files": 87,
+  "decls": 792,
+  "calls": 10552,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.796373821999623,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 7.55102279699986,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.3495393350003724,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 86,
+  "codexa_has": 81,
+  "codexa_nodes": 223,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|0-0": [
+   8,
+   4
+  ],
+  "function|1-2": [
+   30,
+   9
+  ],
+  "class|1-2": [
+   5,
+   2
+  ],
+  "function|3-9": [
+   20,
+   9
+  ],
+  "class|3-9": [
+   3,
+   2
+  ],
+  "function|0-0": [
+   8,
+   4
+  ],
+  "method|1-2": [
+   1,
+   2
+  ],
+  "function|10-inf": [
+   9,
+   4
+  ],
+  "class|0-0": [
+   1,
+   2
+  ],
+  "class|10-inf": [
+   1,
+   2
+  ]
+ },
+ "n_cond_frame": 42,
+ "gate_messages": [],
+ "finished": 1791394691.3044558
+}

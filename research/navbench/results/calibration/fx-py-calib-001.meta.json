@@ -1,0 +1,29 @@
+{
+ "repo": "fx-py-calib-001",
+ "lang": "py",
+ "layer": "fixture",
+ "started": 1791392160.9320962,
+ "index_frame_s": 0.0023298759999761387,
+ "frame": {
+  "files": 5,
+  "decls": 32,
+  "calls": 42,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.028850185999999667,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 7.370891561000008,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.030582010999978593,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 32,
+  "codexa_has": 32,
+  "codexa_nodes": 32,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "split": "calib",
+ "gate_messages": [],
+ "finished": 1791392285.0192704
+}

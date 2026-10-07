@@ -1,0 +1,24 @@
+{
+ "repo": "marshmallow",
+ "plain": {
+  "seconds": 1.679030179977417,
+  "finished": true,
+  "tests_progressed": 1190,
+  "last_pct": 100,
+  "tail": [
+   "......................................                                   [100%]",
+   "1190 passed in 1.26s"
+  ]
+ },
+ "traced": {
+  "seconds": 4.345502614974976,
+  "finished": true,
+  "tests_progressed": 1190,
+  "last_pct": 100,
+  "tail": [
+   "......................................                                   [100%]",
+   "1190 passed in 3.75s"
+  ]
+ },
+ "trace_written": true
+}

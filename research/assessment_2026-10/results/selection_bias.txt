@@ -1,0 +1,2 @@
+httpx {"n": 120, "jedi_has_refs": 53, "graph_has_edge": 30, "jedi_refs_but_no_graph_edge": 23, "mean_file_recall_unconditioned": 0.46}
+click {"n": 120, "jedi_has_refs": 51, "graph_has_edge": 29, "jedi_refs_but_no_graph_edge": 26, "mean_file_recall_unconditioned": 0.367}

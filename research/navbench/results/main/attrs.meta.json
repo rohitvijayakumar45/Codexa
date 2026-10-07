@@ -1,0 +1,87 @@
+{
+ "repo": "attrs",
+ "lang": "py",
+ "layer": "natural",
+ "started": 1791395384.5439863,
+ "index_frame_s": 0.24395537500004139,
+ "frame": {
+  "files": 56,
+  "decls": 1833,
+  "calls": 4724,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "provider_warmup": {
+  "warm_s": 14.788980960845947,
+  "probe_rounds": 3,
+  "stable": true,
+  "probe_ref_counts": [
+   8,
+   4,
+   0,
+   3,
+   2
+  ]
+ },
+ "codexa_index_s": 0.47305323099953966,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 4.8468180589998155,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.26580809600000066,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 337,
+  "codexa_has": 333,
+  "codexa_nodes": 1437,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "function|0-0": [
+   73,
+   5
+  ],
+  "function|1-2": [
+   29,
+   4
+  ],
+  "class|1-2": [
+   41,
+   5
+  ],
+  "class|0-0": [
+   44,
+   6
+  ],
+  "method|1-2": [
+   19,
+   3
+  ],
+  "function|3-9": [
+   24,
+   3
+  ],
+  "class|3-9": [
+   10,
+   2
+  ],
+  "method|0-0": [
+   50,
+   6
+  ],
+  "class|10-inf": [
+   2,
+   2
+  ],
+  "function|10-inf": [
+   5,
+   2
+  ],
+  "method|3-9": [
+   3,
+   2
+  ]
+ },
+ "n_cond_frame": 132,
+ "gate_messages": [],
+ "finished": 1791395430.4074593
+}

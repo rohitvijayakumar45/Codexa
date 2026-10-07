@@ -1,0 +1,28 @@
+{
+  "criteria": "Fixed before any natural-repository result was observed. Public GitHub, OSI-permissive licence, primary language Python or TypeScript/JavaScript, library code without a required build step for parsing, maintained (default branch updated in 2025-2026). Python repositories additionally need a pytest/unittest suite that runs from a source checkout (layer C). Purposive selection spanning sizes; not a random sample of GitHub (threat to validity).",
+  "pilot": ["click", "zod", "axios"],
+  "python": [
+    {"name": "click", "url": "https://github.com/pallets/click"},
+    {"name": "more-itertools", "url": "https://github.com/more-itertools/more-itertools"},
+    {"name": "toolz", "url": "https://github.com/pytoolz/toolz"},
+    {"name": "marshmallow", "url": "https://github.com/marshmallow-code/marshmallow"},
+    {"name": "itsdangerous", "url": "https://github.com/pallets/itsdangerous"},
+    {"name": "jinja", "url": "https://github.com/pallets/jinja"},
+    {"name": "attrs", "url": "https://github.com/python-attrs/attrs"},
+    {"name": "rich", "url": "https://github.com/Textualize/rich"},
+    {"name": "httpx", "url": "https://github.com/encode/httpx"},
+    {"name": "boltons", "url": "https://github.com/mahmoud/boltons"}
+  ],
+  "typescript": [
+    {"name": "axios", "url": "https://github.com/axios/axios"},
+    {"name": "zod", "url": "https://github.com/colinhacks/zod"},
+    {"name": "immer", "url": "https://github.com/immerjs/immer"},
+    {"name": "ky", "url": "https://github.com/sindresorhus/ky"},
+    {"name": "superstruct", "url": "https://github.com/ianstormtaylor/superstruct"},
+    {"name": "neverthrow", "url": "https://github.com/supermacro/neverthrow"},
+    {"name": "ts-pattern", "url": "https://github.com/gvergnaud/ts-pattern"},
+    {"name": "commander.js", "url": "https://github.com/tj/commander.js"},
+    {"name": "redux", "url": "https://github.com/reduxjs/redux"},
+    {"name": "dayjs", "url": "https://github.com/iamkun/dayjs"}
+  ]
+}

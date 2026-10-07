@@ -1,0 +1,24 @@
+{
+ "repo": "attrs",
+ "plain": {
+  "seconds": 16.80042576789856,
+  "finished": true,
+  "tests_progressed": 1414,
+  "last_pct": 100,
+  "tail": [
+   "    }",
+   "3 failed, 1405 passed, 3 skipped, 1 xfailed in 16.03s"
+  ]
+ },
+ "traced": {
+  "seconds": 27.001638412475586,
+  "finished": true,
+  "tests_progressed": 1414,
+  "last_pct": 100,
+  "tail": [
+   "    }",
+   "3 failed, 1405 passed, 3 skipped, 1 xfailed in 26.14s"
+  ]
+ },
+ "trace_written": true
+}

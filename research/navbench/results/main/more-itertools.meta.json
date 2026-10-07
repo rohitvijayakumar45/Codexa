@@ -1,0 +1,71 @@
+{
+ "repo": "more-itertools",
+ "lang": "py",
+ "layer": "natural",
+ "started": 1791395317.7858078,
+ "index_frame_s": 0.4387804719999622,
+ "frame": {
+  "files": 7,
+  "decls": 1339,
+  "calls": 6051,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "provider_warmup": {
+  "warm_s": 15.834850549697876,
+  "probe_rounds": 3,
+  "stable": true,
+  "probe_ref_counts": [
+   0,
+   4,
+   30,
+   1,
+   1
+  ]
+ },
+ "codexa_index_s": 0.5105469439995431,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 8.397759550000046,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.3764491470001303,
+ "cbm_057_ok": true,
+ "coverage": {
+  "frame_targets": 295,
+  "codexa_has": 294,
+  "codexa_nodes": 1320,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|0-0": [
+   66,
+   9
+  ],
+  "function|0-0": [
+   145,
+   15
+  ],
+  "method|1-2": [
+   10,
+   2
+  ],
+  "class|1-2": [
+   7,
+   2
+  ],
+  "function|1-2": [
+   56,
+   8
+  ],
+  "class|0-0": [
+   8,
+   2
+  ],
+  "function|3-9": [
+   3,
+   2
+  ]
+ },
+ "n_cond_frame": 221,
+ "gate_messages": [],
+ "finished": 1791395360.7621078
+}
