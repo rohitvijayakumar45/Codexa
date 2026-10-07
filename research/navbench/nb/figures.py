@@ -120,6 +120,37 @@ def fig_layerA(rows, out):
     save(fig, out, "fig2_layerA_operating_points")
 
 
+def fig_layerA_compact(rows, out):
+    """Paper version: one panel, both languages pooled (repo-macro), short labels."""
+    A = [r for r in rows if r["layer"] == "fixture" and r.get("split") != "calib" and r["task"] == "T1" and r.get("A_n_gold")]
+    short = {"rg0": "rg -w", "rg3": "rg -w -C3", "lsp": "LSP", "codexa_refs": "G1 refs", "codexa_orig": "G1 pair",
+             "cbm_cur": "cbm (current)", "cbm_057": "cbm v0.5.7"}
+    offs = {"rg0": (-5, 4, "right"), "rg3": (0, -10, "center"), "lsp": (0, 5, "center"), "cbm_cur": (0, -10, "center"),
+            "cbm_057": (5, 1, "left"), "codexa_refs": (5, 1, "left"), "codexa_orig": (5, 1, "left")}
+    markers = {"rg0": "o", "rg3": "o", "lsp": "s", "codexa_refs": "D", "codexa_orig": "D", "cbm_cur": "^", "cbm_057": "^"}
+    fig, ax = plt.subplots(figsize=(3.4, 1.9))
+    for arm in ARMS:
+        per = defaultdict(list)
+        for r in A:
+            if r["arm"] == arm:
+                per[r["repo"]].append(r)
+        rec = st.mean([st.mean([x["A_caller_recall"] for x in v]) for v in per.values()])
+        tok = st.mean([st.mean([x["tok_native_cl100k"] for x in v]) for v in per.values()])
+        ax.scatter(tok, rec, s=26, marker=markers[arm], c=BLUE, edgecolors="white", linewidths=1, zorder=3)
+        dx, dy, ha = offs[arm]
+        ax.annotate(short[arm], (tok, rec), xytext=(dx, dy), textcoords="offset points", fontsize=6, color=INK, ha=ha)
+    ax.set_xscale("log")
+    ax.set_xticks([50, 100, 200, 400])
+    ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    ax.set_xlim(35, 700)
+    ax.set_ylim(0.3, 1.06)
+    ax.grid(color=GRID, lw=0.6)
+    ax.set_xlabel("native output tokens per query (cl100k, mean)")
+    ax.set_ylabel("caller recall (mean)")
+    save(fig, out, "fig2_layerA_compact")
+
+
 def fig_q2(rows, out):
     """S-cond (graph-conditioned) vs S-ind (independent): non-empty answer rate per arm, repo-macro."""
     N = [r for r in rows if r["layer"] == "natural" and r["task"] == "T1"]
@@ -167,4 +198,5 @@ if __name__ == "__main__":
     fig_q1(rows, out)
     fig_layerA(rows, out)
     fig_q2(rows, out)
+    fig_layerA_compact(rows, out)
     print("figures written to", out)

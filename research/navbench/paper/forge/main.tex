@@ -165,7 +165,7 @@ language server & \phantom{0}97 $\rightarrow$ 81 & 0.84 $\rightarrow$ 0.73\\
 \end{table}
 
 \subsection{Q3: correctness and tokens at matched quality}
-Table~\ref{tab:q3} reports the held-out fixtures.
+Table~\ref{tab:q3} and Fig.~\ref{fig:q3} report the held-out fixtures.
 For the primary contrast we compute the geometric-mean token ratio of each arm to \rg over targets on which both are complete:
 \begin{itemize}
 \item G1 \texttt{find\_references}: 0.35 [0.33, 0.37], a saving, but it was complete on only 40\% of targets, against 80\% for \rg;
@@ -187,6 +187,15 @@ Ambiguous names lower G1's recall from 0.73 to 0.53, but leave \cbm current unaf
 \cbm v0.5.7 misses the typed-receiver and constructor calls that the current version finds.
 In T2 (definition lookup), every arm found every definition.
 Only the language server returned exactly one answer (precision 1.00); the other arms returned same-named candidates (precision 0.68--0.76), at 37--98 tokens.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figs/fig2_layerA_compact.pdf}
+\vspace{-1.8em}
+\caption{Q3. Held-out fixtures, Python and TypeScript pooled: native output tokens vs.\ caller-level recall per arm (repository means; G1 pair = lookup+deps). Small outputs coincide with low recall; the only graph tool with baseline-level recall needs baseline-level tokens.}
+\label{fig:q3}
+\vspace{-1em}
+\end{figure}
 
 \begin{table}[t]
 \centering
