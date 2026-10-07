@@ -53,7 +53,7 @@ def fig_q1(rows, out):
                  ("whole files (provider-selected)", None, "wholefile_provider_tokens"),
                  ("ripgrep -w -C3", "rg3", "tok_native_cl100k"), ("ripgrep -w", "rg0", "tok_native_cl100k"),
                  ("language server (LSP JSON)", "lsp", "tok_native_cl100k"), ("language server (location form)", "lsp", "tok_loc_cl100k")]
-    fig, axes = plt.subplots(1, len(GRAPH), figsize=(10.5, 2.8), sharey=True)
+    fig, axes = plt.subplots(1, len(GRAPH), figsize=SIZES["fig1"], sharey=True, sharex=True)
     for ax, g in zip(axes, GRAPH):
         for yi, (lab, arm, key) in enumerate(baselines):
             per_repo = defaultdict(list)
@@ -74,23 +74,25 @@ def fig_q1(rows, out):
                 ax.plot([gm, gm], [yi - 0.32, yi + 0.32], color=INK, lw=2, zorder=4)
         ax.axvline(1, color=INK2, lw=0.8, ls="--")
         ax.set_xscale("log")
-        ax.set_title(LABEL[g], fontsize=8, color=INK)
+        ax.set_title(SHORT.get(g, LABEL[g]), fontsize=plt.rcParams["font.size"] + 0.5, color=INK)
         ax.grid(axis="x", color=GRID, lw=0.6)
         ax.set_yticks(range(len(baselines)))
         ax.set_yticklabels([b[0] for b in baselines])
-        ax.set_xlabel("baseline tokens ÷ graph tokens")
     axes[0].scatter([], [], c=BLUE, marker="o", s=12, label="Python repo")
     axes[0].scatter([], [], c=ORANGE, marker="^", s=12, label="TS/JS repo")
     axes[0].plot([], [], color=INK, lw=2, label="geo-mean of repos")
-    fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=3, fontsize=7, frameon=False,
-               bbox_to_anchor=(0.5, -0.12))
+    fig.supxlabel("baseline tokens ÷ graph-tool tokens (log scale; dashed line = equal size)",
+                  fontsize=plt.rcParams["font.size"] + 0.5, y=0.02)
+    fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=3, fontsize=plt.rcParams["font.size"],
+               frameon=False, bbox_to_anchor=(0.5, -0.1))
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
     save(fig, out, "fig1_q1_baselines")
 
 
 def fig_layerA(rows, out):
     """Held-out fixtures: mean native tokens vs mean caller recall per arm (repo-macro), per language."""
     A = [r for r in rows if r["layer"] == "fixture" and r.get("split") != "calib" and r["task"] == "T1" and r.get("A_n_gold")]
-    fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.0), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=SIZES["fig2"], sharey=True)
     markers = {"rg0": "o", "rg3": "o", "lsp": "s", "codexa_refs": "D", "codexa_orig": "D", "cbm_cur": "^", "cbm_057": "^"}
     for ax, lang, col in ((axes[0], "py", BLUE), (axes[1], "ts", ORANGE)):
         for arm in ARMS:
@@ -121,7 +123,7 @@ def fig_layerA(rows, out):
 def fig_q2(rows, out):
     """S-cond (graph-conditioned) vs S-ind (independent): non-empty answer rate per arm, repo-macro."""
     N = [r for r in rows if r["layer"] == "natural" and r["task"] == "T1"]
-    fig, ax = plt.subplots(figsize=(4.6, 2.8))
+    fig, ax = plt.subplots(figsize=SIZES["fig3"])
     for yi, arm in enumerate(ARMS[::-1]):
         vals = {}
         for samp in ("S-cond", "S-ind"):
@@ -148,7 +150,17 @@ def fig_q2(rows, out):
     save(fig, out, "fig3_q2_sampling")
 
 
+SIZES = {"fig1": (10.5, 2.8), "fig2": (7.2, 3.0), "fig3": (4.6, 2.8)}
+SHORT = {"cbm_cur": "codebase-memory (current)", "cbm_057": "codebase-memory v0.5.7"}
+ANON = {"codexa_refs": "G1 find_references", "codexa_orig": "G1 lookup+deps"}
+
 if __name__ == "__main__":
+    import os
+    if os.environ.get("NB_ANON"):  # double-anonymous submission: the authors' own prototype is not named
+        LABEL.update(ANON)
+        SHORT.update({"cbm_cur": "cbm (current)", "cbm_057": "cbm v0.5.7"})
+        SIZES.update({"fig1": (7.3, 2.3), "fig2": (3.5, 2.2), "fig3": (3.5, 2.2)})
+        plt.rcParams.update({"font.size": 6.2})
     rows = load(sys.argv[1])
     out = Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
