@@ -1,0 +1,133 @@
+{
+  "evidence_kind": "scripted software counterexamples; not real-model research results",
+  "network_calls": 0,
+  "persistent_graph_writes": 0,
+  "zero_confidence_parsed": 0.5,
+  "unparseable_count_verification": [
+    1,
+    0,
+    []
+  ],
+  "missing_repository_file_verification": [
+    1,
+    0,
+    []
+  ],
+  "outside_repository_absolute_path_verification": [
+    1,
+    0,
+    []
+  ],
+  "mixed_assertions_same_target_verification": [
+    0,
+    1,
+    [
+      "graph shows 0 usage(s), answer claimed 99"
+    ]
+  ],
+  "majority_ignored": {
+    "winner": "wrong",
+    "resolved": true,
+    "debated": false,
+    "cards": [
+      {
+        "answer": "correct",
+        "verified": 1,
+        "failed": 0,
+        "round": 1
+      },
+      {
+        "answer": "correct",
+        "verified": 1,
+        "failed": 0,
+        "round": 1
+      },
+      {
+        "answer": "wrong",
+        "verified": 1,
+        "failed": 0,
+        "round": 1
+      }
+    ]
+  },
+  "duplicate_padding": {
+    "winner": "wrong",
+    "resolved": true,
+    "debated": false,
+    "cards": [
+      {
+        "answer": "correct",
+        "verified": 1,
+        "failed": 0,
+        "round": 1
+      },
+      {
+        "answer": "wrong",
+        "verified": 5,
+        "failed": 0,
+        "round": 1
+      },
+      {
+        "answer": "correct",
+        "verified": 1,
+        "failed": 0,
+        "round": 1
+      }
+    ]
+  },
+  "unsupported_revision": {
+    "winner": "wrong",
+    "resolved": true,
+    "debated": true,
+    "cards": [
+      {
+        "answer": "wrong",
+        "verified": 1,
+        "failed": 0,
+        "round": 2
+      },
+      {
+        "answer": "wrong",
+        "verified": 1,
+        "failed": 0,
+        "round": 2
+      },
+      {
+        "answer": "other",
+        "verified": 0,
+        "failed": 0,
+        "round": 1
+      }
+    ]
+  },
+  "all_failed_still_resolves": {
+    "winner": "wrong A",
+    "resolved": true,
+    "debated": false,
+    "cards": [
+      {
+        "answer": "wrong A",
+        "verified": 0,
+        "failed": 1,
+        "round": 1
+      },
+      {
+        "answer": "wrong B",
+        "verified": 0,
+        "failed": 1,
+        "round": 1
+      },
+      {
+        "answer": "wrong C",
+        "verified": 0,
+        "failed": 1,
+        "round": 1
+      }
+    ]
+  },
+  "static_test_counts": {
+    "tests/test_quorum.py": 22,
+    "tests/test_verification.py": 17,
+    "tests/audit/codexa_claims/test_claim_quorum.py": 3
+  }
+}

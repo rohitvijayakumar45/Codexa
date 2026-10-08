@@ -1190,6 +1190,27 @@ class JobManager:
         if "done" in payload or "error" in payload:
             _flush_events(job)  # the ending must reach disk even if no checkpoint follows
 
+    def _record_experience(self, job: Job) -> None:
+        """Write what this job actually did into experiential memory (backend/memory/experience.py)
+        once it has finished for good. Off with CODEXA_EXPERIENCE_MEMORY=0. Never raises: memory is
+        a by-product of the job, and a failure here must not turn a finished job into an error."""
+        if self._store is None or os.getenv("CODEXA_EXPERIENCE_MEMORY", "1").strip().lower() in ("0", "false", "no", "off"):
+            return
+        if job.cancelled:
+            return
+        try:
+            from backend.files.api import repo_root
+            from backend.memory.experience import record_job_experience
+
+            repository = job.working_repo or job.repository
+            record_job_experience(
+                self._store, repository=repository, root=repo_root(repository), job_id=job.id,
+                status=job.status, task_text=job.contract_source or _last_user_text(job.messages),
+                messages=job.messages, tool_exit_codes=job.tool_exit_codes, error_reason=job.error_reason,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("job %s: recording experience memory failed", job.id)
+
     def _run(self, job: Job, *, resuming: bool = False) -> None:
         while True:
             try:
@@ -1198,6 +1219,7 @@ class JobManager:
                 job.status = "error"
                 self._emit(job, {"error": f"{type(exc).__name__}: {exc}"})
                 self._checkpoint(job)
+                self._record_experience(job)
                 return
             # _loop returned normally (no exception) — auto-continue the mechanically-recoverable
             # cases (ran out of rounds, or the stall-recovery retry budget ran out on a flaky
@@ -1229,6 +1251,7 @@ class JobManager:
                     job.id, job.status, job.error_reason, job.auto_continues,
                     _MAX_AUTO_CONTINUES, job.round, job.round_budget,
                 )
+                self._record_experience(job)
                 return
             job.auto_continues += 1
             job.status = "running"

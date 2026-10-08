@@ -36,6 +36,7 @@ from backend.graph.schemas import (
     GraphNodeType,
 )
 from backend.graph.service import GraphService
+from backend.memory.anchors import file_anchors, sweep_repository, symbols_index_anchor, tree_anchor
 from backend.memory.store import DATA_DIR, MemoryStore
 from backend.repository.analyze import Analysis, analyze_repo
 from backend.repository.coupling import mine_change_coupling
@@ -456,8 +457,26 @@ def _read_manifest(path: Path) -> dict:
     return out
 
 
+_README_CANDIDATES = ("README.md", "Readme.md", "readme.md", "README.rst", "README.txt", "README")
+_ROOT_MANIFESTS = ("package.json", "pyproject.toml", "requirements.txt", "setup.py", "setup.cfg")
+
+
+def _manifest_paths(path: Path) -> list[str]:
+    """Repo-relative paths every manifest-derived memory fact depends on — the same files
+    `_read_manifest` reads. Root manifests are listed even when absent (anchored as "must not
+    exist"), so adding a package.json later invalidates "See README." build instructions."""
+    rels = list(_ROOT_MANIFESTS)
+    try:
+        for p in sorted(path.iterdir()):
+            if p.is_dir() and p.name not in _SKIP_DIRS and not p.name.startswith(".") and (p / "package.json").exists():
+                rels.append(f"{p.name}/package.json")
+    except OSError:
+        pass
+    return rels
+
+
 def _read_readme(path: Path) -> str:
-    for candidate in ("README.md", "Readme.md", "readme.md", "README.rst", "README.txt", "README"):
+    for candidate in _README_CANDIDATES:
         rp = path / candidate
         if rp.exists():
             return rp.read_text(encoding="utf-8", errors="ignore")[:2500].strip()
@@ -767,21 +786,34 @@ def _run_annotation(repository: str, dest: Path, store: MemoryStore, llm: LLMCli
     from backend.repository.analyze import analyze_repo as _analyze_repo
 
     code = _analyze_repo(dest)
-    return annotate_repository_symbols(repository, dest, code.symbols, store=store, llm=llm, calls=code.calls)
+    symbols = [s for s in code.symbols if s.kind != "module"]  # <module> pseudo-symbols have no meaning to gloss
+    return annotate_repository_symbols(repository, dest, symbols, store=store, llm=llm, calls=code.calls)
 
 
 def _ingest(
     name: str, url: str, dest: Path, already: bool, *, store: MemoryStore, graph: GraphService,
-    invalidate_docs: bool = True,
+    invalidate_docs: bool = True, record_load_event: bool | None = None,
 ) -> RepositoryInfo:
     d = _analyze(dest)
     display = d["name"] or name
     primary = d["languages"][0] if d["languages"] else "unknown"
 
-    # Rewrite this repo's memory from the fresh digest so re-loading refreshes grounding. Docs are
-    # only invalidated on an explicit reload, not the automatic startup rehydration — the source
-    # on disk hasn't changed then, so the persisted docs are still accurate.
-    store.remove(name, source="repo_load")
+    # Static-analyze the source first: the knowledge graph is built from it below, and the memory
+    # facts are anchored to it (backend/memory/anchors.py).
+    code = analyze_repo(dest)
+
+    # Memory refresh is anchor-driven, not a blind wipe. Every anchored record of this repository
+    # — repo_load digests AND agent-written experience — is re-checked against the tree on disk:
+    # descriptive facts whose anchored code changed are invalidated, episodic history whose code
+    # changed is flagged outdated, and everything whose code did not change survives untouched.
+    # Docs are only invalidated on an explicit reload, not the automatic startup rehydration — the
+    # source on disk hasn't changed then, so the persisted docs are still accurate.
+    try:
+        sweep = sweep_repository(store, name, dest, analysis=code)
+        if sweep.invalidated or sweep.outdated:
+            logging.getLogger(__name__).info("memory anchor sweep for %s: %s", name, sweep.as_dict())
+    except Exception:  # noqa: BLE001 - a sweep failure must never block loading the repository
+        logging.getLogger(__name__).exception("memory anchor sweep failed for %s", name)
     if invalidate_docs:
         _docs_cache.pop(name, None)
         store.remove(name, source="docs_cache")
@@ -793,23 +825,36 @@ def _ingest(
     if d["readme"]:
         semantic += f" README: {d['readme'][:400]}"
 
+    all_rel = getattr(code, "all_files", None) or code.files
+    manifests = file_anchors(dest, _manifest_paths(dest))
+    readme = file_anchors(dest, [c for c in _README_CANDIDATES if (dest / c).is_file()] or ["README.md"])
+    layout = [tree_anchor(all_rel)]
+
     created = 0
-    created += _mem(store, name, "semantic", f"What {display} is", semantic)
-    created += _mem(store, name, "semantic", "Project structure", d["tree"] or "n/a")
+    created += _mem(store, name, "semantic", f"What {display} is", semantic, anchors=manifests + readme)
+    created += _mem(store, name, "semantic", "Project structure", d["tree"] or "n/a", anchors=layout)
     created += _mem(store, name, "organizational", "Stack & conventions",
                     f"Languages: {', '.join(d['languages'][:5]) or 'n/a'}. "
-                    f"Frameworks: {', '.join(d['frameworks'][:10]) or 'n/a'}.")
+                    f"Frameworks: {', '.join(d['frameworks'][:10]) or 'n/a'}.",
+                    anchors=manifests + layout)
     created += _mem(store, name, "procedural", "How to build & run",
-                    (" · ".join(d["scripts"][:5]) if d["scripts"] else "See README."))
-    origin = f"Cloned from {url}" if url else "Created locally (scaffolded from nothing, not cloned)"
-    created += _mem(store, name, "episodic", "Loaded into Codexa",
-                    f"{origin} on {datetime.now(UTC):%Y-%m-%d %H:%M} UTC — {d['file_count']} files.")
+                    (" · ".join(d["scripts"][:5]) if d["scripts"] else "See README."), anchors=manifests)
+    # Episodic history is append-only: one event per explicit (re)load, never rewritten. The
+    # automatic startup rehydration (invalidate_docs=False) is not a new event unless the
+    # repository has never been recorded as loaded at all.
+    has_load_event = any(r.metadata.get("event") == "repo_load" for r in store.list(name, "episodic"))
+    if record_load_event is None:
+        record_load_event = invalidate_docs
+    if record_load_event or not has_load_event:
+        now = datetime.now(UTC)
+        origin = f"Cloned from {url}" if url else "Created locally (scaffolded from nothing, not cloned)"
+        store.add(repository=name, memory_type="episodic", title=f"Loaded into Codexa ({now:%Y-%m-%d %H:%M} UTC)",
+                  content=f"{origin} on {now:%Y-%m-%d %H:%M} UTC — {d['file_count']} files.",
+                  metadata={"source": "repo_load", "event": "repo_load"}, anchors=layout)
+        created += 1
 
-    # Static-analyze the source and build the knowledge graph from it: files, the functions and
-    # classes they define, file imports, and the call graph between symbols. All tagged with the
-    # repository so graph/architecture can scope to it.
-    code = analyze_repo(dest)
-    created += _mem(store, name, "semantic", "Key functions & components", _functions_summary(code))
+    created += _mem(store, name, "semantic", "Key functions & components", _functions_summary(code),
+                    anchors=[symbols_index_anchor(code.symbols)])
 
     repo_node = graph.add_node(GraphNodeCreate(
         node_type=GraphNodeType.REPOSITORY, stable_id=f"repo://{name}",
@@ -859,7 +904,8 @@ def _ingest(
         sym_nodes[key] = graph.add_node(GraphNodeCreate(
             node_type=GraphNodeType.CODE_SYMBOL, stable_id=f"symbol://{name}/{key}",
             properties={"name": s.name, "qualname": s.qualname or s.name, "kind": s.kind, "file": s.file,
-                        "line": s.line, "repository": name},
+                        "line": s.line, "end_line": s.end_line, "content_hash": s.content_hash,
+                        "repository": name},
             provenance=GraphNodeProvenance.INTERNAL_CODE,
         ))
     for a, b in code.calls:
@@ -1024,7 +1070,10 @@ def reindex_repository(
     except (json.JSONDecodeError, OSError):
         meta = {}
     graph.remove_repository(name)
-    info = _ingest(name, meta.get("url", ""), dest, True, store=store, graph=graph, invalidate_docs=True)
+    # A post-edit reindex is not a "load" — the job itself is recorded as its own episodic event
+    # (backend/memory/experience.py).
+    info = _ingest(name, meta.get("url", ""), dest, True, store=store, graph=graph, invalidate_docs=True,
+                   record_load_event=False)
     # Function meanings follow edits too: without this they were refreshed only on a full reload, and
     # context served the old sentence for a function whose code had changed.
     if llm is not None:
@@ -1097,21 +1146,33 @@ def _fallback_docs(repository: str, d: dict) -> str:
     ])
 
 
-def _mem(store: MemoryStore, repo: str, mtype: str, title: str, content: str) -> int:
-    store.add(repository=repo, memory_type=mtype, title=title, content=content, metadata={"source": "repo_load"})
+def _mem(store: MemoryStore, repo: str, mtype: str, title: str, content: str,
+         *, anchors: list[dict] | None = None) -> int:
+    """Write one repo_load digest fact. The digest is recomputed from the code on disk, so it is
+    authoritative for its own title: identical content corroborates the existing record (and
+    re-pins its anchors); different content explicitly replaces it. Going through the generic
+    conflict resolver instead would let an old, often-corroborated digest out-score — and reject —
+    the freshly computed one."""
+    existing = next((r for r in store.list(repo, mtype)
+                     if r.title == title and r.metadata.get("source") == "repo_load"), None)
+    if existing is not None and existing.content != content:
+        store.invalidate(existing.id, reason="superseded by a fresh repository digest")
+    store.add(repository=repo, memory_type=mtype, title=title, content=content,
+              metadata={"source": "repo_load"}, anchors=anchors)
     return 1
 
 
 def _functions_summary(code: Analysis) -> str:
     areas: dict[str, list[str]] = {}
-    for s in code.symbols:
+    real = [s for s in code.symbols if s.kind != "module"]  # skip v2's <module> call-attribution symbols
+    for s in real:
         parts = s.file.split("/")
         area = parts[-2] if len(parts) > 1 else (parts[0] or "root")
         bucket = areas.setdefault(area, [])
         if s.name not in bucket:
             bucket.append(s.name)
     head = (
-        f"{len(code.symbols)} functions/classes across {len(code.files)} source files, "
+        f"{len(real)} functions/classes across {len(code.files)} source files, "
         f"{len(code.imports)} file imports, {len(code.calls)} call edges. By area:"
     )
     lines = [f"{area}/: {', '.join(names[:10])}" for area, names in sorted(areas.items())]
