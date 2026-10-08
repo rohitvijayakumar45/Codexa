@@ -135,7 +135,10 @@ def track(repo: Path, context_file: str, *, every: int = 10, max_points: int = 6
             present = {c.key for c in claims}
             snap = None
             if claims:
-                snap = Snapshot(export(repo, sha, Path(tmp) / sha[:12]))
+                try:
+                    snap = Snapshot(export(repo, sha, Path(tmp) / sha[:12]))
+                except subprocess.CalledProcessError:
+                    continue  # tree not exportable (e.g. a blob missing from a partial clone): skip this point
             for c in claims:
                 v = check(snap, c)
                 lc = lifes.setdefault(c.key, Lifecycle(repo.name, context_file, c.key, c.cls, c.polarity, c.text))

@@ -69,7 +69,18 @@ def main() -> None:
     rows = sample(a.n, a.seed)
     (out / "sample.json").write_text(json.dumps(rows, indent=1))
     lifes, status = [], []
+    per_repo = out / "per_repo"  # one file per (repo, context file): resumable, nothing lost on a kill
+    per_repo.mkdir(exist_ok=True)
     for r in rows:
+        done_path = per_repo / (r["repo_name"].replace("/", "__") + "__" + r["context_file"].replace("/", "_") + ".json")
+        if done_path.exists():
+            d = json.loads(done_path.read_text())
+            status.append(d["status"])
+            from cr.rot import Lifecycle, Observation
+            for x in d["lifecycles"]:
+                obs = [Observation(**o) for o in x.pop("obs")]
+                lifes.append(Lifecycle(**x, obs=obs))
+            continue
         dest = clone(r["repo_name"], r["branch"] or "main")
         if dest is None:
             status.append({"repo": r["repo_name"], "file": r["context_file"], "status": "clone_failed"})
@@ -84,7 +95,9 @@ def main() -> None:
         for l in ls:
             l.repo = r["repo_name"]
         lifes += ls
-        status.append({"repo": r["repo_name"], "file": r["context_file"], "status": "ok", "claims": len(ls)})
+        st_ = {"repo": r["repo_name"], "file": r["context_file"], "status": "ok", "claims": len(ls)}
+        status.append(st_)
+        done_path.write_text(json.dumps({"status": st_, "lifecycles": [asdict(l) for l in ls]}))
         print(f"{r['repo_name']}:{r['context_file']} -> {len(ls)} claims", flush=True)
     with open(out / "lifecycles.jsonl", "w", encoding="utf-8") as fh:
         for l in lifes:

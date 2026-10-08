@@ -36,7 +36,10 @@ from cr.extract import TECH, Claim  # noqa: E402
 
 _SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next", "coverage", ".tox"}
 _DOC_EXT = {".md", ".mdx", ".rst", ".txt", ".adoc"}
-_CODE_EXT = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".go", ".rs", ".java", ".kt", ".rb", ".php", ".cs",
+_CODE_EXT = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".kts", ".scala", ".swift", ".m", ".mm", ".lua", ".r",
+             ".dart", ".ex", ".exs", ".erl", ".hs", ".ml", ".clj", ".gradle", ".xml", ".properties", ".proto", ".graphql",
+             ".vue", ".svelte", ".ps1", ".bat", ".cmake", ".mk",
+             ".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".go", ".rs", ".java", ".kt", ".rb", ".php", ".cs",
              ".sh", ".yml", ".yaml", ".toml", ".json", ".ini", ".cfg", ".env", ".sql"}
 _STDLIB_MODULES = {"pip", "venv", "http.server", "unittest", "json.tool", "pdb", "cProfile", "timeit", "ensurepip",
                    "compileall", "zipfile", "doctest", "site", "trace", "py_compile", "webbrowser", "pydoc"}
@@ -87,11 +90,30 @@ class Snapshot:
                 ds.add("/".join(parts[:i]))
         return ds
 
+    @cached_property
+    def _file_set(self) -> set[str]:
+        return set(self.files)
+
     def exists(self, rel: str) -> bool:
         rel = rel.strip().strip("/").removeprefix("./")
         if not rel:
             return True
-        return rel in self.dirs or rel in set(self.files)
+        return rel in self.dirs or rel in self._file_set
+
+    def exists_anywhere(self, rel: str) -> str | None:
+        """A partial path or bare file name ("netem.go", "commands/build/") written relative to some
+        sub-directory: the first tracked path that ends with it, or None."""
+        rel = rel.strip().strip("/").removeprefix("./")
+        if not rel:
+            return None
+        suffix = "/" + rel
+        for f in self.files:
+            if f.endswith(suffix):
+                return f
+        for d in self.dirs:
+            if d.endswith(suffix):
+                return d
+        return None
 
     # -- manifests -----------------------------------------------------------------------------
     @cached_property
@@ -139,7 +161,7 @@ class Snapshot:
                     d.setdefault(n, s)
                 if proj.get("requires-python"):
                     d.setdefault("python", str(proj["requires-python"]))
-            elif re.match(r"requirements.*\.txt$", name):
+            elif name.endswith(".txt") and ("requirements" in name or "/requirements/" in f"/{f}"):
                 text = (self.root / f).read_text(encoding="utf-8", errors="ignore")
                 for ln in text.splitlines():
                     ln = ln.split("#", 1)[0].strip()
@@ -162,7 +184,7 @@ class Snapshot:
                         d.setdefault(k.lower(), "")
             elif name in ("pom.xml", "build.gradle", "build.gradle.kts"):
                 text = (self.root / f).read_text(encoding="utf-8", errors="ignore")
-                for mm in re.finditer(r"<artifactId>([^<]+)</artifactId>|['\"][\w.-]+:([\w.-]+):", text):
+                for mm in re.finditer(r"<artifactId>([^<]+)</artifactId>|['\"][\w.-]+:([\w.-]+)", text):
                     d.setdefault((mm.group(1) or mm.group(2)).lower(), "")
         return d
 
@@ -210,9 +232,17 @@ def check_path(s: Snapshot, rel: str) -> Verdict:
         return Verdict("unknown", "placeholder or non-repo path")
     rel = rel.strip().strip("/").removeprefix("./")
     if "*" in rel:
-        hits = list(s.root.glob(rel))
+        hits = list(s.root.glob(rel)) or list(s.root.glob("**/" + rel))
         return Verdict("true" if hits else "false", f"glob matched {len(hits)}")
-    return Verdict("true", "exists") if s.exists(rel) else Verdict("false", "no such file or directory")
+    if s.exists(rel):
+        return Verdict("true", "exists")
+    hit = s.exists_anywhere(rel)
+    if hit:
+        return Verdict("true", f"exists as {hit}")
+    first, _, rest = rel.partition("/")  # tree diagrams often start with the repository's own folder
+    if rest and (s.exists(rest) or s.exists_anywhere(rest)):
+        return Verdict("true", f"exists below the drawn root '{first}/'")
+    return Verdict("false", "no such file or directory")
 
 
 def _scripts(s: Snapshot, cwd: str) -> dict | None:
@@ -227,6 +257,12 @@ def _check_one(s: Snapshot, argv: list[str], cwd: str) -> Verdict:
     for a in rest:
         if a.startswith("-") or "=" in a or re.search(r"[<>{}$*]", a):
             continue
+        a = a.split("::", 1)[0]                       # pytest node id
+        a = re.sub(r"/\.\.\.$", "", a)                 # go package pattern ./x/...
+        if re.match(r"^[\w-]+(\.[\w-]+)+/", a) and not s.exists(a.split("/", 1)[0]):
+            continue                                  # ghcr.io/org/img, github.com/x/y: not a repo path
+        if ":" in a and not re.match(r"^[A-Za-z]:[\\/]", a):
+            continue                                  # image:tag, host:port
         if ("/" in a or re.search(r"\.(py|ts|js|json|ya?ml|toml|sh|txt|cfg|ini)$", a)) and not a.startswith(("http", "git@")):
             rel = f"{cwd}/{a}".strip("/") if cwd else a
             if a.startswith(("./", "../")) or not a.startswith("/"):
@@ -252,6 +288,8 @@ def _check_one(s: Snapshot, argv: list[str], cwd: str) -> Verdict:
     if tool == "make":
         mk = next((f for f in (f"{cwd}/Makefile".strip("/"), f"{cwd}/makefile".strip("/")) if f in set(s.files)), None)
         if mk is None:
+            if any(f.split("/")[-1] in ("CMakeLists.txt", "configure", "configure.ac", "meson.build") for f in s.files):
+                return Verdict("unknown", "Makefile is generated by the build system")
             return Verdict("false", "no Makefile")
         targets = set(re.findall(r"^([\w.-]+)\s*:", (s.root / mk).read_text(encoding="utf-8", errors="ignore"), re.M))
         tgt = next((a for a in rest if not a.startswith("-") and "=" not in a), None)
@@ -376,6 +414,13 @@ def check_dependency(s: Snapshot, c: Claim) -> Verdict:
 
 
 def check(s: Snapshot, c: Claim) -> Verdict:
+    v = _check(s, c)
+    if v.status == "false" and c.extra.get("hypothetical"):
+        return Verdict("unknown", "example / to-be-created context: " + v.evidence)
+    return v
+
+
+def _check(s: Snapshot, c: Claim) -> Verdict:
     if c.cls in ("path", "structure"):
         return check_path(s, c.text)
     if c.cls == "command":

@@ -154,3 +154,36 @@ def test_kaplan_meier():
     assert km[1] == (2, 0.75)
     assert km[2][1] == pytest.approx(0.75 * (1 - 1 / 2))
     assert median_survival(km) == 6
+
+
+class TestOracleFalsePositiveFixes:
+    """Regressions for the false 'stale' verdicts found in the S1 pilot audit."""
+
+    def test_acronyms_and_words_are_not_symbols(self):
+        syms = {c.text for c in extract("Watch for `SSRF`, `RCE`, `advisory`, `exec`; call `JsonJwt` and `parse_config`.") if c.cls == "symbol"}
+        assert syms == {"JsonJwt", "parse_config"}
+
+    def test_express_verb_is_not_express_framework(self):
+        assert not [c for c in extract("Comments should express intent.") if c.cls == "dependency"]
+        assert [c for c in extract("Server: Express with Node.") if c.text == "express"]
+
+    def test_example_context_is_unknown_not_false(self, tmp_path):
+        snap = Snapshot(_repo(tmp_path / "r", BASE))
+        c = next(c for c in extract("For example, create `src/MyClassTest.java` for each class.") if c.cls == "path")
+        assert check(snap, c).status == "unknown"
+
+    def test_bare_filename_and_tree_root(self, tmp_path):
+        snap = Snapshot(_repo(tmp_path / "r", BASE))
+        from cr.oracles import check_path
+        assert check_path(snap, "index.ts").status == "true"           # lives in src/server/
+        assert check_path(snap, "server/").status == "true"
+        assert check_path(snap, "myrepo/src/config.ts").status == "true"  # tree drawn from the repo folder
+        assert check_path(snap, "nowhere.ts").status == "false"
+
+    def test_command_arguments_that_are_not_paths(self, tmp_path):
+        files = {k: v for k, v in BASE.items() if k != "Makefile"}
+        snap = Snapshot(_repo(tmp_path / "r", {**files, "CMakeLists.txt": "project(x)\n"}))
+        from cr.oracles import check_command
+        assert check_command(snap, "python -m pytest tests/unit/test_a.py::test_a").status == "true"
+        assert check_command(snap, "docker pull ghcr.io/org/img:latest").status != "false"
+        assert check_command(snap, "make rust_tests").status == "unknown"   # CMake-generated Makefile

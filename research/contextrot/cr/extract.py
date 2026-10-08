@@ -74,6 +74,27 @@ _COMMON_WORDS = {"true", "false", "null", "none", "self", "this", "main", "maste
                  "url", "json", "yaml", "http", "https", "todo", "src", "test", "tests", "docs", "string", "number"}
 
 
+_ENGLISH_COLLISIONS = {"express", "next.js", "vue", "jest", "redux", "docker"}
+_HYPOTHETICAL = re.compile(r"\b(e\.g\.|eg\.|for example|for instance|example|such as|create|creating|add a new|new file|"
+                           r"generate[sd]?|name it|named like|e\.x\.|placeholder|template|pattern)\b", re.I)
+
+
+def _codey(span: str) -> bool:
+    """Backticked text that looks like a code identifier, not a word or an acronym: has `_`, `.`,
+    `()`, a digit, or internal capitals (camelCase / PascalCase with 2+ capitals)."""
+    core = span.rstrip("()")
+    if re.fullmatch(r"[A-Z]{2,6}", core):           # SSRF, RCE, GHSA, TOCTOU: acronyms
+        return False
+    if span.endswith("()") or "_" in core or "." in core or re.search(r"\d", core):
+        return True
+    return bool(re.search(r"[a-z][A-Z]", core)) or len(re.findall(r"[A-Z]", core)) >= 2
+
+
+def hypothetical(line: str) -> bool:
+    """The line talks about an example / a file to create / a pattern, not about what exists."""
+    return bool(_HYPOTHETICAL.search(line))
+
+
 def negated(line: str, start: int) -> bool:
     """True if the mention at `start` is in the scope of a preceding negation in the same sentence
     ("Never introduce MongoDB or Express.js") — not merely on a line containing one ("Neo4j is a
@@ -192,7 +213,8 @@ def extract(text: str) -> list[Claim]:
                 claims.append(Claim("command", _clean_cmd(span), ln, raw=span))
             elif _PATHISH.match(span) and not re.search(r"[<>{}]", span):
                 claims.append(Claim("path", span.removeprefix("./") if not span.startswith("/") else span[1:], ln, raw=span))
-            elif _SYMBOLISH.match(span) and span.lower() not in _COMMON_WORDS and len(span.rstrip("()")) >= 3:
+            elif _SYMBOLISH.match(span) and span.lower() not in _COMMON_WORDS and len(span.rstrip("()")) >= 3 \
+                    and _codey(span):
                 claims.append(Claim("symbol", span.rstrip("()"), ln, raw=span))
             else:
                 continue
@@ -206,6 +228,8 @@ def extract(text: str) -> list[Claim]:
         lowered = re.sub(r"`[^`]*`", lambda mm: " " * len(mm.group(0)), line.lower())  # keep offsets
         for tech in TECH:
             mt = re.search(rf"(?<![\w.-]){re.escape(tech)}(?![\w-])", lowered)
+            if mt and tech in _ENGLISH_COLLISIONS and not line[mt.start():mt.end()][:1].isupper():
+                continue  # "express the intent" is a verb, "Express" is the framework
             if mt:
                 if any(c.cls == "dependency" and c.line == ln and (
                         c.text in (tech, VERSIONED.get(tech))
@@ -217,6 +241,9 @@ def extract(text: str) -> list[Claim]:
         if not found and stripped and not stripped.startswith(("#", "|---", "---")) and len(stripped) > 3:
             claims.append(Claim("prose", stripped, ln, raw=stripped))
         i += 1
+    for c in claims:  # existence claims made in an example / "create a file …" context are not assertions
+        if c.cls in ("path", "symbol", "command", "structure") and 0 < c.line <= len(lines) and hypothetical(lines[c.line - 1]):
+            c.extra["hypothetical"] = True
     # de-duplicate (same claim stated twice in a file counts once; keep first line)
     seen, out = set(), []
     for c in claims:
