@@ -9,6 +9,8 @@ condition gets (`search` = ripgrep -w):
     codexa2   Codexa find_references v2 (ambiguity listing, qualified ids)
     routed    codexa2, plus a ripgrep fallback appended when the graph answer is empty, ambiguous
               or unresolved (feature A's "weak" trigger)
+    cbm_cur   codebase-memory-mcp (current build, $NB_CBM_CUR) trace_path inbound depth 1, native text;
+              the agent sees the tool's own ambiguity suggestions and may re-query a qualified name
 
 Usage:
   python -m ab.run --fixtures <dir> --split fresh --n-tasks 20 --conditions rg,lsp,codexa2 \
@@ -35,7 +37,7 @@ for p in (HERE, CODEXA, NAVBENCH):
 from ab.agent import Workspace, litellm_llm, run_agent  # noqa: E402
 from ab.tasks import TSC, Task, check, from_fixture, materialize  # noqa: E402
 
-CONDITIONS = ("rg", "lsp", "codexa", "codexa2", "routed")
+CONDITIONS = ("rg", "lsp", "codexa", "codexa2", "routed", "cbm_cur")
 
 
 def run_cmd(task: Task) -> list[str]:
@@ -57,6 +59,8 @@ class Navigator:
             return self._lsp()
         if c in ("codexa", "codexa2", "routed"):
             return self._codexa("v1" if c == "codexa" else "v2", routed=(c == "routed"))
+        if c == "cbm_cur":
+            return self._cbm_cur()
         raise ValueError(c)
 
     def _lsp(self):
@@ -99,6 +103,29 @@ class Navigator:
             if routed and (out.startswith("Ambiguous") or "References: (none" in out or out.startswith("No symbol")):
                 out += "\n# fallback: lexical search\n" + ws.search(symbol.split("#")[-1].split(".")[-1])
             return out
+        return find
+
+    def _cbm_cur(self):
+        from nb import arms as A
+
+        binary = os.environ.get("NB_CBM_CUR", "/work/nb/bin/cbm-cur")
+        if not Path(binary).exists():
+            raise RuntimeError(f"cbm_cur condition needs the codebase-memory-mcp binary (NB_CBM_CUR): {binary}")
+        home = Path(os.environ.get("CODEXA_DATA_DIR", "/work/ab")) / "cbmhome-ab"
+        home.mkdir(parents=True, exist_ok=True)
+        c = A.CBM(binary, str(home), self.root, "cur")  # cold index of the pre-edit workspace
+        if not c.ok:
+            raise RuntimeError(f"codebase-memory-mcp failed to index {self.root}")
+        self._closers.append(c.close)
+        # the tool normalises the project name (e.g. collapses "--"), so look it up by root path
+        listing, _ = c._call("list_projects", {})
+        project = next((ln.split()[0] for ln in listing.splitlines()
+                        if len(ln.split()) >= 2 and ln.split()[1] == str(self.root)), c.project)
+
+        def find(symbol: str) -> str:
+            txt, _ = c._call("trace_path", {"project": project, "function_name": symbol, "direction": "inbound",
+                                            "depth": 1, "include_tests": True})
+            return txt
         return find
 
     def close(self):
