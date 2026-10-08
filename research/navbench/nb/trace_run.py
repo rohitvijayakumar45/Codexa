@@ -40,8 +40,11 @@ def main() -> None:
         r = in_root_cache.get(fn)
         if r is None:
             rp = os.path.realpath(fn) if fn and not fn.startswith("<") else ""
-            r = in_root_cache[fn] = rp.startswith(prefix) and "/site-packages/" not in rp
+            r = in_root_cache[fn] = rp.startswith(prefix) and "site-packages" not in rp.replace(os.sep, "/").split("/")
         return r
+
+    def _rel(fn: str) -> str:
+        return os.path.realpath(fn)[len(prefix):].replace(os.sep, "/")
 
     def callee_info(c):
         f = getattr(c, "__func__", c)
@@ -78,8 +81,8 @@ def main() -> None:
         if pos is None:
             pos = pos_cache[code] = list(code.co_positions())
         p = pos[offset // 2] if offset // 2 < len(pos) else (None, None, None, None)
-        key = (os.path.realpath(code.co_filename)[len(prefix):], p[0], p[1], p[2], p[3]) + info[:1] + (
-            os.path.realpath(info[1])[len(prefix):], info[2], info[3])
+        # repo-relative POSIX paths on every OS (the index uses as_posix(); Windows realpath uses "\\")
+        key = (_rel(code.co_filename), p[0], p[1], p[2], p[3]) + info[:1] + (_rel(info[1]), info[2], info[3])
         rec = records.setdefault(key, [0, 0])
         rec[0] += 1
         local.pending = (key, expected)

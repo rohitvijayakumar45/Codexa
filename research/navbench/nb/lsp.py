@@ -15,11 +15,16 @@ PYRIGHT = _ROOT / "node_modules" / "pyright" / "langserver.index.js"
 
 
 def uri(p: Path) -> str:
+    if os.name == "nt":  # file:///C:/... (the POSIX form below is unchanged from the frozen run)
+        return Path(p).resolve().as_uri()
     return "file://" + quote(str(p))
 
 
 def path_of(u: str) -> str:
-    return unquote(urlparse(u).path)
+    path = unquote(urlparse(u).path)
+    if os.name == "nt" and len(path) > 2 and path[0] == "/" and path[2] == ":":
+        path = path[1:]  # "/c:/Users/..." -> "c:/Users/..."
+    return path
 
 
 class LspError(Exception):
@@ -174,6 +179,10 @@ class PyrightClient:
             rel = p.resolve().relative_to(self.root).as_posix()
         except ValueError:
             rel = "<external>" + str(p)
+            if os.name == "nt":  # pyright reports "c:" while the root is "C:" — compare case-insensitively
+                r = os.path.relpath(str(p), str(self.root))
+                if not r.startswith(".."):
+                    rel = Path(r).as_posix()
         return (rel, rng["start"]["line"] + 1, rng["start"]["character"])
 
     def close(self) -> None:

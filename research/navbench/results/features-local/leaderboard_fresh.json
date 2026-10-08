@@ -1,0 +1,192 @@
+{
+ "fixture|T1": [
+  {
+   "arm": "codexa2_refs",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 73.25625,
+   "tok_loc": 19.6375,
+   "tok_msa": 22.05,
+   "recall": 1.0,
+   "precision": 1.0,
+   "complete": 1.0,
+   "tokens_per_complete": 73.25625,
+   "pareto": true
+  },
+  {
+   "arm": "codexa_orig",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 0.6,
+   "tok_native": 94.1,
+   "tok_loc": 6.5375,
+   "tok_msa": 7.2,
+   "recall": 0.4666666666666667,
+   "precision": 1.0,
+   "complete": 0.4,
+   "tokens_per_complete": 235.25,
+   "pareto": false
+  },
+  {
+   "arm": "codexa_refs",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 0.9,
+   "tok_native": 50.025,
+   "tok_loc": 18.69375,
+   "tok_msa": 20.75625,
+   "recall": 0.6333333333333333,
+   "precision": 0.6833333333333333,
+   "complete": 0.4,
+   "tokens_per_complete": 125.0625,
+   "pareto": true
+  },
+  {
+   "arm": "lsp",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 485.5875,
+   "tok_loc": 38.8875,
+   "tok_msa": 31.650000000000002,
+   "recall": 0.975,
+   "precision": 0.6416666666666666,
+   "complete": 0.9,
+   "tokens_per_complete": 539.5416666666666,
+   "pareto": false
+  },
+  {
+   "arm": "rg0",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 145.71875,
+   "tok_loc": 65.4875,
+   "tok_msa": 56.05625,
+   "recall": 0.95,
+   "precision": 0.3520238095238095,
+   "complete": 0.8,
+   "tokens_per_complete": 182.1484375,
+   "pareto": false
+  },
+  {
+   "arm": "rg3",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 490.78125,
+   "tok_loc": 65.4875,
+   "tok_msa": 56.05625,
+   "recall": 0.95,
+   "precision": 0.3520238095238095,
+   "complete": 0.8,
+   "tokens_per_complete": 613.4765625,
+   "pareto": false
+  }
+ ],
+ "fixture|T2": [
+  {
+   "arm": "codexa2_def",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 44.875,
+   "tok_loc": 16.44375,
+   "tok_msa": null,
+   "hit": 1.0,
+   "precision": 0.6916666666666667
+  },
+  {
+   "arm": "codexa_def",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 38.61875,
+   "tok_loc": 16.44375,
+   "tok_msa": null,
+   "hit": 1.0,
+   "precision": 0.6916666666666667
+  },
+  {
+   "arm": "lsp_def",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 118.3125,
+   "tok_loc": 7.8125,
+   "tok_msa": null,
+   "hit": 1.0,
+   "precision": 1.0
+  },
+  {
+   "arm": "rg_def",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 37.325,
+   "tok_loc": 17.79375,
+   "tok_msa": null,
+   "hit": 1.0,
+   "precision": 0.6766666666666666
+  }
+ ],
+ "fixture|T3": [
+  {
+   "arm": "codexa2_t3",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 102.80625,
+   "tok_loc": 27.7875,
+   "tok_msa": 31.45,
+   "recall": 1.0,
+   "precision": 1.0,
+   "complete": 1.0,
+   "tokens_per_complete": 102.80625,
+   "pareto": true
+  },
+  {
+   "arm": "codexa_t3",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 0.9,
+   "tok_native": 102.81875,
+   "tok_loc": 24.0625,
+   "tok_msa": 26.725,
+   "recall": 0.6366666666666667,
+   "precision": 0.74125,
+   "complete": 0.30000000000000004,
+   "tokens_per_complete": 342.7291666666667,
+   "pareto": false
+  },
+  {
+   "arm": "lsp_t3",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 828.45,
+   "tok_loc": 61.95,
+   "tok_msa": 42.0125,
+   "recall": 0.98,
+   "precision": 0.72,
+   "complete": 0.9,
+   "tokens_per_complete": 920.5,
+   "pareto": false
+  },
+  {
+   "arm": "rg0_t3",
+   "n": 160,
+   "repos": 32,
+   "non_empty": 1.0,
+   "tok_native": 674.08125,
+   "tok_loc": 201.64375,
+   "tok_msa": 116.575,
+   "recall": 0.96,
+   "precision": 0.2870827762923351,
+   "complete": 0.8,
+   "tokens_per_complete": 842.6015625,
+   "pareto": false
+  }
+ ]
+}

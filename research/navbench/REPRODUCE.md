@@ -35,3 +35,19 @@ CODEXA_DATA_DIR=/work/nb python -m nb.taxonomy /work/nb/out-main
 Re-analysis without re-running: `results/main/scored.jsonl.gz` holds every scored row. Gunzip it and pass it to `nb.analyze` / `nb.figures`. Raw per-query tool outputs (facts, statuses, token counts) are in `results/main/raw_results.tar.gz`.
 
 Token counts use gpt-tokenizer's bundled cl100k/o200k ranks, because tiktoken's vocabulary host was unreachable in the build environment. To cross-check with `tiktoken`, recount `native`/`loc` text from a re-run; the raw output text itself is not stored, only its counts and facts.
+
+## Feature additions (FEATURES.md)
+
+```bash
+python -m nb.adapters                                    # list registered adapters / arms
+python -m nb.fixtures /work/nb/repos --fresh             # fresh split (seeds 200-215) for G1-v2
+./run_all.sh ...                                         # unchanged: frozen configuration
+python -m nb.run <repo> <py|ts> <layer> <out> --arms rg0,rg3,lsp,codexa,codexa2,cbm_cur,cbm_057 --tasks T1,T2,T3
+python -m nb.score <out>
+python -m nb.leaderboard <out>/scored.jsonl <out>/lb
+python -m nb.policy <out>/scored.jsonl <out>/policy --layer A --token-key tok_msa_cl100k
+# frozen data, no tool runs:
+python -m nb.offline results/main/scored.jsonl.gz results/main /work/nb/repos enriched.jsonl
+```
+Windows works for the fixture layer and for natural repositories without codebase-memory: put a
+ripgrep 14 binary on PATH (e.g. `pip install --target <dir> ripgrep==14.1.0`) and run `npm ci`.

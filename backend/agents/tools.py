@@ -910,10 +910,13 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "find_references",
-            "description": "Find every place a symbol is used across the codebase (from the knowledge graph). Returns file:line for each reference.",
+            "description": "Find every place a symbol is used across the codebase (from the knowledge graph). Returns file:line for each reference. If several symbols share the name, it lists them; call again with one of the listed `file#qualname` ids. `depth` > 1 also returns callers of callers (multi-hop impact).",
             "parameters": {
                 "type": "object",
-                "properties": {"symbol": {"type": "string", "description": "Symbol name to find usages of."}},
+                "properties": {
+                    "symbol": {"type": "string", "description": "Symbol name, `Class.method`, or a `file#qualname` id from a previous answer."},
+                    "depth": {"type": "integer", "description": "Caller hops to follow (1-3, default 1)."},
+                },
                 "required": ["symbol"],
             },
         },
@@ -2001,7 +2004,30 @@ def _read_files(paths: list[str], repository: str) -> str:
     return "\n\n".join(results)
 
 
-def _lookup_symbol(name: str, repository: str, *, graph: Any, store: Any) -> str:
+def _lazy_annotation_enabled() -> bool:
+    from backend.repository.annotation_policy import configured_policy
+
+    return configured_policy() == "lazy"
+
+
+def _annotate_symbol_on_demand(node: Any, repository: str, *, store: Any, llm: Any) -> str | None:
+    """Lazy annotation policy (backend/repository/annotation_policy.py): the first lookup of a
+    symbol with no current meaning writes one. Bounded to the symbols agents actually ask about."""
+    from backend.repository.semantic import annotate_on_demand
+
+    props = node.properties
+    try:
+        return annotate_on_demand(
+            repository, repo_root(repository), file=props.get("file", ""),
+            qualname=str(props.get("qualname") or props.get("name")), kind=props.get("kind", "symbol"),
+            line=int(props.get("line") or 1), end_line=int(props.get("end_line") or 0),
+            content_hash=props.get("content_hash"), store=store, llm=llm,
+        )
+    except Exception:  # noqa: BLE001 - a missing meaning is fine; a crashed lookup is not
+        return None
+
+
+def _lookup_symbol(name: str, repository: str, *, graph: Any, store: Any, llm: Any = None) -> str:
     if graph is None:
         return "Symbol lookup unavailable in this context."
     nodes = graph.list_nodes()
@@ -2041,8 +2067,14 @@ def _lookup_symbol(name: str, repository: str, *, graph: Any, store: Any) -> str
         kind = node.properties.get("kind", "symbol")
         lines.append(f"{kind} `{label(node)}` — {file_}:{line}")
         entry = annotations.get(f"symbol://{repository}/{file_}#{label(node)}")
+        if entry and node.properties.get("content_hash") and entry.get("hash") != node.properties["content_hash"]:
+            entry = None  # the code changed since this meaning was written — never serve it
         if entry:
             lines.append(f"  what it does: {entry['summary']}")
+        elif store is not None and llm is not None and _lazy_annotation_enabled():
+            summary = _annotate_symbol_on_demand(node, repository, store=store, llm=llm)
+            if summary:
+                lines.append(f"  what it does: {summary}")
         callers = [label(by_id[e.from_node_id]) for e in edges
                    if e.to_node_id == node.id and e.from_node_id in by_id]
         callees = [label(by_id[e.to_node_id]) for e in edges
@@ -2310,10 +2342,14 @@ def _get_project_metadata(repository: str) -> str:
     return "\n".join(lines) or "(no project metadata detected)"
 
 
-def _find_references(symbol: str, repository: str, *, graph: Any) -> str:
+def _find_references(symbol: str, repository: str, *, graph: Any, depth: int = 1) -> str:
     """Find every place a symbol is used across the codebase."""
     if graph is None:
         return "Reference lookup unavailable (no graph service)."
+    from backend.repository.analyze import resolution_mode
+
+    if resolution_mode() == "v2":
+        return _find_references_v2(symbol, repository, graph=graph, depth=depth)
     nodes = graph.list_nodes()
     edges = graph.list_edges_at()
 
@@ -2354,6 +2390,81 @@ def _find_references(symbol: str, repository: str, *, graph: Any) -> str:
     else:
         lines.append("References: (none found in graph)")
 
+    return "\n".join(lines)
+
+
+_MAX_REF_DEPTH = 3
+_MAX_REF_LINES = 60
+
+
+def _find_references_v2(symbol: str, repository: str, *, graph: Any, depth: int = 1) -> str:
+    """v2 reference lookup (paired with call resolution v2, backend/repository/resolve_v2.py).
+
+    Differences from the original, each found by the NavBench study (research/navbench):
+      * same-named symbols are not silently merged — a bare name matching several definitions
+        returns the candidates as `file#qualname` ids to call again with, instead of mixing
+        their callers;
+      * accepts `file#qualname` and `Class.method` as well as a bare name;
+      * `depth` follows callers of callers (1-3 hops), each line tagged with its hop count;
+      * calls made at module level are attributed to `<module>` of their file.
+    """
+    nodes = graph.list_nodes()
+    edges = graph.list_edges_at()
+
+    def in_repo(node: Any) -> bool:
+        repo_prop = node.properties.get("repository")
+        return (not repo_prop) if repository == "codexa-os" else repo_prop == repository
+
+    syms = [n for n in nodes if n.node_type == "CodeSymbol" and in_repo(n)]
+
+    def sid(n: Any) -> str:
+        return f"{n.properties.get('file')}#{n.properties.get('qualname') or n.properties.get('name')}"
+
+    q = symbol.strip()
+    if "#" in q:
+        targets = [n for n in syms if sid(n) == q]
+    elif "." in q:
+        targets = [n for n in syms if n.properties.get("qualname") == q]
+    else:
+        targets = [n for n in syms if n.properties.get("name") == q and n.properties.get("kind") != "module"]
+    if not targets:
+        return f"No symbol named '{symbol}' found in the graph."
+    distinct = {sid(t): t for t in targets}
+    if len(distinct) > 1:
+        lines = [f"Ambiguous: {len(distinct)} symbols named '{symbol}'. Call again with one of:"]
+        for key, t in sorted(distinct.items())[:20]:
+            lines.append(f"  {key} (line {t.properties.get('line', '?')})")
+        return "\n".join(lines)
+    target = next(iter(distinct.values()))
+    depth = max(1, min(int(depth or 1), _MAX_REF_DEPTH))
+    by_id = {n.id: n for n in nodes}
+    callers_of: dict[Any, list[Any]] = {}
+    for e in edges:
+        if e.edge_type in ("calls", "depends_on"):
+            callers_of.setdefault(e.to_node_id, []).append(e.from_node_id)
+
+    lines = [f"Definition: {target.properties.get('file', '?')}:{target.properties.get('line', '?')}"]
+    refs: list[str] = []
+    seen = {target.id}
+    frontier = [target.id]
+    for hop in range(1, depth + 1):
+        nxt = []
+        for nid in frontier:
+            for src_id in callers_of.get(nid, []):
+                src = by_id.get(src_id)
+                if src is None or src_id in seen or not in_repo(src):
+                    continue
+                seen.add(src_id)
+                nxt.append(src_id)
+                name = src.properties.get("qualname") or src.properties.get("name", "?")
+                tag = f" [depth {hop}]" if depth > 1 else ""
+                refs.append(f"  calls from {name} ({src.properties.get('file', '?')}:{src.properties.get('line', '?')}){tag}")
+        frontier = nxt
+    if refs:
+        lines.append(f"References ({len(refs)}):")
+        lines.extend(refs[:_MAX_REF_LINES])
+    else:
+        lines.append("References: (none found in graph)")
     return "\n".join(lines)
 
 
@@ -3437,7 +3548,7 @@ def execute_tool(
             move_path(repo_root(repository), args["from_path"], args["to_path"])
             return f"Moved {args['from_path']} -> {args['to_path']}."
         if name == "lookup_symbol":
-            return _lookup_symbol(args["name"], repository, graph=graph, store=store)
+            return _lookup_symbol(args["name"], repository, graph=graph, store=store, llm=llm)
         if name == "semantic_search":
             return _semantic_search(args["query"], repository, graph=graph, llm=llm, k=int(args.get("k") or 8))
         if name == "delegate_task":
@@ -3459,7 +3570,7 @@ def execute_tool(
         if name == "get_project_metadata":
             return _get_project_metadata(repository)
         if name == "find_references":
-            return _find_references(args["symbol"], repository, graph=graph)
+            return _find_references(args["symbol"], repository, graph=graph, depth=int(args.get("depth") or 1))
         if name == "get_file_outline":
             return _get_file_outline(args["path"], repository, graph=graph)
         if name == "detect_conventions":

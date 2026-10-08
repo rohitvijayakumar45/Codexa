@@ -29,6 +29,47 @@ def _pr(ret: set, gold: set):
     return p, r
 
 
+def fixture_gold_callers(ix, t: dict) -> set[str]:
+    """Layer A gold at caller level: enclosing declarations of the target's explicit call sites."""
+    return {ix.enclosing(ix.calls[g["call"]]["file"], ix.calls[g["call"]]["line"])
+            for g in t["gold"]["explicit"] if g["call"]}
+
+
+def t3_gold(ix, manifest: dict, target_decl: str, depth: int = 2) -> set[str]:
+    """T3 gold: every declaration (or module) that reaches the target within `depth` explicit static
+    calls. Edges = every target's explicit sites + the generator's non-target edges (manifest
+    "edges"; validated against the runtime trace / TS index by nb.gate_fixtures)."""
+    by_qual = {(d["file"], d["qualname"]): ix.canon(d["id"]) for d in ix.decls.values()}
+    rev: dict[str, set[str]] = {}
+    for t in manifest["targets"]:
+        tid = ix.canon(f"{t['file']}:{t['line']}:{t['col']}")
+        for s_ in t["sites"]:
+            if s_["category"] != "explicit":
+                continue
+            cid = ix.name_tok.get((s_["file"], s_["line"], s_["col"]))
+            if cid:
+                rev.setdefault(tid, set()).add(ix.enclosing(ix.calls[cid]["file"], ix.calls[cid]["line"]))
+    for e in manifest.get("edges", []):
+        callee = by_qual.get((e["callee_file"], e["callee"]))
+        caller = e["caller"] if e["caller"].startswith("module:") else by_qual.get((e["caller_file"], e["caller"]))
+        if callee and caller:
+            rev.setdefault(callee, set()).add(caller)
+    start = ix.canon(target_decl)
+    seen, frontier = {start}, {start}
+    out: set[str] = set()
+    for _ in range(depth):
+        nxt = set()
+        for n in frontier:
+            for c in rev.get(n, ()):
+                if c not in seen:
+                    seen.add(c)
+                    out.add(c)
+                    if not c.startswith("module:"):
+                        nxt.add(c)
+        frontier = nxt
+    return out
+
+
 def units(ix, row) -> dict:
     """Map an arm's facts to site / caller / file units."""
     facts = row["facts"]
@@ -63,6 +104,8 @@ def score_repo(outdir: Path, repo: str, lang: str, layer: str, trace_file: Path 
     if tsc:
         tsc.close()
     targets = {t["decl"]: t for t in json.loads((outdir / f"{repo}.targets.json").read_text())}
+    man_path = root / ".navbench-manifest.json"
+    manifest = json.loads(man_path.read_text()) if (layer == "fixture" and man_path.exists()) else None
     traced = None
     if trace_file and trace_file.exists() and lang == "py":
         tm = trace_map.load(ix.py, trace_file)
@@ -92,6 +135,7 @@ def score_repo(outdir: Path, repo: str, lang: str, layer: str, trace_file: Path 
         out = {k: r[k] for k in ("repo", "lang", "layer", "target", "sample", "task", "arm", "status", "truncated",
                                  "latency_s", "n_calls", "tok_native_cl100k", "tok_native_o200k", "tok_loc_cl100k",
                                  "tok_src_cl100k", "fact_kind", "note")}
+        out["tok_msa_cl100k"] = r.get("tok_msa_cl100k")
         out.update({"split": split, "name": d["name"], "kind": d["kind"], "weight": t.get("weight", 1.0), "pattern": t.get("pattern"),
                     "ambiguous": t.get("ambiguous"), "in_codexa": t.get("in_codexa"),
                     "codexa_has_in_edge": t.get("codexa_has_in_edge"), "name_occurrences": t.get("name_occurrences"),
@@ -109,6 +153,7 @@ def score_repo(outdir: Path, repo: str, lang: str, layer: str, trace_file: Path 
                 gold_sets.append(("C", traced.get(tid, set())))
             for lay, g_calls in gold_sets:
                 g_callers = {ix.enclosing(ix.calls[c]["file"], ix.calls[c]["line"]) for c in g_calls}
+                out[f"{lay}_gold_callers"] = sorted(g_callers)  # for policy evaluation (nb.policy)
                 g_files = {ix.calls[c]["file"] for c in g_calls}
                 pre = f"{lay}_"
                 out[pre + "n_gold"] = len(g_calls)
@@ -127,6 +172,13 @@ def score_repo(outdir: Path, repo: str, lang: str, layer: str, trace_file: Path 
             if layer == "fixture" and r["fact_kind"] == "loc":
                 dyn_calls = [g for g in t["gold"]["dynamic"]]
                 out["A_dynamic_found"] = sum(1 for g in dyn_calls if (g["file"], g["line"], g["col"]) in u["sites"]) if dyn_calls else None
+        elif task == "T3":
+            if manifest is not None:
+                gold = t3_gold(ix, manifest, tid, depth=int(r.get("depth") or 2))
+                p, rc = _pr(u["callers"], gold)
+                out.update({"T3_n_gold": len(gold), "T3_caller_precision": p, "T3_caller_recall": rc,
+                            "T3_complete": rc is not None and rc == 1.0, "T3_gold_callers": sorted(gold),
+                            "depth": r.get("depth")})
         else:  # T2
             gold = (d["file"], d["line"])
             ret = {(f, l) for f, l, c in (tuple(x) for x in r["facts"])}

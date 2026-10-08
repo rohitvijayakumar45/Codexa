@@ -1,0 +1,74 @@
+{
+ "natural|T1": [
+  {
+   "arm": "codexa2_refs",
+   "n": 31,
+   "repos": 1,
+   "non_empty": 0.8387096774193549,
+   "tok_native": 83.03225806451613,
+   "tok_loc": 24.70967741935484,
+   "tok_msa": 27.225806451612904,
+   "recall": 0.7632955536181343,
+   "precision": 0.9769230769230769,
+   "complete": 0.7096774193548387,
+   "tokens_per_complete": 117.0,
+   "pareto": true
+  },
+  {
+   "arm": "codexa_orig",
+   "n": 31,
+   "repos": 1,
+   "non_empty": 0.7741935483870968,
+   "tok_native": 113.12903225806451,
+   "tok_loc": 23.419354838709676,
+   "tok_msa": 25.032258064516128,
+   "recall": 0.6257991862830572,
+   "precision": 0.9041666666666667,
+   "complete": 0.5161290322580645,
+   "tokens_per_complete": 219.1875,
+   "pareto": false
+  },
+  {
+   "arm": "codexa_refs",
+   "n": 31,
+   "repos": 1,
+   "non_empty": 0.8387096774193549,
+   "tok_native": 68.25806451612904,
+   "tok_loc": 33.41935483870968,
+   "tok_msa": 37.03225806451613,
+   "recall": 0.6378959604766057,
+   "precision": 0.7461538461538462,
+   "complete": 0.5483870967741935,
+   "tokens_per_complete": 124.47058823529412,
+   "pareto": true
+  },
+  {
+   "arm": "lsp",
+   "n": 31,
+   "repos": 1,
+   "non_empty": 0.967741935483871,
+   "tok_native": 562.8064516129032,
+   "tok_loc": 48.70967741935484,
+   "tok_msa": 47.45161290322581,
+   "recall": 0.953792502179599,
+   "precision": 0.9377777777777778,
+   "complete": 0.9354838709677419,
+   "tokens_per_complete": 601.6206896551724,
+   "pareto": false
+  },
+  {
+   "arm": "rg0",
+   "n": 31,
+   "repos": 1,
+   "non_empty": 1.0,
+   "tok_native": 415.03225806451616,
+   "tok_loc": 180.09677419354838,
+   "tok_msa": 155.29032258064515,
+   "recall": 1.0,
+   "precision": 0.4162665897834149,
+   "complete": 1.0,
+   "tokens_per_complete": 415.03225806451616,
+   "pareto": true
+  }
+ ]
+}

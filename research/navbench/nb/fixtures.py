@@ -35,6 +35,19 @@ class Site:
 
 
 @dataclass
+class Edge:
+    """A non-target static call the generator writes (manifest key "edges"; T3 multi-hop gold).
+    Only manifest data: recording edges does not change any generated source file."""
+    caller: str            # enclosing declaration qualname, or "module:<file>"
+    caller_file: str
+    callee: str            # callee declaration qualname (a class for constructor calls)
+    callee_file: str
+    file: str
+    line: int
+    col: int
+
+
+@dataclass
 class Target:
     key: str               # stable key within the fixture
     name: str
@@ -102,6 +115,12 @@ def gen_python(root: Path, seed: int, ambiguous: bool) -> dict:
     pkg = rng.choice(["app", "core_lib", "svc", "toolkit"]) + f"{seed}"
     W = Writer()
     T: dict[str, Target] = {}
+
+    E: list[Edge] = []
+
+    def edge(line, token, caller, caller_file, callee, callee_file, nth=0):
+        f, l, c = W.pos(line, token, nth)
+        E.append(Edge(caller, caller_file, callee, callee_file, f, l, c))
 
     def tgt(key, name, qual, kind, line, token, nth=0):
         f, l, c = W.pos(line, token, nth)
@@ -184,6 +203,7 @@ def gen_python(root: Path, seed: int, ambiguous: bool) -> dict:
     W.line("def noise_driver():")
     for nm in N["noise"]:
         l = W.line(f"    {nm}(0)")
+        edge(l, nm, "noise_driver", noise, nm, noise)
         for k in ("direct", "M", "reexp"):
             if T[k].name == nm:
                 T[k].sites.append(Site(noise, l, W.files[noise][l - 1].find(nm), "distractor", "noise_driver"))
@@ -214,9 +234,10 @@ def gen_python(root: Path, seed: int, ambiguous: bool) -> dict:
     fn("use_module_attr", [(f"    return core.{d}(3)", [("direct", d, "explicit")])])
     fn("use_typed", [(f"    s: {Svc} = {Svc}()", [("svc", Svc, "reference", 0), ("svc", Svc, "explicit", 1)]),
                      (f"    return s.{M}(4)", [("M", M, "explicit")])])
-    fn("use_other", [(f"    o = {Oth}()", []), (f"    return o.{M}(5)", [("M", M, "distractor")])])
+    fn("use_other", [(f"    o = {Oth}()", [("@", Oth, Oth, core)]),
+                     (f"    return o.{M}(5)", [("M", M, "distractor"), ("@", M, f"{Oth}.{M}", core)])])
     fn("use_decorated", [(f"    return {dec}(6)", [("decorated", dec, "explicit")])])
-    fn("use_hof", [(f"    return apply_fn({hof}, 7)", [("hof", hof, "reference")])])
+    fn("use_hof", [(f"    return apply_fn({hof}, 7)", [("hof", hof, "reference"), ("@", "apply_fn", "apply_fn", core)])])
     fn("use_dynamic", [(f"    return getattr(core, \"{dyn}\")(8)", [("dyn", dyn, "dynamic")])])
     fn("use_reexport", [(f"    return {rx}(9)", [("reexp", rx, "explicit")])])
     fn("use_shadow", [(f"    def {d}(x):", [("direct", d, "distractor")]), ("        return -x", []),
@@ -227,6 +248,9 @@ def gen_python(root: Path, seed: int, ambiguous: bool) -> dict:
         for text, marks in spec:
             l = W.line(text)
             for mk in marks:
+                if mk[0] == "@":  # ("@", token, callee qualname, callee file): a non-target edge
+                    edge(l, mk[1], name, use, mk[2], mk[3])
+                    continue
                 key, tok, cat = mk[0], mk[1], mk[2]
                 nth = mk[3] if len(mk) > 3 else 0
                 f_, l_, c_ = W.pos(l, tok, nth)
@@ -241,8 +265,12 @@ def gen_python(root: Path, seed: int, ambiguous: bool) -> dict:
     W.line("def run_all():")
     W.line("    total = VALUE")
     for name, _ in sorted(body):
-        W.line(f"    total += {name}()")
+        l = W.line(f"    total += {name}()")
+        edge(l, name, "run_all", use, name, use)
     l = W.line(f"    total += {Svc}().caller_self() + Sub().{M}(11)"); site("svc", l, Svc, "explicit", "run_all")
+    edge(l, "caller_self", "run_all", use, f"{Svc}.caller_self", core)
+    edge(l, "Sub", "run_all", use, "Sub", use)
+    edge(l, M, "run_all", use, f"Sub.{M}", use)
     W.line("    return total")
     # run_all's own calls to use_* are not targets; Sub().M(11) calls Sub.M (not Svc.M directly).
     main = "main.py"
@@ -251,14 +279,16 @@ def gen_python(root: Path, seed: int, ambiguous: bool) -> dict:
     W.line(f"from {pkg}.noise import noise_driver")
     W.line("")
     W.line("if __name__ == \"__main__\":")
-    W.line("    print(run_all() + noise_driver())")
+    l = W.line("    print(run_all() + noise_driver())")
+    edge(l, "run_all", f"module:{main}", main, "run_all", use)
+    edge(l, "noise_driver", f"module:{main}", main, "noise_driver", noise)
 
     if root.exists():
         shutil.rmtree(root)
     root.mkdir(parents=True)
     W.dump(root)
     man = {"language": "python", "seed": seed, "ambiguous": ambiguous, "package": pkg,
-           "targets": [asdict(t) for t in T.values()]}
+           "targets": [asdict(t) for t in T.values()], "edges": [asdict(e) for e in E]}
     (root / ".navbench-manifest.json").write_text(json.dumps(man, indent=1))
     return man
 
@@ -269,6 +299,12 @@ def gen_ts(root: Path, seed: int, ambiguous: bool) -> dict:
     N = _names(rng, ambiguous)
     W = Writer()
     T: dict[str, Target] = {}
+
+    E: list[Edge] = []
+
+    def edge(line, token, caller, caller_file, callee, callee_file, nth=0):
+        f, l, c = W.pos(line, token, nth)
+        E.append(Edge(caller, caller_file, callee, callee_file, f, l, c))
     d, rx, M, arrow, hof, dyn, Svc, Oth = (N["direct"], N["reexp"], N["M"], N["decorated"], N["hof"], N["dyn"],
                                            N["svc"], N["other"])
 
@@ -335,6 +371,7 @@ def gen_ts(root: Path, seed: int, ambiguous: bool) -> dict:
     W.line("export function noiseDriver(): number {")
     for nm in N["noise"]:
         l = W.line(f"  {nm}(0);")
+        edge(l, nm, "noiseDriver", noise, nm, noise)
         for k in ("direct", "M", "reexp"):
             if T[k].name == nm:
                 T[k].sites.append(Site(noise, l, W.files[noise][l - 1].find(nm), "distractor", "noiseDriver"))
@@ -365,9 +402,10 @@ def gen_ts(root: Path, seed: int, ambiguous: bool) -> dict:
     fn("useNamespace", [(f"  return core.{d}(3);", [("direct", d, "explicit")])])
     fn("useTyped", [(f"  const s: {Svc} = new {Svc}();", [("svc", Svc, "reference", 0), ("svc", Svc, "explicit", 1)]),
                     (f"  return s.{M}(4);", [("M", M, "explicit")])])
-    fn("useOther", [(f"  const o = new {Oth}();", []), (f"  return o.{M}(5);", [("M", M, "distractor")])])
+    fn("useOther", [(f"  const o = new {Oth}();", [("@", Oth, Oth, core)]),
+                    (f"  return o.{M}(5);", [("M", M, "distractor"), ("@", M, f"{Oth}.{M}", core)])])
     fn("useArrow", [(f"  return {arrow}(6);", [("decorated", arrow, "explicit")])])
-    fn("useHof", [(f"  return applyFn({hof}, 7);", [("hof", hof, "reference")])])
+    fn("useHof", [(f"  return applyFn({hof}, 7);", [("hof", hof, "reference"), ("@", "applyFn", "applyFn", core)])])
     fn("useDynamic", [(f"  return (core as any)[\"{dyn}\"](8);", [("dyn", dyn, "dynamic")])])
     fn("useReexport", [(f"  return {rx}(9);", [("reexp", rx, "explicit")])])
     fn("useShadow", [(f"  function {d}(x: number): number {{", [("direct", d, "distractor")]), ("    return -x;", []),
@@ -378,6 +416,9 @@ def gen_ts(root: Path, seed: int, ambiguous: bool) -> dict:
         for text, marks in spec:
             l = W.line(text)
             for mk in marks:
+                if mk[0] == "@":  # ("@", token, callee qualname, callee file): a non-target edge
+                    edge(l, mk[1], name, use, mk[2], mk[3])
+                    continue
                 key, tok, cat = mk[0], mk[1], mk[2]
                 nth = mk[3] if len(mk) > 3 else 0
                 f_, l_, c_ = W.pos(l, tok, nth)
@@ -393,15 +434,21 @@ def gen_ts(root: Path, seed: int, ambiguous: bool) -> dict:
     W.line("export function runAll(): number {")
     W.line("  let total = VALUE;")
     for name, _ in sorted(body):
-        W.line(f"  total += {name}();")
+        l = W.line(f"  total += {name}();")
+        edge(l, name, "runAll", use, name, use)
     l = W.line(f"  total += new {Svc}().callerSelf() + new Sub().{M}(11);"); site("svc", l, Svc, "explicit", "runAll")
+    edge(l, "callerSelf", "runAll", use, f"{Svc}.callerSelf", core)
+    edge(l, "Sub", "runAll", use, "Sub", use)
+    edge(l, M, "runAll", use, f"Sub.{M}", use)
     W.line("  return total;")
     W.line("}")
     main = "src/main.ts"
     W.open(main)
     W.line(f"import {{ runAll }} from \"./{Path(use).stem}\";")
     W.line("import { noiseDriver } from \"./noise\";")
-    W.line("console.log(runAll() + noiseDriver());")
+    l = W.line("console.log(runAll() + noiseDriver());")
+    edge(l, "runAll", f"module:{main}", main, "runAll", use)
+    edge(l, "noiseDriver", f"module:{main}", main, "noiseDriver", noise)
     W.open("tsconfig.json")
     W.line(json.dumps({"compilerOptions": {"target": "ES2020", "module": "commonjs", "strict": True,
                                            "outDir": "out", "rootDir": "src"}, "include": ["src"]}))
@@ -411,17 +458,21 @@ def gen_ts(root: Path, seed: int, ambiguous: bool) -> dict:
     root.mkdir(parents=True)
     W.dump(root)
     man = {"language": "typescript", "seed": seed, "ambiguous": ambiguous,
-           "targets": [asdict(t) for t in T.values()]}
+           "targets": [asdict(t) for t in T.values()], "edges": [asdict(e) for e in E]}
     (root / ".navbench-manifest.json").write_text(json.dumps(man, indent=1))
     return man
 
 
 SPLITS = {"calib": range(0, 4), "heldout": range(100, 116)}
+# Generated only after call resolution v2 (backend/repository/resolve_v2.py) was designed against the
+# held-out failure taxonomy, so G1-v2 is evaluated on fixtures it was not shaped on.
+# Opt-in: python -m nb.fixtures <dir> --fresh
+FRESH_SPLITS = {"fresh": range(200, 216)}
 
 
-def generate_all(base: Path) -> list[dict]:
+def generate_all(base: Path, splits: dict | None = None) -> list[dict]:
     out = []
-    for split, seeds in SPLITS.items():
+    for split, seeds in (splits or SPLITS).items():
         for seed in seeds:
             amb = seed % 2 == 1
             for lang, gen in (("py", gen_python), ("ts", gen_ts)):
@@ -436,5 +487,5 @@ def generate_all(base: Path) -> list[dict]:
 
 if __name__ == "__main__":
     import sys
-    ms = generate_all(Path(sys.argv[1]))
+    ms = generate_all(Path(sys.argv[1]), FRESH_SPLITS if "--fresh" in sys.argv else None)
     print(len(ms), "fixtures,", sum(len(m["targets"]) for m in ms), "targets")
