@@ -1,0 +1,560 @@
+{
+ "per_arm": {
+  "cbm_057": {
+   "rows": 1216,
+   "same_facts": 1163,
+   "same_tokens": 1168
+  },
+  "cbm_057_def": {
+   "rows": 160,
+   "same_facts": 160,
+   "same_tokens": 160
+  },
+  "cbm_cur": {
+   "rows": 1216,
+   "same_facts": 1212,
+   "same_tokens": 1212
+  },
+  "cbm_cur_def": {
+   "rows": 160,
+   "same_facts": 160,
+   "same_tokens": 160
+  },
+  "codexa_def": {
+   "rows": 160,
+   "same_facts": 160,
+   "same_tokens": 160
+  },
+  "codexa_orig": {
+   "rows": 1216,
+   "same_facts": 1178,
+   "same_tokens": 1166
+  },
+  "codexa_refs": {
+   "rows": 1216,
+   "same_facts": 1209,
+   "same_tokens": 1209
+  },
+  "lsp": {
+   "rows": 1216,
+   "same_facts": 1216,
+   "same_tokens": 1216
+  },
+  "lsp_def": {
+   "rows": 160,
+   "same_facts": 160,
+   "same_tokens": 160
+  },
+  "rg0": {
+   "rows": 1216,
+   "same_facts": 1216,
+   "same_tokens": 1216
+  },
+  "rg3": {
+   "rows": 1216,
+   "same_facts": 1216,
+   "same_tokens": 1216
+  },
+  "rg_def": {
+   "rows": 160,
+   "same_facts": 160,
+   "same_tokens": 160
+  }
+ },
+ "frozen_rows_missing_in_new": {},
+ "repos_frozen": 49,
+ "examples": {
+  "codexa_orig": [
+   {
+    "key": [
+     "attrs",
+     "src/attr/_make.py:104:4",
+     "S-cond",
+     "T1",
+     "codexa_orig"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "src/attr/validators.py:334:6",
+      "src/attr/validators.py:651:6",
+      "src/attr/validators.py:613:6",
+      "src/attr/_version_info.py:12:6"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "src/attr/validators.py:132:6",
+      "bench/test_benchmarks.py:66:6",
+      "tests/test_dunders.py:996:6",
+      "tests/test_filters.py:16:6"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "attrs",
+     "src/attr/_make.py:104:4",
+     "S-ind",
+     "T1",
+     "codexa_orig"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "src/attr/validators.py:334:6",
+      "src/attr/validators.py:651:6",
+      "src/attr/validators.py:613:6",
+      "src/attr/_version_info.py:12:6"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "src/attr/validators.py:132:6",
+      "bench/test_benchmarks.py:66:6",
+      "tests/test_dunders.py:996:6",
+      "tests/test_filters.py:16:6"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "attrs",
+     "src/attr/_make.py:1975:4",
+     "S-ind",
+     "T1",
+     "codexa_orig"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "tests/test_make.py:2369:8",
+      "tests/test_make.py:1699:8",
+      "tests/test_make.py:1334:8",
+      "tests/test_make.py:1678:8"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "tests/test_make.py:2369:8",
+      "tests/test_make.py:1246:8",
+      "tests/test_next_gen.py:152:8",
+      "tests/test_make.py:1678:8"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "attrs",
+     "src/attr/_make.py:3084:6",
+     "S-ind",
+     "T1",
+     "codexa_orig"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "tests/test_annotations.py:100:8",
+      "tests/test_functional.py:47:6",
+      "tests/test_slots.py:631:6",
+      "tests/test_converters.py:189:8"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "tests/test_make.py:965:8",
+      "tests/test_functional.py:41:6",
+      "tests/test_slots.py:626:6",
+      "tests/test_dunders.py:883:8"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "attrs",
+     "src/attr/_make.py:3142:6",
+     "S-ind",
+     "T1",
+     "codexa_orig"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "src/attr/_make.py:2187:4",
+      "tests/test_converters.py:95:8",
+      "src/attr/_make.py:2878:8",
+      "src/attr/converters.py:19:4"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "tests/test_converters.py:63:8",
+      "tests/test_converters.py:95:8",
+      "bench/test_benchmarks.py:66:6",
+      "tests/test_dunders.py:996:6"
+     ]
+    ]
+   }
+  ],
+  "codexa_refs": [
+   {
+    "key": [
+     "attrs",
+     "src/attr/_next_gen.py:434:4",
+     "S-cond",
+     "T1",
+     "codexa_refs"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "typing_tests/pyrefly.py:39:6",
+      "typing_tests/pyrefly.py:289:6",
+      "typing_tests/pyrefly.py:100:6",
+      "typing_tests/baseline.py:96:6"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "typing_tests/pyrefly.py:39:6",
+      "typing_tests/pyrefly.py:367:6",
+      "tests/test_make.py:1263:14",
+      "typing_tests/pyrefly.py:72:6"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "marshmallow",
+     "src/marshmallow/fields.py:894:6",
+     "S-cond",
+     "T1",
+     "codexa_refs"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "tests/test_schema.py:2454:10",
+      "tests/test_deserialization.py:1554:6",
+      "tests/test_schema.py:613:10",
+      "tests/test_schema.py:1977:14"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "tests/test_schema.py:2151:14",
+      "tests/test_decorators.py:261:14",
+      "tests/test_deserialization.py:1456:8",
+      "tests/test_fields.py:337:14"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "rich",
+     "rich/pretty.py:878:4",
+     "S-ind",
+     "T1",
+     "codexa_refs"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "tests/test_pretty.py:370:4",
+      "tests/test_pretty.py:678:4",
+      "rich/pretty.py:304:8",
+      "tests/test_pretty.py:526:4"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "tests/test_pretty.py:631:4",
+      "tests/test_pretty.py:442:4",
+      "tests/test_pretty.py:499:4",
+      "tests/test_pretty.py:730:4"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "ts-pattern",
+     "src/match.ts:32:16",
+     "S-cond",
+     "T1",
+     "codexa_refs"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "tests/exhaustive-match.test.ts:414:12",
+      "tests/output-type.test.ts:26:12",
+      "tests/select.test.ts:262:12",
+      "tests/sets.test.ts:6:10"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "tests/intersection-and-union.test.ts:125:12",
+      "tests/multiple-patterns.test.ts:180:10",
+      "tests/wildcards.test.ts:118:12",
+      "tests/record.test.ts:165:10"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "ts-pattern",
+     "src/patterns.ts:252:8",
+     "S-ind",
+     "T1",
+     "codexa_refs"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "tests/exhaustive-match.test.ts:414:12",
+      "tests/output-type.test.ts:26:12",
+      "tests/select.test.ts:262:12",
+      "tests/sets.test.ts:6:10"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "tests/intersection-and-union.test.ts:125:12",
+      "tests/multiple-patterns.test.ts:180:10",
+      "tests/wildcards.test.ts:118:12",
+      "tests/record.test.ts:165:10"
+     ]
+    ]
+   }
+  ],
+  "cbm_057": [
+   {
+    "key": [
+     "attrs",
+     "src/attr/filters.py:21:4",
+     "S-cond",
+     "T1",
+     "cbm_057"
+    ],
+    "frozen": [
+     "empty",
+     []
+    ],
+    "new": [
+     "ok",
+     [
+      "module:tests/test_filters.py",
+      "tests/test_validators.py:457:8"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "attrs",
+     "src/attr/setters.py:32:4",
+     "S-cond",
+     "T1",
+     "cbm_057"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "module:typing_tests/mypy.py",
+      "tests/test_slots.py:772:4",
+      "tests/test_slots.py:791:4",
+      "module:typing_tests/pyrefly.py"
+     ]
+    ],
+    "new": [
+     "empty",
+     []
+    ]
+   },
+   {
+    "key": [
+     "attrs",
+     "typing_tests/baseline.py:47:6",
+     "S-ind",
+     "T1",
+     "cbm_057"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "module:typing_tests/mypy.py"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "module:tests/test_pattern_matching.py",
+      "module:tests/test_annotations.py",
+      "module:tests/test_make.py",
+      "module:tests/test_setattr.py"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "attrs",
+     "typing_tests/mypy.py:295:6",
+     "S-ind",
+     "T1",
+     "cbm_057"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "module:typing_tests/mypy.py"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "module:typing_tests/pyrefly.py"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "attrs",
+     "typing_tests/mypy.py:328:6",
+     "S-ind",
+     "T1",
+     "cbm_057"
+    ],
+    "frozen": [
+     "empty",
+     []
+    ],
+    "new": [
+     "ok",
+     [
+      "module:typing_tests/pyrefly.py"
+     ]
+    ]
+   }
+  ],
+  "cbm_cur": [
+   {
+    "key": [
+     "attrs",
+     "typing_tests/baseline.py:47:6",
+     "S-ind",
+     "T1",
+     "cbm_cur"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "tests/test_annotations.py:100:8",
+      "tests/test_annotations.py:174:8",
+      "tests/test_annotations.py:441:8",
+      "tests/test_annotations.py:454:8"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "tests/test_functional.py:352:8",
+      "tests/test_functional.py:437:8",
+      "tests/test_functional.py:453:8",
+      "tests/test_functional.py:627:8"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "commander.js",
+     "lib/command.js:14:13",
+     "S-ind",
+     "T1",
+     "cbm_cur"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "lib/command.js:193:2",
+      "module:tests/command.parse.test.js",
+      "module:tests/options.env.test.js",
+      "module:tests/command.executableSubcommand.search.test.cjs"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "module:tests/command.parse.test.js",
+      "module:tests/options.env.test.js",
+      "module:tests/command.hook.test.js",
+      "module:tests/command.executableSubcommand.search.test.cjs"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "dayjs",
+     "src/index.js:39:6",
+     "S-ind",
+     "T1",
+     "cbm_cur"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "unresolved:src.index",
+      "module:test/plugin/duration.test.js",
+      "unresolved:src.plugin.utc.index",
+      "module:test/locale/is.test.js"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "unresolved:src.index",
+      "module:test/plugin/customParseFormat.test.js",
+      "unresolved:src.index",
+      "src/index.js:50:6"
+     ]
+    ]
+   },
+   {
+    "key": [
+     "ts-pattern",
+     "src/match.ts:32:16",
+     "S-cond",
+     "T1",
+     "cbm_cur"
+    ],
+    "frozen": [
+     "ok",
+     [
+      "module:tests/record.test.ts",
+      "tests/record.test.ts:165:10",
+      "tests/record.test.ts:267:10",
+      "module:tests/types.test.ts"
+     ]
+    ],
+    "new": [
+     "ok",
+     [
+      "module:tests/variadic-tuples.test.ts",
+      "tests/variadic-tuples.test.ts:8:14",
+      "tests/variadic-tuples.test.ts:506:12",
+      "tests/variadic-tuples.test.ts:570:12"
+     ]
+    ]
+   }
+  ]
+ }
+}

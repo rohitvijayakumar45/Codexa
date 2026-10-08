@@ -1,0 +1,89 @@
+{
+ "repo": "ky",
+ "lang": "ts",
+ "layer": "natural",
+ "started": 1791488297.8823557,
+ "adapters": [
+  "rg0",
+  "rg3",
+  "lsp",
+  "codexa",
+  "codexa2",
+  "cbm_cur",
+  "cbm_057"
+ ],
+ "tasks": [
+  "T1",
+  "T2",
+  "T3"
+ ],
+ "t3_depth": 2,
+ "index_frame_s": 1.727339223999934,
+ "frame": {
+  "files": 87,
+  "decls": 792,
+  "calls": 10552,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 1.4371504149999055,
+ "codexa_ok": true,
+ "codexa2_index_s": 2.614305482999953,
+ "codexa2_ok": true,
+ "cbm_cur_index_s": 11.953019631000188,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.3980660709999029,
+ "cbm_057_ok": true,
+ "unavailable": {},
+ "coverage": {
+  "frame_targets": 86,
+  "codexa_has": 81,
+  "codexa_nodes": 223,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|0-0": [
+   8,
+   4
+  ],
+  "function|1-2": [
+   30,
+   9
+  ],
+  "class|1-2": [
+   5,
+   2
+  ],
+  "function|3-9": [
+   20,
+   9
+  ],
+  "class|3-9": [
+   3,
+   2
+  ],
+  "function|0-0": [
+   8,
+   4
+  ],
+  "method|1-2": [
+   1,
+   2
+  ],
+  "function|10-inf": [
+   9,
+   4
+  ],
+  "class|0-0": [
+   1,
+   2
+  ],
+  "class|10-inf": [
+   1,
+   2
+  ]
+ },
+ "n_cond_frame": 42,
+ "gate_messages": [],
+ "finished": 1791488366.1869485
+}

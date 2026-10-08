@@ -1,0 +1,2499 @@
+{
+ "layer": "A",
+ "token_key": "tok_msa_cl100k",
+ "n_targets": 320,
+ "policies": {
+  "single:cbm_057": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.7041666666666667,
+   "complete": 0.490625,
+   "tokens": 16.275,
+   "tokens_per_complete": 33.17197452229299,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.6544270833333333,
+     0.7510416666666666
+    ],
+    "complete": [
+     0.43125,
+     0.553125
+    ],
+    "tokens": [
+     14.70625,
+     17.859375
+    ],
+    "tokens_per_complete": [
+     28.206060606060607,
+     39.27777777777778
+    ]
+   },
+   "pareto": true
+  },
+  "single:cbm_cur": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.9390625,
+   "complete": 0.890625,
+   "tokens": 21.053125,
+   "tokens_per_complete": 23.63859649122807,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.91328125,
+     0.9625
+    ],
+    "complete": [
+     0.846875,
+     0.93125
+    ],
+    "tokens": [
+     19.13125,
+     23.0375
+    ],
+    "tokens_per_complete": [
+     21.74496644295302,
+     25.684931506849313
+    ]
+   },
+   "pareto": true
+  },
+  "single:codexa2_refs": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 21.940625,
+   "tokens_per_complete": 21.940625,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.50625,
+     23.359375
+    ],
+    "tokens_per_complete": [
+     20.50625,
+     23.359375
+    ]
+   },
+   "pareto": true
+  },
+  "single:codexa_orig": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.4666666666666667,
+   "complete": 0.4,
+   "tokens": 7.165625,
+   "tokens_per_complete": 17.9140625,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.40520833333333334,
+     0.525
+    ],
+    "complete": [
+     0.3375,
+     0.4625
+    ],
+    "tokens": [
+     6.234375,
+     8.11875
+    ],
+    "tokens_per_complete": [
+     16.124183006535947,
+     20.091743119266056
+    ]
+   },
+   "pareto": true
+  },
+  "single:codexa_refs": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.65625,
+   "tokens_per_complete": 51.640625,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.5796875,
+     0.68125
+    ],
+    "complete": [
+     0.3375,
+     0.4625
+    ],
+    "tokens": [
+     18.9125,
+     22.365625
+    ],
+    "tokens_per_complete": [
+     42.83216783216783,
+     63.526785714285715
+    ]
+   },
+   "pareto": false
+  },
+  "single:lsp": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.5,
+   "tokens_per_complete": 35.0,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.984375
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     30.55,
+     32.409375
+    ],
+    "tokens_per_complete": [
+     33.08552631578947,
+     37.12765957446808
+    ]
+   },
+   "pareto": false
+  },
+  "single:rg0": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.9609375
+    ],
+    "complete": [
+     0.75625,
+     0.84375
+    ],
+    "tokens": [
+     53.015625,
+     58.365625
+    ],
+    "tokens_per_complete": [
+     64.0561797752809,
+     75.5
+    ]
+   },
+   "pareto": false
+  },
+  "single:rg3": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.9609375
+    ],
+    "complete": [
+     0.75625,
+     0.84375
+    ],
+    "tokens": [
+     53.18125,
+     58.503125
+    ],
+    "tokens_per_complete": [
+     64.56826568265683,
+     75.73577235772358
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_057>rg0@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 72.003125,
+   "tokens_per_complete": 90.00390625,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.96015625
+    ],
+    "complete": [
+     0.75625,
+     0.8406250000000001
+    ],
+    "tokens": [
+     68.3375,
+     75.465625
+    ],
+    "tokens_per_complete": [
+     81.94402985074628,
+     98.52
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_057>rg0@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.8135416666666666,
+   "complete": 0.6,
+   "tokens": 20.990625,
+   "tokens_per_complete": 34.984375,
+   "fired": 0.109375,
+   "ci95": {
+    "recall": [
+     0.7830729166666667,
+     0.8427083333333333
+    ],
+    "complete": [
+     0.546875,
+     0.653125
+    ],
+    "tokens": [
+     19.446875,
+     22.625
+    ],
+    "tokens_per_complete": [
+     30.6231884057971,
+     40.21666666666667
+    ],
+    "fired": [
+     0.06875,
+     0.153125
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_057>rg0@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.7041666666666667,
+   "complete": 0.490625,
+   "tokens": 16.275,
+   "tokens_per_complete": 33.17197452229299,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.6559895833333333,
+     0.75
+    ],
+    "complete": [
+     0.43125,
+     0.55
+    ],
+    "tokens": [
+     14.7375,
+     17.91875
+    ],
+    "tokens_per_complete": [
+     28.27810650887574,
+     39.12056737588652
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:cbm_057>rg0@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.7041666666666667,
+   "complete": 0.490625,
+   "tokens": 16.275,
+   "tokens_per_complete": 33.17197452229299,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.6583333333333333,
+     0.75
+    ],
+    "complete": [
+     0.434375,
+     0.553125
+    ],
+    "tokens": [
+     14.728125,
+     17.865625
+    ],
+    "tokens_per_complete": [
+     28.179640718562876,
+     38.90909090909091
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:cbm_057>rg0@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.8135416666666666,
+   "complete": 0.6,
+   "tokens": 20.990625,
+   "tokens_per_complete": 34.984375,
+   "fired": 0.109375,
+   "ci95": {
+    "recall": [
+     0.7854166666666667,
+     0.84140625
+    ],
+    "complete": [
+     0.546875,
+     0.6531250000000001
+    ],
+    "tokens": [
+     19.315625,
+     22.603125
+    ],
+    "tokens_per_complete": [
+     30.660377358490567,
+     40.201149425287355
+    ],
+    "fired": [
+     0.06875,
+     0.153125
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_057>lsp@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 47.775,
+   "tokens_per_complete": 53.083333333333336,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.984375
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     45.665625,
+     49.8375
+    ],
+    "tokens_per_complete": [
+     49.18791946308725,
+     57.581227436823106
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_057>lsp@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.8135416666666666,
+   "complete": 0.6,
+   "tokens": 19.91875,
+   "tokens_per_complete": 33.197916666666664,
+   "fired": 0.109375,
+   "ci95": {
+    "recall": [
+     0.7830729166666667,
+     0.8408854166666666
+    ],
+    "complete": [
+     0.546875,
+     0.6531250000000001
+    ],
+    "tokens": [
+     18.615625,
+     21.365625
+    ],
+    "tokens_per_complete": [
+     29.222772277227723,
+     37.91111111111111
+    ],
+    "fired": [
+     0.06875,
+     0.153125
+    ]
+   },
+   "pareto": true
+  },
+  "route:cbm_057>lsp@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.7041666666666667,
+   "complete": 0.490625,
+   "tokens": 16.275,
+   "tokens_per_complete": 33.17197452229299,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.6572916666666666,
+     0.75
+    ],
+    "complete": [
+     0.43125,
+     0.55
+    ],
+    "tokens": [
+     14.74375,
+     17.803125
+    ],
+    "tokens_per_complete": [
+     28.227272727272727,
+     38.88059701492537
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:cbm_057>lsp@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.7041666666666667,
+   "complete": 0.490625,
+   "tokens": 16.275,
+   "tokens_per_complete": 33.17197452229299,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.6567708333333333,
+     0.7479166666666667
+    ],
+    "complete": [
+     0.425,
+     0.55
+    ],
+    "tokens": [
+     14.6125,
+     17.88125
+    ],
+    "tokens_per_complete": [
+     28.335260115606935,
+     39.736111111111114
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:cbm_057>lsp@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.8135416666666666,
+   "complete": 0.6,
+   "tokens": 19.91875,
+   "tokens_per_complete": 33.197916666666664,
+   "fired": 0.109375,
+   "ci95": {
+    "recall": [
+     0.784375,
+     0.8440104166666667
+    ],
+    "complete": [
+     0.546875,
+     0.659375
+    ],
+    "tokens": [
+     18.51875,
+     21.3
+    ],
+    "tokens_per_complete": [
+     28.857142857142858,
+     37.92178770949721
+    ],
+    "fired": [
+     0.06875,
+     0.15625
+    ]
+   },
+   "pareto": true
+  },
+  "route:cbm_cur>rg0@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 76.78125,
+   "tokens_per_complete": 85.3125,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.984375
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     72.74375,
+     80.98125
+    ],
+    "tokens_per_complete": [
+     80.41694915254237,
+     90.71378091872792
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_cur>rg0@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.9484375,
+   "complete": 0.9,
+   "tokens": 21.521875,
+   "tokens_per_complete": 23.913194444444443,
+   "fired": 0.009375,
+   "ci95": {
+    "recall": [
+     0.9265625,
+     0.9671875
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     19.6375,
+     23.36875
+    ],
+    "tokens_per_complete": [
+     21.934931506849313,
+     25.913793103448278
+    ],
+    "fired": [
+     0.0,
+     0.028125
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_cur>rg0@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 54.121875,
+   "tokens_per_complete": 60.135416666666664,
+   "fired": 0.45,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.984375
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     48.778125,
+     60.146875
+    ],
+    "tokens_per_complete": [
+     53.72696245733788,
+     67.51689189189189
+    ],
+    "fired": [
+     0.384375,
+     0.515625
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_cur>rg0@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.9390625,
+   "complete": 0.890625,
+   "tokens": 21.053125,
+   "tokens_per_complete": 23.63859649122807,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9125,
+     0.96328125
+    ],
+    "complete": [
+     0.846875,
+     0.93125
+    ],
+    "tokens": [
+     19.13125,
+     23.034375
+    ],
+    "tokens_per_complete": [
+     21.67109634551495,
+     25.657439446366784
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:cbm_cur>rg0@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 54.121875,
+   "tokens_per_complete": 60.135416666666664,
+   "fired": 0.45,
+   "ci95": {
+    "recall": [
+     0.9640625,
+     0.984375
+    ],
+    "complete": [
+     0.8562500000000001,
+     0.9375
+    ],
+    "tokens": [
+     48.35625,
+     59.9
+    ],
+    "tokens_per_complete": [
+     53.34576271186441,
+     67.21201413427562
+    ],
+    "fired": [
+     0.38125,
+     0.515625
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_cur>lsp@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 52.553125,
+   "tokens_per_complete": 52.553125,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     50.040625,
+     55.203125
+    ],
+    "tokens_per_complete": [
+     50.040625,
+     55.203125
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_cur>lsp@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.9484375,
+   "complete": 0.9,
+   "tokens": 21.296875,
+   "tokens_per_complete": 23.663194444444443,
+   "fired": 0.009375,
+   "ci95": {
+    "recall": [
+     0.92578125,
+     0.96796875
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     19.41875,
+     23.225
+    ],
+    "tokens_per_complete": [
+     21.697594501718214,
+     25.701438848920862
+    ],
+    "fired": [
+     0.0,
+     0.025
+    ]
+   },
+   "pareto": true
+  },
+  "route:cbm_cur>lsp@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 36.565625000000004,
+   "tokens_per_complete": 36.565625,
+   "fired": 0.45,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     33.625,
+     39.525
+    ],
+    "tokens_per_complete": [
+     33.625,
+     39.525
+    ],
+    "fired": [
+     0.3875,
+     0.5125
+    ]
+   },
+   "pareto": false
+  },
+  "route:cbm_cur>lsp@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.9390625,
+   "complete": 0.890625,
+   "tokens": 21.053125,
+   "tokens_per_complete": 23.63859649122807,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9109375,
+     0.9625
+    ],
+    "complete": [
+     0.84375,
+     0.93125
+    ],
+    "tokens": [
+     19.25625,
+     22.91875
+    ],
+    "tokens_per_complete": [
+     21.65986394557823,
+     25.56989247311828
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:cbm_cur>lsp@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 36.565625000000004,
+   "tokens_per_complete": 36.565625,
+   "fired": 0.45,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     33.43125,
+     39.734375
+    ],
+    "tokens_per_complete": [
+     33.43125,
+     39.734375
+    ],
+    "fired": [
+     0.384375,
+     0.515625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>rg0@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 77.66875,
+   "tokens_per_complete": 77.66875,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     73.840625,
+     81.503125
+    ],
+    "tokens_per_complete": [
+     73.840625,
+     81.503125
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>rg0@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 21.940625,
+   "tokens_per_complete": 21.940625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.509375,
+     23.4
+    ],
+    "tokens_per_complete": [
+     20.509375,
+     23.4
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa2_refs>rg0@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 58.40625,
+   "tokens_per_complete": 58.40625,
+   "fired": 0.5,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     53.05625,
+     63.828125
+    ],
+    "tokens_per_complete": [
+     53.05625,
+     63.828125
+    ],
+    "fired": [
+     0.44375,
+     0.559375
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>rg0@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 21.940625,
+   "tokens_per_complete": 21.940625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.609375,
+     23.353125
+    ],
+    "tokens_per_complete": [
+     20.609375,
+     23.353125
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa2_refs>rg0@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 58.40625,
+   "tokens_per_complete": 58.40625,
+   "fired": 0.5,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     52.78125,
+     63.9625
+    ],
+    "tokens_per_complete": [
+     52.78125,
+     63.9625
+    ],
+    "fired": [
+     0.440625,
+     0.5625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>lsp@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 53.440625,
+   "tokens_per_complete": 53.440625,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     51.33125,
+     55.5625
+    ],
+    "tokens_per_complete": [
+     51.33125,
+     55.5625
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>lsp@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 21.940625,
+   "tokens_per_complete": 21.940625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.428125,
+     23.35625
+    ],
+    "tokens_per_complete": [
+     20.428125,
+     23.35625
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa2_refs>lsp@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 39.0625,
+   "tokens_per_complete": 39.0625,
+   "fired": 0.5,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     36.125,
+     42.20625
+    ],
+    "tokens_per_complete": [
+     36.125,
+     42.20625
+    ],
+    "fired": [
+     0.44375,
+     0.559375
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>lsp@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 21.940625,
+   "tokens_per_complete": 21.940625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.434375,
+     23.35625
+    ],
+    "tokens_per_complete": [
+     20.434375,
+     23.35625
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa2_refs>lsp@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 39.0625,
+   "tokens_per_complete": 39.0625,
+   "fired": 0.5,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     36.053125,
+     42.259375
+    ],
+    "tokens_per_complete": [
+     36.053125,
+     42.259375
+    ],
+    "fired": [
+     0.440625,
+     0.559375
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_orig>rg0@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 62.89375,
+   "tokens_per_complete": 78.6171875,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.93828125,
+     0.9609375
+    ],
+    "complete": [
+     0.753125,
+     0.84375
+    ],
+    "tokens": [
+     59.875,
+     65.9875
+    ],
+    "tokens_per_complete": [
+     72.76383763837639,
+     85.34599156118144
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_orig>rg0@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.8166666666666667,
+   "complete": 0.6,
+   "tokens": 30.853125,
+   "tokens_per_complete": 51.421875,
+   "fired": 0.4,
+   "ci95": {
+    "recall": [
+     0.7877604166666666,
+     0.8440104166666667
+    ],
+    "complete": [
+     0.546875,
+     0.653125
+    ],
+    "tokens": [
+     27.8875,
+     33.94375
+    ],
+    "tokens_per_complete": [
+     44.47115384615385,
+     59.89265536723164
+    ],
+    "fired": [
+     0.3375,
+     0.4625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_orig>rg0@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.4666666666666667,
+   "complete": 0.4,
+   "tokens": 7.165625,
+   "tokens_per_complete": 17.9140625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.4083333333333333,
+     0.5291666666666667
+    ],
+    "complete": [
+     0.3375,
+     0.465625
+    ],
+    "tokens": [
+     6.215625,
+     8.15
+    ],
+    "tokens_per_complete": [
+     16.073333333333334,
+     20.269565217391303
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_orig>rg0@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.4666666666666667,
+   "complete": 0.4,
+   "tokens": 7.165625,
+   "tokens_per_complete": 17.9140625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.40729166666666666,
+     0.5229166666666667
+    ],
+    "complete": [
+     0.3375,
+     0.4625
+    ],
+    "tokens": [
+     6.2,
+     8.16875
+    ],
+    "tokens_per_complete": [
+     16.036363636363635,
+     20.079646017699115
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_orig>rg0@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.8166666666666667,
+   "complete": 0.6,
+   "tokens": 30.853125,
+   "tokens_per_complete": 51.421875,
+   "fired": 0.4,
+   "ci95": {
+    "recall": [
+     0.7872395833333333,
+     0.8450520833333334
+    ],
+    "complete": [
+     0.546875,
+     0.65
+    ],
+    "tokens": [
+     27.884375,
+     33.91875
+    ],
+    "tokens_per_complete": [
+     44.50471698113208,
+     59.49438202247191
+    ],
+    "fired": [
+     0.340625,
+     0.4625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_orig>lsp@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 38.665625,
+   "tokens_per_complete": 42.96180555555556,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.984375
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     37.103125,
+     40.290625
+    ],
+    "tokens_per_complete": [
+     40.285234899328856,
+     45.93115942028985
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_orig>lsp@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.8416666666666667,
+   "complete": 0.7,
+   "tokens": 20.225,
+   "tokens_per_complete": 28.892857142857142,
+   "fired": 0.4,
+   "ci95": {
+    "recall": [
+     0.8125,
+     0.871875
+    ],
+    "complete": [
+     0.64375,
+     0.75625
+    ],
+    "tokens": [
+     18.990625,
+     21.509375
+    ],
+    "tokens_per_complete": [
+     26.391111111111112,
+     31.742857142857144
+    ],
+    "fired": [
+     0.3375,
+     0.459375
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_orig>lsp@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.4666666666666667,
+   "complete": 0.4,
+   "tokens": 7.165625,
+   "tokens_per_complete": 17.9140625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.41041666666666665,
+     0.5239583333333333
+    ],
+    "complete": [
+     0.340625,
+     0.45937500000000003
+    ],
+    "tokens": [
+     6.225,
+     8.153125
+    ],
+    "tokens_per_complete": [
+     16.094202898550726,
+     19.972727272727273
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_orig>lsp@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.4666666666666667,
+   "complete": 0.4,
+   "tokens": 7.165625,
+   "tokens_per_complete": 17.9140625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.40729166666666666,
+     0.5239583333333333
+    ],
+    "complete": [
+     0.3375,
+     0.4625
+    ],
+    "tokens": [
+     6.165625,
+     8.1625
+    ],
+    "tokens_per_complete": [
+     16.03053435114504,
+     19.99173553719008
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_orig>lsp@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.8416666666666667,
+   "complete": 0.7,
+   "tokens": 20.225,
+   "tokens_per_complete": 28.892857142857142,
+   "fired": 0.4,
+   "ci95": {
+    "recall": [
+     0.8114583333333333,
+     0.8697916666666666
+    ],
+    "complete": [
+     0.646875,
+     0.753125
+    ],
+    "tokens": [
+     18.99375,
+     21.459375
+    ],
+    "tokens_per_complete": [
+     26.4,
+     31.660194174757283
+    ],
+    "fired": [
+     0.3375,
+     0.4625
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_refs>rg0@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 76.38437499999999,
+   "tokens_per_complete": 95.48046875,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.93828125,
+     0.9609375
+    ],
+    "complete": [
+     0.753125,
+     0.84375
+    ],
+    "tokens": [
+     72.39375,
+     80.55625
+    ],
+    "tokens_per_complete": [
+     87.625,
+     104.31512605042016
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>rg0@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.7333333333333334,
+   "complete": 0.5,
+   "tokens": 24.903125,
+   "tokens_per_complete": 49.80625,
+   "fired": 0.1,
+   "ci95": {
+    "recall": [
+     0.6911458333333333,
+     0.7729166666666667
+    ],
+    "complete": [
+     0.440625,
+     0.55625
+    ],
+    "tokens": [
+     23.234375,
+     26.540625
+    ],
+    "tokens_per_complete": [
+     42.8,
+     58.62837837837838
+    ],
+    "fired": [
+     0.0625,
+     0.1375
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>rg0@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.65625,
+   "tokens_per_complete": 51.640625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.5807291666666666,
+     0.684375
+    ],
+    "complete": [
+     0.340625,
+     0.45937500000000003
+    ],
+    "tokens": [
+     18.96875,
+     22.415625
+    ],
+    "tokens_per_complete": [
+     43.18300653594771,
+     63.714285714285715
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>rg0@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.65625,
+   "tokens_per_complete": 51.640625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.5838541666666667,
+     0.6833333333333333
+    ],
+    "complete": [
+     0.3375,
+     0.4625
+    ],
+    "tokens": [
+     18.909375,
+     22.44375
+    ],
+    "tokens_per_complete": [
+     42.486301369863014,
+     64.50943396226415
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>rg0@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.7333333333333334,
+   "complete": 0.5,
+   "tokens": 24.903125,
+   "tokens_per_complete": 49.80625,
+   "fired": 0.1,
+   "ci95": {
+    "recall": [
+     0.6911458333333333,
+     0.7713541666666667
+    ],
+    "complete": [
+     0.440625,
+     0.55625
+    ],
+    "tokens": [
+     23.290625,
+     26.403125
+    ],
+    "tokens_per_complete": [
+     43.23428571428571,
+     58.53103448275862
+    ],
+    "fired": [
+     0.0625,
+     0.140625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>lsp@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 52.15625,
+   "tokens_per_complete": 57.951388888888886,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.984375
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     49.709375,
+     54.428125
+    ],
+    "tokens_per_complete": [
+     53.784511784511785,
+     62.526881720430104
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>lsp@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.7333333333333334,
+   "complete": 0.5,
+   "tokens": 24.05625,
+   "tokens_per_complete": 48.1125,
+   "fired": 0.1,
+   "ci95": {
+    "recall": [
+     0.6911458333333333,
+     0.775
+    ],
+    "complete": [
+     0.440625,
+     0.559375
+    ],
+    "tokens": [
+     22.4875,
+     25.5875
+    ],
+    "tokens_per_complete": [
+     40.943502824858754,
+     57.09027777777778
+    ],
+    "fired": [
+     0.0625,
+     0.140625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>lsp@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.65625,
+   "tokens_per_complete": 51.640625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.5770833333333333,
+     0.6859375
+    ],
+    "complete": [
+     0.3375,
+     0.4625
+    ],
+    "tokens": [
+     18.9125,
+     22.453125
+    ],
+    "tokens_per_complete": [
+     42.56164383561644,
+     63.304761904761904
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>lsp@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.65625,
+   "tokens_per_complete": 51.640625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.5833333333333334,
+     0.6833333333333333
+    ],
+    "complete": [
+     0.3375,
+     0.4625
+    ],
+    "tokens": [
+     18.928125,
+     22.5125
+    ],
+    "tokens_per_complete": [
+     42.86986301369863,
+     64.22123893805309
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>lsp@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.7333333333333334,
+   "complete": 0.5,
+   "tokens": 24.05625,
+   "tokens_per_complete": 48.1125,
+   "fired": 0.1,
+   "ci95": {
+    "recall": [
+     0.6895833333333333,
+     0.7744791666666666
+    ],
+    "complete": [
+     0.440625,
+     0.559375
+    ],
+    "tokens": [
+     22.59375,
+     25.56875
+    ],
+    "tokens_per_complete": [
+     41.21978021978022,
+     56.611510791366904
+    ],
+    "fired": [
+     0.0625,
+     0.140625
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 87.228125,
+   "tokens_per_complete": 96.92013888888889,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.9640625,
+     0.984375
+    ],
+    "complete": [
+     0.85625,
+     0.9375
+    ],
+    "tokens": [
+     83.8625,
+     90.575
+    ],
+    "tokens_per_complete": [
+     90.52317880794702,
+     104.04
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.5,
+   "tokens_per_complete": 35.0,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9640625,
+     0.984375
+    ],
+    "complete": [
+     0.85625,
+     0.9375
+    ],
+    "tokens": [
+     30.6,
+     32.409375
+    ],
+    "tokens_per_complete": [
+     33.04635761589404,
+     37.15357142857143
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.5,
+   "tokens_per_complete": 35.0,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.98359375
+    ],
+    "complete": [
+     0.859375,
+     0.934375
+    ],
+    "tokens": [
+     30.565625,
+     32.4
+    ],
+    "tokens_per_complete": [
+     33.080536912751676,
+     37.10181818181818
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.5,
+   "tokens_per_complete": 35.0,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.98359375
+    ],
+    "complete": [
+     0.859375,
+     0.934375
+    ],
+    "tokens": [
+     30.61875,
+     32.4
+    ],
+    "tokens_per_complete": [
+     33.17725752508361,
+     37.10948905109489
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.5,
+   "tokens_per_complete": 35.0,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9640625,
+     0.984375
+    ],
+    "complete": [
+     0.85625,
+     0.9375
+    ],
+    "tokens": [
+     30.621875,
+     32.43125
+    ],
+    "tokens_per_complete": [
+     33.104729729729726,
+     37.15302491103203
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 87.228125,
+   "tokens_per_complete": 96.92013888888889,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.984375
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     83.98125,
+     90.5375
+    ],
+    "tokens_per_complete": [
+     90.65319865319866,
+     103.84229390681004
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.9609375
+    ],
+    "complete": [
+     0.75625,
+     0.84375
+    ],
+    "tokens": [
+     53.2,
+     58.321875
+    ],
+    "tokens_per_complete": [
+     63.985130111524164,
+     75.5
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.9609375
+    ],
+    "complete": [
+     0.75625,
+     0.84375
+    ],
+    "tokens": [
+     53.11875,
+     58.340625
+    ],
+    "tokens_per_complete": [
+     64.14391143911439,
+     75.67729083665338
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.93828125,
+     0.9609375
+    ],
+    "complete": [
+     0.753125,
+     0.84375
+    ],
+    "tokens": [
+     53.2,
+     58.446875
+    ],
+    "tokens_per_complete": [
+     64.15413533834587,
+     75.68951612903226
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.9609375
+    ],
+    "complete": [
+     0.75625,
+     0.84375
+    ],
+    "tokens": [
+     53.0125,
+     58.371875
+    ],
+    "tokens_per_complete": [
+     64.19565217391305,
+     75.5546218487395
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>rg0@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 111.45625,
+   "tokens_per_complete": 139.3203125,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.96015625
+    ],
+    "complete": [
+     0.75625,
+     0.8406250000000001
+    ],
+    "tokens": [
+     105.9,
+     116.875
+    ],
+    "tokens_per_complete": [
+     128.62835249042146,
+     151.5
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>rg0@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.9609375
+    ],
+    "complete": [
+     0.75625,
+     0.84375
+    ],
+    "tokens": [
+     53.2,
+     58.221875
+    ],
+    "tokens_per_complete": [
+     64.34200743494424,
+     75.7265306122449
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>rg0@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.9609375
+    ],
+    "complete": [
+     0.75625,
+     0.84375
+    ],
+    "tokens": [
+     53.090625,
+     58.484375
+    ],
+    "tokens_per_complete": [
+     64.33823529411765,
+     75.86507936507937
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>rg0@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.93828125,
+     0.9609375
+    ],
+    "complete": [
+     0.753125,
+     0.84375
+    ],
+    "tokens": [
+     53.340625,
+     58.375
+    ],
+    "tokens_per_complete": [
+     64.364312267658,
+     76.24489795918367
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>rg0@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.96015625
+    ],
+    "complete": [
+     0.75625,
+     0.8406250000000001
+    ],
+    "tokens": [
+     53.1875,
+     58.459375
+    ],
+    "tokens_per_complete": [
+     64.182156133829,
+     75.77777777777777
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>lsp@always": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 87.228125,
+   "tokens_per_complete": 96.92013888888889,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.96484375,
+     0.984375
+    ],
+    "complete": [
+     0.859375,
+     0.9375
+    ],
+    "tokens": [
+     84.10625,
+     90.496875
+    ],
+    "tokens_per_complete": [
+     90.83277591973244,
+     104.02554744525547
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>lsp@empty": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.9601562499999999
+    ],
+    "complete": [
+     0.75625,
+     0.8406250000000001
+    ],
+    "tokens": [
+     53.11875,
+     58.628125
+    ],
+    "tokens_per_complete": [
+     64.3932584269663,
+     76.02834008097166
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>lsp@ambiguous": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.93828125,
+     0.9609375
+    ],
+    "complete": [
+     0.753125,
+     0.84375
+    ],
+    "tokens": [
+     53.25,
+     58.26875
+    ],
+    "tokens_per_complete": [
+     64.22509225092251,
+     75.67338709677419
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>lsp@unresolved": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.93828125,
+     0.96015625
+    ],
+    "complete": [
+     0.753125,
+     0.8406250000000001
+    ],
+    "tokens": [
+     53.109375,
+     58.321875
+    ],
+    "tokens_per_complete": [
+     64.16479400749064,
+     75.95491803278688
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg3>lsp@weak": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 55.728125,
+   "tokens_per_complete": 69.66015625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9390625,
+     0.96015625
+    ],
+    "complete": [
+     0.75625,
+     0.8406250000000001
+    ],
+    "tokens": [
+     53.178125,
+     58.35
+    ],
+    "tokens_per_complete": [
+     64.48659003831418,
+     75.62605042016807
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "oracle": {
+   "n_targets": 320,
+   "n_repos": 64,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 21.940625,
+   "tokens_per_complete": 21.940625,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.546875,
+     23.334375
+    ],
+    "tokens_per_complete": [
+     20.546875,
+     23.334375
+    ]
+   },
+   "pareto": false
+  }
+ }
+}

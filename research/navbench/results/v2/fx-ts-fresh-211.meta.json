@@ -1,0 +1,47 @@
+{
+ "repo": "fx-ts-fresh-211",
+ "lang": "ts",
+ "layer": "fixture",
+ "started": 1791487339.701329,
+ "adapters": [
+  "rg0",
+  "rg3",
+  "lsp",
+  "codexa",
+  "codexa2",
+  "cbm_cur",
+  "cbm_057"
+ ],
+ "tasks": [
+  "T1",
+  "T2",
+  "T3"
+ ],
+ "t3_depth": 2,
+ "index_frame_s": 0.9740135249999184,
+ "frame": {
+  "files": 5,
+  "decls": 29,
+  "calls": 36,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.17860392400007186,
+ "codexa_ok": true,
+ "codexa2_index_s": 0.18304373900036808,
+ "codexa2_ok": true,
+ "cbm_cur_index_s": 10.863001273000009,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.03985774000011588,
+ "cbm_057_ok": true,
+ "unavailable": {},
+ "coverage": {
+  "frame_targets": 29,
+  "codexa_has": 29,
+  "codexa_nodes": 29,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "split": "fresh",
+ "gate_messages": [],
+ "finished": 1791487366.132241
+}

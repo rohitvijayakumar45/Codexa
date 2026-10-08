@@ -1,0 +1,93 @@
+{
+ "repo": "immer",
+ "lang": "ts",
+ "layer": "natural",
+ "started": 1791488236.8376741,
+ "adapters": [
+  "rg0",
+  "rg3",
+  "lsp",
+  "codexa",
+  "codexa2",
+  "cbm_cur",
+  "cbm_057"
+ ],
+ "tasks": [
+  "T1",
+  "T2",
+  "T3"
+ ],
+ "t3_depth": 2,
+ "index_frame_s": 2.3863296710001123,
+ "frame": {
+  "files": 54,
+  "decls": 387,
+  "calls": 6948,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.9018712510001023,
+ "codexa_ok": true,
+ "codexa2_index_s": 1.6437141090000296,
+ "codexa2_ok": true,
+ "cbm_cur_index_s": 12.129022175000046,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.4128252370001064,
+ "cbm_057_ok": true,
+ "unavailable": {},
+ "coverage": {
+  "frame_targets": 241,
+  "codexa_has": 223,
+  "codexa_nodes": 334,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|0-0": [
+   15,
+   2
+  ],
+  "function|3-9": [
+   42,
+   7
+  ],
+  "function|0-0": [
+   70,
+   8
+  ],
+  "function|1-2": [
+   74,
+   9
+  ],
+  "class|3-9": [
+   1,
+   2
+  ],
+  "method|10-inf": [
+   6,
+   2
+  ],
+  "function|10-inf": [
+   14,
+   2
+  ],
+  "method|1-2": [
+   6,
+   2
+  ],
+  "method|3-9": [
+   10,
+   2
+  ],
+  "class|1-2": [
+   2,
+   2
+  ],
+  "class|0-0": [
+   1,
+   2
+  ]
+ },
+ "n_cond_frame": 120,
+ "gate_messages": [],
+ "finished": 1791488296.4065173
+}

@@ -1,0 +1,105 @@
+{
+ "repo": "httpx",
+ "lang": "py",
+ "layer": "natural",
+ "started": 1791488070.3743734,
+ "adapters": [
+  "rg0",
+  "rg3",
+  "lsp",
+  "codexa",
+  "codexa2",
+  "cbm_cur",
+  "cbm_057"
+ ],
+ "tasks": [
+  "T1",
+  "T2",
+  "T3"
+ ],
+ "t3_depth": 2,
+ "index_frame_s": 0.9147440280003138,
+ "frame": {
+  "files": 60,
+  "decls": 1241,
+  "calls": 4189,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "provider_warmup": {
+  "warm_s": 13.237787961959839,
+  "probe_rounds": 3,
+  "stable": true,
+  "probe_ref_counts": [
+   313,
+   8,
+   73,
+   53,
+   11
+  ]
+ },
+ "codexa_index_s": 1.2553485690000343,
+ "codexa_ok": true,
+ "codexa2_index_s": 1.8777391379999244,
+ "codexa2_ok": true,
+ "cbm_cur_index_s": 13.104867596000076,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.33022696599982737,
+ "cbm_057_ok": true,
+ "unavailable": {},
+ "coverage": {
+  "frame_targets": 533,
+  "codexa_has": 521,
+  "codexa_nodes": 1193,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "method|0-0": [
+   122,
+   11
+  ],
+  "function|0-0": [
+   6,
+   2
+  ],
+  "method|1-2": [
+   59,
+   8
+  ],
+  "method|3-9": [
+   21,
+   3
+  ],
+  "method|10-inf": [
+   9,
+   2
+  ],
+  "class|1-2": [
+   19,
+   3
+  ],
+  "function|1-2": [
+   26,
+   3
+  ],
+  "class|3-9": [
+   7,
+   2
+  ],
+  "class|0-0": [
+   12,
+   2
+  ],
+  "class|10-inf": [
+   11,
+   2
+  ],
+  "function|3-9": [
+   8,
+   2
+  ]
+ },
+ "n_cond_frame": 205,
+ "gate_messages": [],
+ "finished": 1791488157.9336443
+}

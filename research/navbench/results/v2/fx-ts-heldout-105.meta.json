@@ -1,0 +1,47 @@
+{
+ "repo": "fx-ts-heldout-105",
+ "lang": "ts",
+ "layer": "fixture",
+ "started": 1791486210.4358153,
+ "adapters": [
+  "rg0",
+  "rg3",
+  "lsp",
+  "codexa",
+  "codexa2",
+  "cbm_cur",
+  "cbm_057"
+ ],
+ "tasks": [
+  "T1",
+  "T2",
+  "T3"
+ ],
+ "t3_depth": 2,
+ "index_frame_s": 1.2602901239999937,
+ "frame": {
+  "files": 5,
+  "decls": 29,
+  "calls": 36,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "codexa_index_s": 0.47683832400002757,
+ "codexa_ok": true,
+ "codexa2_index_s": 0.1596081690001938,
+ "codexa2_ok": true,
+ "cbm_cur_index_s": 10.01334445700013,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.03460842999993474,
+ "cbm_057_ok": true,
+ "unavailable": {},
+ "coverage": {
+  "frame_targets": 29,
+  "codexa_has": 29,
+  "codexa_nodes": 29,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "split": "heldout",
+ "gate_messages": [],
+ "finished": 1791486237.2161126
+}

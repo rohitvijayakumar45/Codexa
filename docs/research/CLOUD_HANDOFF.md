@@ -8,6 +8,17 @@
 Linux box with network access, gcc/make, Node 22 and Python ≥ 3.12: the environment where the
 frozen `/work/nb` run happened.
 
+## Cloud run status (2026-10-08, branch `claude/upbeat-hamilton-zhq0os`)
+
+| Section | Status |
+|---|---|
+| §1 NavBench v2 | **Done.** All 81 jobs ran. The frozen arms reproduce `results/main`: rg, LSP and T2 are identical; the only differences are known codebase-memory noise, plus G1 rows that hit an output cap. Results and write-up: `research/navbench/results/v2/RESULTS_V2.md`. **G1-v2 does not transfer to real code:** layer-C recall is 0.69 vs v1's 0.76, because of star re-exports and calls dispatched to overrides. **No routing policy beats rg0 on real code** at matched completeness. |
+| §2 Context rot | **Blocked.** The environment's network policy denies `zenodo.org`, so `context_files.csv` cannot be downloaded. Either allow the host or commit the CSV. GitHub clones work. |
+| §3 Agent study | The `cbm_cur` condition is wired and tested in `ab/run.py` (no LLM). The full run waits on a pinned model/provider, an API key and a budget, and on harder tasks (the pilot hit its ceiling). |
+| §4 Claims audit | Not started (desk work; needs a second human coder for κ). |
+
+The scoring fix from NavBench review round 3 (S-ind rows keyed by (declaration, sample)) is merged into `nb/score.py` here.
+
 ## 0. Setup (once)
 
 ```bash
