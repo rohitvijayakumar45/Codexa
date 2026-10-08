@@ -239,8 +239,46 @@ def _walk(node: Node, types: set[str]):
         yield from _walk(child, types)
 
 
+def resolution_mode() -> str:
+    """Call-resolution algorithm: "v2" (default; scope/import/receiver-aware, see resolve_v2.py) or
+    "v1" (the original single-pass name heuristic, kept bit-for-bit so results recorded against it —
+    e.g. the frozen NavBench study — stay reproducible). Read at call time from
+    CODEXA_CALL_RESOLUTION."""
+    import os
+
+    mode = os.getenv("CODEXA_CALL_RESOLUTION", "v2").strip().lower()
+    return mode if mode in ("v1", "v2") else "v2"
+
+
+def _discover(root: Path) -> tuple[Analysis, dict[str, Path]]:
+    """File discovery shared by both resolvers: (Analysis with files/all_files filled, rel -> path)."""
+    result = Analysis()
+    source_files: list[Path] = []
+    other_rel: list[str] = []
+    for p in sorted(root.rglob("*")):
+        if any(part in _SKIP_DIRS for part in p.parts):
+            continue
+        if not p.is_file():
+            continue
+        if p.suffix.lower() in _SRC_EXT and not p.name.endswith(".d.ts"):
+            if len(source_files) < _MAX_FILES:
+                source_files.append(p)
+        elif len(other_rel) < _MAX_ALL_FILES:
+            other_rel.append(_rel(p, root))
+        if len(source_files) >= _MAX_FILES and len(other_rel) >= _MAX_ALL_FILES:
+            break
+    by_rel = {_rel(p, root): p for p in source_files}
+    result.files = list(by_rel.keys())
+    result.all_files = result.files + other_rel
+    return result, by_rel
+
+
 def analyze_repo(root: Path) -> Analysis:
     root = root.resolve()
+    if resolution_mode() == "v2":
+        from backend.repository.resolve_v2 import analyze_repo_v2
+
+        return analyze_repo_v2(root)
     result = Analysis()
 
     source_files: list[Path] = []

@@ -17,9 +17,12 @@ from pathlib import Path
 from backend.agents.llm import LLMClient
 from backend.memory.store import MemoryStore
 from backend.repository.analyze import Symbol
+from backend.repository.annotation_policy import (
+    DEFAULT_BUDGET, _rank_callers, configured_budget, configured_policy, rank_symbols,
+)
 
-_MAX_ANNOTATE_PER_RUN = 80
-_CLASS_WEIGHT = 3  # see _priority
+# Default per-run cap; the live value is CODEXA_ANNOTATE_BUDGET (annotation_policy.configured_budget).
+_MAX_ANNOTATE_PER_RUN = DEFAULT_BUDGET
 _SOURCE = "symbol_annotations"
 _TITLE = "Symbol semantic annotations"
 
@@ -70,30 +73,25 @@ def _priority(symbols: list[Symbol], calls: list[tuple[str, str]] | None) -> lis
 
     So: library code before tests, public before private, then by how many call sites point at the
     symbol, with a class counted as if three things called it.
+
+    Implementation lives in annotation_policy (policy "callers") alongside the alternatives it is
+    benchmarked against.
     """
-    callers: dict[str, int] = {}
-    for _src, dst in calls or []:
-        name = dst.rsplit("#", 1)[-1].rsplit(".", 1)[-1]
-        callers[name] = callers.get(name, 0) + 1
-
-    def score(sym: Symbol) -> tuple[int, int, int]:
-        in_tests = sym.file.startswith(("tests/", "test/")) or "/tests/" in sym.file or sym.file.rsplit("/", 1)[-1].startswith("test_")
-        public = not sym.name.startswith("_")
-        weight = callers.get(sym.name, 0) + (_CLASS_WEIGHT if sym.kind == "class" else 0)
-        return (0 if in_tests else 1, 1 if public else 0, weight)
-
-    return sorted(symbols, key=score, reverse=True)
+    return _rank_callers(symbols, calls)
 
 
 def annotate_repository_symbols(
     repository: str, dest: Path, symbols: list[Symbol], *, store: MemoryStore, llm: LLMClient,
-    calls: list[tuple[str, str]] | None = None,
+    calls: list[tuple[str, str]] | None = None, policy: str | None = None, budget: int | None = None,
 ) -> dict[str, int]:
-    """Annotate up to _MAX_ANNOTATE_PER_RUN symbols whose content hash changed (or is new), most
-    important first (see _priority).
+    """Annotate up to `budget` symbols whose content hash changed (or is new), in the order the
+    selection `policy` ranks them (annotation_policy; defaults from CODEXA_ANNOTATE_POLICY /
+    CODEXA_ANNOTATE_BUDGET, i.e. "callers" / 80).
 
     Returns {"annotated": n, "reused": n, "skipped": n} for observability.
     """
+    policy = policy or configured_policy()
+    budget = configured_budget() if budget is None else budget
     blob = _load_blob(store, repository)
     stats = {"annotated": 0, "reused": 0, "skipped": 0}
     file_cache: dict[str, list[str]] = {}
@@ -102,13 +100,22 @@ def annotate_repository_symbols(
     # requests per model per key per day, and the task planner and delegated workers need them.
     models = sorted(models, key=lambda m: m.startswith("gemini/"))
 
-    for sym in _priority(symbols, calls):
+    churn = None
+    if policy == "git_churn":
+        from backend.repository.annotation_policy import mine_file_churn
+
+        churn = mine_file_churn(dest)
+    ranked = rank_symbols(symbols, calls, policy, file_churn=churn)
+    ranked_keys = {id(s) for s in ranked}
+    # Symbols the policy does not rank eagerly (all of them, for "lazy") still count as reused when
+    # a current annotation exists — only fresh LLM calls are rationed.
+    for sym in ranked + [s for s in symbols if id(s) not in ranked_keys]:
         stable_id = f"symbol://{repository}/{sym.file}#{sym.qualname or sym.name}"
         prior = blob.get(stable_id)
         if prior and prior.get("hash") == sym.content_hash:
             stats["reused"] += 1
             continue
-        if stats["annotated"] >= _MAX_ANNOTATE_PER_RUN:
+        if stats["annotated"] >= budget or id(sym) not in ranked_keys:
             stats["skipped"] += 1
             continue
 
@@ -147,6 +154,50 @@ def annotate_repository_symbols(
 
     _save_blob(store, repository, blob)
     return stats
+
+
+def _span_hash(lines: list[str], line: int, end_line: int) -> tuple[str, str]:
+    """(snippet, content_hash) for a 1-based inclusive line span — the same hash analyze.py computes
+    for Symbol.content_hash, so an on-demand annotation is reused/invalidated exactly like an eager one."""
+    import hashlib
+
+    end = end_line if end_line >= line else line
+    span = "\n".join(lines[max(0, line - 1):end])
+    return span, hashlib.sha256(span.encode("utf-8", errors="ignore")).hexdigest()[:16]
+
+
+def annotate_on_demand(
+    repository: str, dest: Path, *, file: str, qualname: str, kind: str, line: int, end_line: int,
+    content_hash: str | None, store: MemoryStore, llm: LLMClient,
+) -> str | None:
+    """The `lazy` policy: write a symbol's meaning the first time an agent asks about it, then cache
+    it under the same content-hash key an eager pass would use. Returns the summary, or None."""
+    stable_id = f"symbol://{repository}/{file}#{qualname}"
+    blob = _load_blob(store, repository)
+    try:
+        lines = (dest / file).read_text(encoding="utf-8", errors="ignore").split("\n")
+    except OSError:
+        return None
+    snippet, span_hash = _span_hash(lines, line, end_line)
+    current_hash = content_hash or span_hash
+    prior = blob.get(stable_id)
+    if prior and prior.get("hash") == current_hash:
+        return prior.get("summary")
+    if not snippet.strip():
+        return None
+    models = sorted(llm.models_for_task("summary") or [llm.default_model], key=lambda m: m.startswith("gemini/"))
+    prompt = (
+        f"Describe what this {kind} named `{qualname}` does in ONE short sentence — its "
+        "purpose and any notable side effects. Be concrete and specific, no filler, no preamble.\n\n"
+        f"```\n{snippet[:1500]}\n```"
+    )
+    summary = _annotate_one(llm, models, prompt)
+    if not summary:
+        return None
+    blob[stable_id] = {"hash": current_hash, "summary": summary, "file": file,
+                       "name": qualname.rsplit(".", 1)[-1], "qualname": qualname, "on_demand": "1"}
+    _save_blob(store, repository, blob)
+    return summary
 
 
 def get_annotation(store: MemoryStore, repository: str, file: str, name: str) -> str | None:

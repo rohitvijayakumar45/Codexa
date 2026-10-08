@@ -1,0 +1,6 @@
+rows 100  fact/status mismatches 0  token-only mismatches 54
+  rg0:tok 14 [(('svc101/core.py:4:4', 'T1', 'rg0'), 215, 224), (('svc101/core.py:8:4', 'T1', 'rg0'), 115, 119)]
+  rg3:tok 14 [(('svc101/core.py:4:4', 'T1', 'rg3'), 614, 645), (('svc101/core.py:8:4', 'T1', 'rg3'), 459, 475)]
+  lsp:tok 12 [(('svc101/core.py:4:4', 'T1', 'lsp'), 296, 596), (('svc101/core.py:8:4', 'T1', 'lsp'), 239, 479)]
+  lsp_def:tok 10 [(('svc101/core.py:4:4', 'T2', 'lsp_def'), 59, 119), (('svc101/core.py:8:4', 'T2', 'lsp_def'), 59, 119)]
+  rg_def:tok 4 [(('svc101/core.py:4:4', 'T2', 'rg_def'), 44, 45), (('svc101/core.py:16:8', 'T2', 'rg_def'), 67, 68)]

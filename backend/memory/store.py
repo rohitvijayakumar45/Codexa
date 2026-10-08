@@ -41,6 +41,11 @@ class MemoryRecord(BaseModel):
     trust: float = 1.0
     corroboration_count: int = 1
     invalid_at: datetime | None = None
+    # Code anchors (backend/memory/anchors.py) — concrete, hashable pieces of the repository this
+    # record's claim depends on. When any of them changes, the record is deterministically
+    # invalidated (descriptive types) or flagged outdated (episodic). Empty = unanchored = never
+    # touched by an anchor sweep.
+    anchors: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RepositorySummary(BaseModel):
@@ -81,6 +86,7 @@ class MemoryStore:
         content: str,
         metadata: dict[str, Any] | None = None,
         trust: float = 1.0,
+        anchors: list[dict[str, Any]] | None = None,
     ) -> MemoryRecord:
         """Adds a record. If an active record already exists for this exact (repository,
         memory_type, title) — the key every real write site in this codebase already treats as
@@ -93,6 +99,7 @@ class MemoryStore:
         if memory_type not in MEMORY_TYPES:
             raise ValueError(f"unknown memory_type: {memory_type}")
         metadata = dict(metadata or {})
+        anchors = [dict(a) for a in (anchors or [])]
 
         with self._lock:
             existing = next(
@@ -111,6 +118,13 @@ class MemoryStore:
                     existing.corroboration_count += 1
                     existing.trust = min(1.0, existing.trust + 0.05)
                     existing.metadata["last_corroborated_reason"] = resolution.reason
+                    # The same claim re-observed against the current code: re-pin it to that code,
+                    # otherwise a corroborated record keeps anchors from the tree it was first
+                    # written against and the next sweep invalidates a fact that was just confirmed.
+                    if anchors:
+                        existing.anchors = anchors
+                        existing.metadata.pop("outdated_at", None)
+                        existing.metadata.pop("outdated_reason", None)
                     self._save()
                     return existing
                 if resolution.action == "supersede":
@@ -121,7 +135,7 @@ class MemoryStore:
                         id=str(uuid4()), repository=repository, memory_type=memory_type,
                         title=title, content=content, created_at=datetime.now(UTC),
                         metadata={**metadata, "rejected_reason": resolution.reason, "conflicts_with": existing.id},
-                        trust=trust, invalid_at=datetime.now(UTC),
+                        trust=trust, invalid_at=datetime.now(UTC), anchors=anchors,
                     )
                     self._records.append(record)
                     self._save()
@@ -136,10 +150,35 @@ class MemoryStore:
                 created_at=datetime.now(UTC),
                 metadata=metadata,
                 trust=trust,
+                anchors=anchors,
             )
             self._records.append(record)
             self._save()
         return record
+
+    def get(self, record_id: str) -> MemoryRecord | None:
+        return next((r for r in self._records if r.id == record_id), None)
+
+    def invalidate(self, record_id: str, *, reason: str, when: datetime | None = None) -> bool:
+        """Soft-invalidate one record (kept for audit, hidden from ordinary retrieval). Returns
+        False if the record does not exist or is already invalid."""
+        with self._lock:
+            record = self.get(record_id)
+            if record is None or record.invalid_at is not None:
+                return False
+            record.invalid_at = when or datetime.now(UTC)
+            record.metadata["invalidated_reason"] = reason
+            self._save()
+            return True
+
+    def update_metadata(self, record_id: str, updates: dict[str, Any]) -> bool:
+        with self._lock:
+            record = self.get(record_id)
+            if record is None:
+                return False
+            record.metadata.update(updates)
+            self._save()
+            return True
 
     def remove(self, repository: str, source: str | None = None) -> int:
         """Drop a repository's memories (optionally only those from a given source). Returns count."""

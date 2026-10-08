@@ -1,0 +1,1107 @@
+{
+ "layer": "A",
+ "token_key": "tok_msa_cl100k",
+ "n_targets": 160,
+ "policies": {
+  "single:codexa_refs": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.75625,
+   "tokens_per_complete": 51.890625,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.5614583333333333,
+     0.70625
+    ],
+    "complete": [
+     0.3125,
+     0.4875
+    ],
+    "tokens": [
+     18.13125,
+     23.375
+    ],
+    "tokens_per_complete": [
+     39.688311688311686,
+     69.86538461538461
+    ]
+   },
+   "pareto": true
+  },
+  "single:codexa2_refs": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 22.05,
+   "tokens_per_complete": 22.05,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.0125,
+     24.0125
+    ],
+    "tokens_per_complete": [
+     20.0125,
+     24.0125
+    ]
+   },
+   "pareto": true
+  },
+  "single:rg0": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 56.05625,
+   "tokens_per_complete": 70.0703125,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.934375,
+     0.9640625
+    ],
+    "complete": [
+     0.7375,
+     0.8562500000000001
+    ],
+    "tokens": [
+     52.3375,
+     59.925
+    ],
+    "tokens_per_complete": [
+     62.98540145985402,
+     79.0
+    ]
+   },
+   "pareto": false
+  },
+  "single:lsp": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.650000000000002,
+   "tokens_per_complete": 35.166666666666664,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     0.959375,
+     0.9875
+    ],
+    "complete": [
+     0.8375,
+     0.95
+    ],
+    "tokens": [
+     30.38125,
+     32.9625
+    ],
+    "tokens_per_complete": [
+     32.673202614379086,
+     38.411764705882355
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>rg0@always": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 76.8125,
+   "tokens_per_complete": 96.015625,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.934375,
+     0.965625
+    ],
+    "complete": [
+     0.7375,
+     0.8625
+    ],
+    "tokens": [
+     70.775,
+     83.2
+    ],
+    "tokens_per_complete": [
+     84.33834586466165,
+     109.24793388429752
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>rg0@empty": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.7333333333333334,
+   "complete": 0.5,
+   "tokens": 25.0,
+   "tokens_per_complete": 50.0,
+   "fired": 0.1,
+   "ci95": {
+    "recall": [
+     0.671875,
+     0.7895833333333333
+    ],
+    "complete": [
+     0.41250000000000003,
+     0.5875
+    ],
+    "tokens": [
+     22.90625,
+     27.31875
+    ],
+    "tokens_per_complete": [
+     40.61702127659574,
+     63.338235294117645
+    ],
+    "fired": [
+     0.05,
+     0.15625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>rg0@ambiguous": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.75625,
+   "tokens_per_complete": 51.890625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.5635416666666667,
+     0.7052083333333333
+    ],
+    "complete": [
+     0.3125,
+     0.4875
+    ],
+    "tokens": [
+     18.26875,
+     23.11875
+    ],
+    "tokens_per_complete": [
+     39.486111111111114,
+     70.68
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_refs>rg0@unresolved": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.75625,
+   "tokens_per_complete": 51.890625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.5645833333333333,
+     0.7052083333333333
+    ],
+    "complete": [
+     0.3125,
+     0.4875
+    ],
+    "tokens": [
+     18.15,
+     23.30625
+    ],
+    "tokens_per_complete": [
+     39.526315789473685,
+     69.62264150943396
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_refs>rg0@weak": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.7333333333333334,
+   "complete": 0.5,
+   "tokens": 25.0,
+   "tokens_per_complete": 50.0,
+   "fired": 0.1,
+   "ci95": {
+    "recall": [
+     0.6739583333333333,
+     0.790625
+    ],
+    "complete": [
+     0.41875,
+     0.58125
+    ],
+    "tokens": [
+     22.7625,
+     27.15
+    ],
+    "tokens_per_complete": [
+     40.51063829787234,
+     62.95652173913044
+    ],
+    "fired": [
+     0.05,
+     0.15625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>lsp@always": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 52.40625,
+   "tokens_per_complete": 58.229166666666664,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.9609375,
+     0.9875
+    ],
+    "complete": [
+     0.84375,
+     0.95
+    ],
+    "tokens": [
+     48.91875,
+     55.74375
+    ],
+    "tokens_per_complete": [
+     52.431372549019606,
+     65.26428571428572
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>lsp@empty": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.7333333333333334,
+   "complete": 0.5,
+   "tokens": 24.15625,
+   "tokens_per_complete": 48.3125,
+   "fired": 0.1,
+   "ci95": {
+    "recall": [
+     0.671875,
+     0.7885416666666667
+    ],
+    "complete": [
+     0.41250000000000003,
+     0.58125
+    ],
+    "tokens": [
+     22.08125,
+     26.4
+    ],
+    "tokens_per_complete": [
+     38.858695652173914,
+     62.044117647058826
+    ],
+    "fired": [
+     0.05,
+     0.15625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa_refs>lsp@ambiguous": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.75625,
+   "tokens_per_complete": 51.890625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.559375,
+     0.7041666666666666
+    ],
+    "complete": [
+     0.3125,
+     0.4875
+    ],
+    "tokens": [
+     18.3375,
+     23.325
+    ],
+    "tokens_per_complete": [
+     39.93150684931507,
+     70.85185185185185
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_refs>lsp@unresolved": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.6333333333333333,
+   "complete": 0.4,
+   "tokens": 20.75625,
+   "tokens_per_complete": 51.890625,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.5583333333333333,
+     0.7041666666666666
+    ],
+    "complete": [
+     0.3125,
+     0.49375
+    ],
+    "tokens": [
+     18.1875,
+     23.275
+    ],
+    "tokens_per_complete": [
+     39.09722222222222,
+     69.5925925925926
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa_refs>lsp@weak": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.7333333333333334,
+   "complete": 0.5,
+   "tokens": 24.15625,
+   "tokens_per_complete": 48.3125,
+   "fired": 0.1,
+   "ci95": {
+    "recall": [
+     0.671875,
+     0.7864583333333334
+    ],
+    "complete": [
+     0.41250000000000003,
+     0.58125
+    ],
+    "tokens": [
+     22.05,
+     26.25
+    ],
+    "tokens_per_complete": [
+     38.86516853932584,
+     61.92424242424242
+    ],
+    "fired": [
+     0.05,
+     0.15625
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>rg0@always": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 78.10625,
+   "tokens_per_complete": 78.10625,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     72.275,
+     83.65625
+    ],
+    "tokens_per_complete": [
+     72.275,
+     83.65625
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>rg0@empty": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 22.05,
+   "tokens_per_complete": 22.05,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.04375,
+     24.11875
+    ],
+    "tokens_per_complete": [
+     20.04375,
+     24.11875
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa2_refs>rg0@ambiguous": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 58.76875,
+   "tokens_per_complete": 58.76875,
+   "fired": 0.5,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     50.93125,
+     66.93125
+    ],
+    "tokens_per_complete": [
+     50.93125,
+     66.93125
+    ],
+    "fired": [
+     0.41875,
+     0.58125
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>rg0@unresolved": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 22.05,
+   "tokens_per_complete": 22.05,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     19.95625,
+     24.0875
+    ],
+    "tokens_per_complete": [
+     19.95625,
+     24.0875
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa2_refs>rg0@weak": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 58.76875,
+   "tokens_per_complete": 58.76875,
+   "fired": 0.5,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     51.34375,
+     66.825
+    ],
+    "tokens_per_complete": [
+     51.34375,
+     66.825
+    ],
+    "fired": [
+     0.41875,
+     0.5875
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>lsp@always": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 53.7,
+   "tokens_per_complete": 53.7,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     50.5625,
+     56.83125
+    ],
+    "tokens_per_complete": [
+     50.5625,
+     56.83125
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>lsp@empty": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 22.05,
+   "tokens_per_complete": 22.05,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.025,
+     24.04375
+    ],
+    "tokens_per_complete": [
+     20.025,
+     24.04375
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa2_refs>lsp@ambiguous": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 39.25625,
+   "tokens_per_complete": 39.25625,
+   "fired": 0.5,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     34.91875,
+     43.63125
+    ],
+    "tokens_per_complete": [
+     34.91875,
+     43.63125
+    ],
+    "fired": [
+     0.41875,
+     0.58125
+    ]
+   },
+   "pareto": false
+  },
+  "route:codexa2_refs>lsp@unresolved": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 22.05,
+   "tokens_per_complete": 22.05,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     19.94375,
+     24.162499999999998
+    ],
+    "tokens_per_complete": [
+     19.94375,
+     24.1625
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": true
+  },
+  "route:codexa2_refs>lsp@weak": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 39.25625,
+   "tokens_per_complete": 39.25625,
+   "fired": 0.5,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     34.84375,
+     43.7375
+    ],
+    "tokens_per_complete": [
+     34.84375,
+     43.7375
+    ],
+    "fired": [
+     0.41875,
+     0.58125
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@always": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 87.70625,
+   "tokens_per_complete": 97.45138888888889,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.959375,
+     0.9875
+    ],
+    "complete": [
+     0.8375,
+     0.95
+    ],
+    "tokens": [
+     83.2,
+     92.49375
+    ],
+    "tokens_per_complete": [
+     89.13513513513513,
+     108.5912408759124
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@empty": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 56.05625,
+   "tokens_per_complete": 70.0703125,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.934375,
+     0.965625
+    ],
+    "complete": [
+     0.7375,
+     0.8625
+    ],
+    "tokens": [
+     52.5,
+     59.9
+    ],
+    "tokens_per_complete": [
+     62.47826086956522,
+     78.96610169491525
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@ambiguous": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 56.05625,
+   "tokens_per_complete": 70.0703125,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.934375,
+     0.965625
+    ],
+    "complete": [
+     0.7375,
+     0.8625
+    ],
+    "tokens": [
+     52.356249999999996,
+     59.88125
+    ],
+    "tokens_per_complete": [
+     62.40875912408759,
+     79.27272727272727
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@unresolved": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 56.05625,
+   "tokens_per_complete": 70.0703125,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.934375,
+     0.9640624999999999
+    ],
+    "complete": [
+     0.7375,
+     0.8562500000000001
+    ],
+    "tokens": [
+     52.2,
+     59.94375
+    ],
+    "tokens_per_complete": [
+     62.25373134328358,
+     78.9
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:rg0>lsp@weak": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.95,
+   "complete": 0.8,
+   "tokens": 56.05625,
+   "tokens_per_complete": 70.0703125,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9328125,
+     0.965625
+    ],
+    "complete": [
+     0.7312500000000001,
+     0.8625
+    ],
+    "tokens": [
+     52.3625,
+     59.95
+    ],
+    "tokens_per_complete": [
+     62.484848484848484,
+     79.11764705882354
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@always": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 87.70625,
+   "tokens_per_complete": 97.45138888888889,
+   "fired": 1.0,
+   "ci95": {
+    "recall": [
+     0.9609375,
+     0.9875
+    ],
+    "complete": [
+     0.84375,
+     0.95
+    ],
+    "tokens": [
+     83.05,
+     92.1875
+    ],
+    "tokens_per_complete": [
+     88.67105263157895,
+     107.6376811594203
+    ],
+    "fired": [
+     1.0,
+     1.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@empty": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.650000000000002,
+   "tokens_per_complete": 35.166666666666664,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.959375,
+     0.9875
+    ],
+    "complete": [
+     0.8375,
+     0.95
+    ],
+    "tokens": [
+     30.25,
+     33.01875
+    ],
+    "tokens_per_complete": [
+     32.51006711409396,
+     38.46715328467153
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@ambiguous": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.650000000000002,
+   "tokens_per_complete": 35.166666666666664,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.9609375,
+     0.9890625
+    ],
+    "complete": [
+     0.84375,
+     0.95625
+    ],
+    "tokens": [
+     30.28125,
+     32.95
+    ],
+    "tokens_per_complete": [
+     32.406666666666666,
+     38.289855072463766
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@unresolved": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.650000000000002,
+   "tokens_per_complete": 35.166666666666664,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.959375,
+     0.9875
+    ],
+    "complete": [
+     0.8375,
+     0.95
+    ],
+    "tokens": [
+     30.35,
+     32.9625
+    ],
+    "tokens_per_complete": [
+     32.64383561643836,
+     38.38235294117647
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "route:lsp>rg0@weak": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 0.975,
+   "complete": 0.9,
+   "tokens": 31.650000000000002,
+   "tokens_per_complete": 35.166666666666664,
+   "fired": 0.0,
+   "ci95": {
+    "recall": [
+     0.959375,
+     0.9875
+    ],
+    "complete": [
+     0.8375,
+     0.95
+    ],
+    "tokens": [
+     30.26875,
+     32.96875
+    ],
+    "tokens_per_complete": [
+     32.54362416107382,
+     38.343511450381676
+    ],
+    "fired": [
+     0.0,
+     0.0
+    ]
+   },
+   "pareto": false
+  },
+  "oracle": {
+   "n_targets": 160,
+   "n_repos": 32,
+   "recall": 1.0,
+   "complete": 1.0,
+   "tokens": 22.05,
+   "tokens_per_complete": 22.05,
+   "fired": null,
+   "ci95": {
+    "recall": [
+     1.0,
+     1.0
+    ],
+    "complete": [
+     1.0,
+     1.0
+    ],
+    "tokens": [
+     20.01875,
+     24.18125
+    ],
+    "tokens_per_complete": [
+     20.01875,
+     24.18125
+    ]
+   },
+   "pareto": false
+  }
+ }
+}

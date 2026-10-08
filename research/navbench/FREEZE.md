@@ -103,3 +103,11 @@ None by outcome. Every target receives every arm; failures, timeouts, empty answ
   - R4: strict caller credit for location arms (only gold call sites credit a caller);
   - R5: S-cond vs S-ind, post-stratified on repository × kind × language-server call fan-out bucket.
 - Apart from the scoring fix above, none of these change the frozen tools, targets, scoring or primary contrast.
+
+## Post-freeze additions (2026-10-08; do not change the frozen configuration)
+See FEATURES.md. Default `nb.run` arguments reproduce the frozen arms, sampling and tasks; new arms
+(`codexa2_*`), T3 and the `fresh` fixture split are opt-in. Codexa's call resolution now defaults to
+v2 in the product; the frozen G1 arms pin `CODEXA_CALL_RESOLUTION=v1` (nb/adapters.py), verified
+fact-identical to the stored raw results on 100 regenerated held-out rows
+(results/features-local/equivalence_v1_frozen.txt). The generator now also records non-target call
+edges in the manifest (T3 gold); every generated source file is byte-identical to before.
