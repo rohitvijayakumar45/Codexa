@@ -13,7 +13,9 @@ which also gives a per-site diagnosis of failures.
 """
 from __future__ import annotations
 
+import ast
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -70,8 +72,65 @@ def from_fixture(root: Path, keys: tuple[str, ...] = ("direct", "M", "reexp", "d
     return out
 
 
+def _last_param_ok(params: str, param: str) -> bool:
+    """`params` is a parameter list; its last entry must be `param` without a default value."""
+    parts = [p.strip() for p in params.split(",") if p.strip()]
+    if not parts:
+        return False
+    last = parts[-1]
+    return "=" not in last and re.split(r"[\s:?]", last, maxsplit=1)[0] == param
+
+
+def _ts_def_params(text: str, qualname: str) -> str | None:
+    cls, _, name = qualname.rpartition(".")
+    n = re.escape(name)
+    if cls:
+        m = re.search(rf"^\s*(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+{re.escape(cls)}\b.*?^}}", text, re.M | re.S)
+        if not m:
+            return None
+        body = m.group(0)
+        mm = re.search(rf"^\s+(?:(?:public|private|protected|static|async|readonly|override)\s+)*{n}\s*(?:<[^>]*>)?\s*\(([^)]*)\)",
+                       body, re.M)
+        return mm.group(1) if mm else None
+    mm = (re.search(rf"\bfunction\s*\*?\s*{n}\s*(?:<[^>]*>)?\s*\(([^)]*)\)", text)
+          or re.search(rf"\b(?:const|let|var)\s+{n}\s*(?::[^=]+)?=\s*(?:async\s*)?(?:<[^>]*>)?\s*\(([^)]*)\)", text))
+    return mm.group(1) if mm else None
+
+
+def signature_changed(task: Task, workdir: Path) -> bool:
+    """Did the agent actually give the target the new required last parameter?
+
+    The execution oracle alone also passes on untouched code (nothing calls the function wrongly),
+    so success requires this as well."""
+    try:
+        text = (workdir / task.file).read_text(encoding="utf-8")
+    except OSError:
+        return False
+    if task.lang == "ts":
+        params = _ts_def_params(text, task.qualname)
+        return params is not None and _last_param_ok(params, task.param)
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return False
+    *owners, name = task.qualname.split(".")
+    scope = tree.body
+    for o in owners:
+        cls = next((n for n in scope if isinstance(n, ast.ClassDef) and n.name == o), None)
+        if cls is None:
+            return False
+        scope = cls.body
+    fn = next((n for n in scope if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == name), None)
+    if fn is None or not fn.args.args:
+        return False
+    return fn.args.args[-1].arg == task.param and not fn.args.defaults
+
+
 def check(task: Task, workdir: Path, timeout: int = 120) -> dict:
-    """Run the repository's own oracle on the agent's result."""
+    """Run the repository's own oracle on the agent's result.
+
+    success = the target has the new parameter (`signature_changed`) AND the program still runs /
+    type-checks (`oracle_ok`), i.e. every call site was updated and no look-alike was touched."""
     if task.lang == "py":
         p = subprocess.run([sys.executable, "main.py"], cwd=workdir, capture_output=True, text=True, timeout=timeout)
         ok = p.returncode == 0
@@ -89,7 +148,9 @@ def check(task: Task, workdir: Path, timeout: int = 120) -> dict:
         except (OSError, IndexError):
             continue
         hit += int(task.value in line)
-    return {"success": ok, "oracle_output": out, "sites_updated": hit, "sites_total": len(task.gold_sites)}
+    sig = signature_changed(task, workdir)
+    return {"success": ok and sig, "oracle_ok": ok, "signature_changed": sig, "oracle_output": out,
+            "sites_updated": hit, "sites_total": len(task.gold_sites)}
 
 
 def materialize(task: Task, fixtures_dir: Path, dest: Path) -> Path:

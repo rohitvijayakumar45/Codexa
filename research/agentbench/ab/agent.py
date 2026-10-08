@@ -149,12 +149,20 @@ def run_agent(task_prompt: str, ws: Workspace, llm: Callable, *, find_callers: C
     return log
 
 
-def litellm_llm(model: str, temperature: float = 0.0, timeout: int = 120, retries: int = 4) -> Callable:
+def litellm_llm(model: str, temperature: float = 0.0, timeout: int = 120, retries: int = 8,
+                min_interval: float = 0.0) -> Callable:
+    """`min_interval` spaces consecutive requests (seconds) to stay under a provider's rate limit.
+    Rate-limit errors back off longer than other errors (up to ~2 min per attempt)."""
     import litellm
+    state = {"last": 0.0}
 
     def call(messages, tools):
         last = None
         for attempt in range(retries):
+            wait = state["last"] + min_interval - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
+            state["last"] = time.monotonic()
             try:
                 r = litellm.completion(model=model, messages=messages, tools=tools, tool_choice="auto",
                                        temperature=temperature, timeout=timeout)
@@ -168,6 +176,7 @@ def litellm_llm(model: str, temperature: float = 0.0, timeout: int = 120, retrie
                          "completion_tokens": getattr(u, "completion_tokens", 0) or 0})
             except Exception as e:  # noqa: BLE001 - provider hiccups: back off and retry
                 last = e
-                time.sleep(2 ** attempt * 3)
+                limited = "ratelimit" in type(e).__name__.lower() or "429" in str(e)[:200]
+                time.sleep(min(120, 2 ** attempt * (15 if limited else 3)))
         raise last
     return call

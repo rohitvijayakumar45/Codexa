@@ -19,8 +19,16 @@ from pathlib import Path
 ARM_OF = {"lsp": "lsp", "codexa": "codexa_refs", "codexa2": "codexa2_refs", "rg": "rg0"}
 
 
-def load(p: Path) -> list[dict]:
-    return [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
+def load(p: Path, include_invalid: bool = False) -> list[dict]:
+    """Rows of a results.jsonl. The last row per (task, condition, rep) wins (resumed runs append), and
+    runs that died on a provider error are dropped: they say nothing about the condition."""
+    last: dict[tuple, dict] = {}
+    for l in open(p, encoding="utf-8"):
+        if l.strip():
+            r = json.loads(l)
+            last[(r["task"], r["condition"], r["rep"])] = r
+    rows = list(last.values())
+    return rows if include_invalid else [r for r in rows if not r.get("error")]
 
 
 def boot_ci(groups: dict[str, list[float]], stat=st.mean, b: int = 2000, seed: int = 1) -> tuple[float, float]:
@@ -122,11 +130,14 @@ def to_md(s: dict, bt: dict, agree, link: dict | None) -> str:
 
 if __name__ == "__main__":
     rows = load(Path(sys.argv[1]))
+    n_all = len(load(Path(sys.argv[1]), include_invalid=True))
     scored = None
     if "--navbench-scored" in sys.argv:
-        scored = load(Path(sys.argv[sys.argv.index("--navbench-scored") + 1]))
+        sp = Path(sys.argv[sys.argv.index("--navbench-scored") + 1])
+        scored = [json.loads(l) for l in open(sp, encoding="utf-8") if l.strip()]
     s = summarize(rows)
-    md = to_md(s, by_target(rows), rep_agreement(rows), payload_link(rows, scored) if scored else None)
+    md = (f"Valid runs: {len(rows)} of {n_all} (runs that ended on a provider error are excluded).\n\n"
+          + to_md(s, by_target(rows), rep_agreement(rows), payload_link(rows, scored) if scored else None))
     if "--out" in sys.argv:
         Path(sys.argv[sys.argv.index("--out") + 1]).write_text(md, encoding="utf-8")
     print(md)

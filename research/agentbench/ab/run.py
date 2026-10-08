@@ -131,6 +131,7 @@ def main() -> None:
     ap.add_argument("--reps", type=int, default=2)
     ap.add_argument("--max-steps", type=int, default=30)
     ap.add_argument("--seed", type=int, default=20261008)
+    ap.add_argument("--min-interval", type=float, default=2.0, help="seconds between LLM requests")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
 
@@ -146,13 +147,14 @@ def main() -> None:
     (out / "transcripts").mkdir(parents=True, exist_ok=True)
     (out / "tasks.json").write_text(json.dumps([t.as_dict() for t in tasks], indent=1))
     work = Path(os.environ["CODEXA_DATA_DIR"]) / "repos"
-    llm = litellm_llm(a.model)
+    llm = litellm_llm(a.model, min_interval=a.min_interval)
     done = set()
     res_path = out / "results.jsonl"
     if res_path.exists():
         for line in open(res_path, encoding="utf-8"):
             r = json.loads(line)
-            done.add((r["task"], r["condition"], r["rep"]))
+            if not r.get("error"):  # runs that died on a provider error are re-run on resume
+                done.add((r["task"], r["condition"], r["rep"]))
     for rep in range(a.reps):
         for t in tasks:
             for cond in a.conditions.split(","):
@@ -172,7 +174,7 @@ def main() -> None:
                     nav.close()
                 verdict = check(t, root)
                 row = {"task": t.id, "lang": t.lang, "target": t.target_key, "condition": cond, "rep": rep, "model": a.model,
-                       **verdict, "steps": log.steps, "finished": log.finished, "error": log.error,
+                       **verdict, "valid": not log.error, "steps": log.steps, "finished": log.finished, "error": log.error,
                        "prompt_tokens": log.prompt_tokens, "completion_tokens": log.completion_tokens,
                        "total_tokens": log.prompt_tokens + log.completion_tokens, "tool_calls": log.tool_calls,
                        "tool_output_chars": log.tool_output_chars, "wall_s": round(log.wall_s, 1), "setup_s": round(setup_s, 1)}

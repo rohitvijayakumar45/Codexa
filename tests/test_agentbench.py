@@ -73,7 +73,9 @@ def test_oracle_rewards_complete_and_rejects_partial(fixtures, tmp_path, fx):
         pytest.skip("TypeScript toolchain not installed")
     task = next(t for t in from_fixture(fixtures / fx) if t.target_key == "direct")
     untouched = materialize(task, fixtures, tmp_path / "u")
-    assert check(task, untouched)["success"]                       # the oracle passes on the original code
+    u = check(task, untouched)
+    assert u["oracle_ok"] and not u["signature_changed"]            # the program runs, but nothing was done
+    assert not u["success"]                                         # so an untouched tree is not a success
     good = materialize(task, fixtures, tmp_path / "g")
     log = run_agent(task.prompt, _ws(task, good), _scripted(task, good, complete=True))
     v = check(task, good)
@@ -95,3 +97,38 @@ def test_workspace_confinement_and_tools(fixtures, tmp_path):
         ws.read_file("../outside.txt")
     assert "main.py" in ws.list_files()
     assert "exit code 0" in ws.run_program()
+
+
+@pytest.mark.parametrize("fx", ["fx-py-fresh-200", "fx-ts-fresh-201"])
+def test_signature_check_per_target_kind(fixtures, tmp_path, fx):
+    if not (fixtures / fx).exists():
+        pytest.skip("TypeScript toolchain not installed")
+    from ab.tasks import signature_changed
+    for task in from_fixture(fixtures / fx):
+        root = materialize(task, fixtures, tmp_path / task.target_key)
+        assert not signature_changed(task, root), task.id
+        f = root / task.file                                            # edit the definition by line number:
+        lines = f.read_text(encoding="utf-8").splitlines()              # a method's def line can repeat in a look-alike
+        typ = "str" if task.lang == "py" else "string"
+        lines[task.line - 1] = re.sub(r"\(([^)]*)\)", lambda m: f"({m.group(1)}, tag: {typ})", lines[task.line - 1], count=1)
+        f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        assert signature_changed(task, root), task.id                  # method, re-export, decorated, direct
+
+
+def test_default_value_does_not_count(fixtures, tmp_path):
+    from ab.tasks import signature_changed
+    task = next(t for t in from_fixture(fixtures / "fx-py-fresh-200") if t.target_key == "direct")
+    root = materialize(task, fixtures, tmp_path / "d")
+    f = root / task.file
+    lines = f.read_text(encoding="utf-8").splitlines()
+    lines[task.line - 1] = re.sub(r"\(([^)]*)\)", r"(\1, tag='v2')", lines[task.line - 1], count=1)
+    f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    assert check(task, root)["oracle_ok"] and not signature_changed(task, root)
+
+
+def test_regrade_replays_transcript(fixtures, tmp_path):
+    from ab.regrade import replay
+    task = next(t for t in from_fixture(fixtures / "fx-py-fresh-200") if t.target_key == "direct")
+    live = materialize(task, fixtures, tmp_path / "live")
+    log = run_agent(task.prompt, _ws(task, live), _scripted(task, live, complete=True))
+    assert replay(task, log.transcript, fixtures, tmp_path / "re") == check(task, live)
