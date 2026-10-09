@@ -1,3 +1,5 @@
+> **Superseded.** The submission text is `forge/main.tex`. Numbers in this draft predate the post-freeze scoring fix and the round-3 review changes (see `../FREEZE.md`); do not cite them.
+
 # Introduction (draft; contribution bullets to be finalised against results)
 
 Coding agents spend much of their context budget finding code, so tools that index repositories as graphs advertise large token savings. Published and tool-reported savings range from about 10× (Codebase-Memory) to "99% fewer tokens" (several MCP servers). A number such as "85.8× fewer tokens" is a property of a measurement, not only of a tool. Three choices drive it:

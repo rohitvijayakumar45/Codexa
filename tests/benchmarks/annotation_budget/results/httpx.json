@@ -1,0 +1,4685 @@
+{
+  "repo": "httpx",
+  "config": {
+    "horizon": 20,
+    "bases": 10,
+    "budgets": "0,20,40,80,160,all",
+    "churn_window": 50,
+    "random_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "summary": {
+    "callers": {
+      "0": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0
+      },
+      "20": {
+        "coverage_edit": 0.09098888222662732,
+        "coverage_file": 0.023167706910881984,
+        "invalidated_share": 0.4666666666666667,
+        "cost_tokens": 6322.6,
+        "annotated": 18.0
+      },
+      "40": {
+        "coverage_edit": 0.11742228004482906,
+        "coverage_file": 0.04807633631561555,
+        "invalidated_share": 0.3052631578947368,
+        "cost_tokens": 11136.9,
+        "annotated": 38.0
+      },
+      "80": {
+        "coverage_edit": 0.1488835771801458,
+        "coverage_file": 0.09241533179807579,
+        "invalidated_share": 0.19871794871794873,
+        "cost_tokens": 20040.3,
+        "annotated": 78.0
+      },
+      "160": {
+        "coverage_edit": 0.21603433152452758,
+        "coverage_file": 0.16048116589850245,
+        "invalidated_share": 0.14807660693736643,
+        "cost_tokens": 35998.9,
+        "annotated": 156.8
+      },
+      "all": {
+        "coverage_edit": 1.0,
+        "coverage_file": 1.0,
+        "invalidated_share": 0.08561848856845647,
+        "cost_tokens": 208568.4,
+        "annotated": 1199.4
+      }
+    },
+    "callers_exact": {
+      "0": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0
+      },
+      "20": {
+        "coverage_edit": 0.059296158940766786,
+        "coverage_file": 0.02540376281701549,
+        "invalidated_share": 0.31,
+        "cost_tokens": 6726.0,
+        "annotated": 20.0
+      },
+      "40": {
+        "coverage_edit": 0.09851882900902509,
+        "coverage_file": 0.046371127337745885,
+        "invalidated_share": 0.27,
+        "cost_tokens": 12975.5,
+        "annotated": 40.0
+      },
+      "80": {
+        "coverage_edit": 0.1377494862543882,
+        "coverage_file": 0.0877202577732083,
+        "invalidated_share": 0.19624999999999998,
+        "cost_tokens": 22786.8,
+        "annotated": 80.0
+      },
+      "160": {
+        "coverage_edit": 0.20184683745958254,
+        "coverage_file": 0.15369654728328747,
+        "invalidated_share": 0.14424342105263158,
+        "cost_tokens": 38224.4,
+        "annotated": 157.6
+      },
+      "all": {
+        "coverage_edit": 1.0,
+        "coverage_file": 1.0,
+        "invalidated_share": 0.08561848856845647,
+        "cost_tokens": 208568.4,
+        "annotated": 1199.4
+      }
+    },
+    "pagerank": {
+      "0": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0
+      },
+      "20": {
+        "coverage_edit": 0.06613997053948034,
+        "coverage_file": 0.02549351232907653,
+        "invalidated_share": 0.34500000000000003,
+        "cost_tokens": 6839.6,
+        "annotated": 20.0
+      },
+      "40": {
+        "coverage_edit": 0.09233635303488244,
+        "coverage_file": 0.045168447955275685,
+        "invalidated_share": 0.2425,
+        "cost_tokens": 11828.2,
+        "annotated": 40.0
+      },
+      "80": {
+        "coverage_edit": 0.13999173490595057,
+        "coverage_file": 0.08652085411380347,
+        "invalidated_share": 0.19427453769559033,
+        "cost_tokens": 19582.1,
+        "annotated": 75.4
+      },
+      "160": {
+        "coverage_edit": 0.23324816230453488,
+        "coverage_file": 0.15196312628442843,
+        "invalidated_share": 0.16898550724637681,
+        "cost_tokens": 33424.9,
+        "annotated": 142.9
+      },
+      "all": {
+        "coverage_edit": 1.0,
+        "coverage_file": 1.0,
+        "invalidated_share": 0.08561848856845647,
+        "cost_tokens": 208568.4,
+        "annotated": 1199.4
+      }
+    },
+    "degree": {
+      "0": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0
+      },
+      "20": {
+        "coverage_edit": 0.06034720999181783,
+        "coverage_file": 0.025639346129190062,
+        "invalidated_share": 0.31,
+        "cost_tokens": 6582.6,
+        "annotated": 20.0
+      },
+      "40": {
+        "coverage_edit": 0.08669146417920928,
+        "coverage_file": 0.047348002456878244,
+        "invalidated_share": 0.23000000000000004,
+        "cost_tokens": 11962.3,
+        "annotated": 40.0
+      },
+      "80": {
+        "coverage_edit": 0.13184682201839065,
+        "coverage_file": 0.07993341497204844,
+        "invalidated_share": 0.1861414900888585,
+        "cost_tokens": 21446.9,
+        "annotated": 76.3
+      },
+      "160": {
+        "coverage_edit": 0.2184217435810573,
+        "coverage_file": 0.15117335579249602,
+        "invalidated_share": 0.15695990107754815,
+        "cost_tokens": 39504.2,
+        "annotated": 151.5
+      },
+      "all": {
+        "coverage_edit": 1.0,
+        "coverage_file": 1.0,
+        "invalidated_share": 0.08561848856845647,
+        "cost_tokens": 208568.4,
+        "annotated": 1199.4
+      }
+    },
+    "git_churn": {
+      "0": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0
+      },
+      "20": {
+        "coverage_edit": 0.04721299569338785,
+        "coverage_file": 0.026576590965473,
+        "invalidated_share": 0.25263157894736843,
+        "cost_tokens": 5293.3,
+        "annotated": 19.7
+      },
+      "40": {
+        "coverage_edit": 0.10122552280640515,
+        "coverage_file": 0.04795229510097691,
+        "invalidated_share": 0.29098883572567785,
+        "cost_tokens": 7893.1,
+        "annotated": 35.9
+      },
+      "80": {
+        "coverage_edit": 0.14449814443686992,
+        "coverage_file": 0.09090810861087029,
+        "invalidated_share": 0.2109769286229272,
+        "cost_tokens": 16092.9,
+        "annotated": 75.3
+      },
+      "160": {
+        "coverage_edit": 0.26373494412710097,
+        "coverage_file": 0.19306707927499434,
+        "invalidated_share": 0.19007747602274383,
+        "cost_tokens": 31559.2,
+        "annotated": 152.9
+      },
+      "all": {
+        "coverage_edit": 1.0,
+        "coverage_file": 1.0,
+        "invalidated_share": 0.08561848856845647,
+        "cost_tokens": 208568.4,
+        "annotated": 1199.4
+      }
+    },
+    "file_order": {
+      "0": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0
+      },
+      "20": {
+        "coverage_edit": 0.06743620945826828,
+        "coverage_file": 0.016397423406922663,
+        "invalidated_share": 0.3373076923076923,
+        "cost_tokens": 5386.9,
+        "annotated": 17.9
+      },
+      "40": {
+        "coverage_edit": 0.0779292517895459,
+        "coverage_file": 0.0326988800935225,
+        "invalidated_share": 0.21115384615384616,
+        "cost_tokens": 9799.7,
+        "annotated": 35.8
+      },
+      "80": {
+        "coverage_edit": 0.17665740180446063,
+        "coverage_file": 0.09454004477467905,
+        "invalidated_share": 0.2412619344126193,
+        "cost_tokens": 16953.4,
+        "annotated": 70.9
+      },
+      "160": {
+        "coverage_edit": 0.33746987477379636,
+        "coverage_file": 0.19929531688417154,
+        "invalidated_share": 0.22183802964358895,
+        "cost_tokens": 36713.1,
+        "annotated": 147.9
+      },
+      "all": {
+        "coverage_edit": 1.0,
+        "coverage_file": 1.0,
+        "invalidated_share": 0.08561848856845647,
+        "cost_tokens": 208568.4,
+        "annotated": 1199.4
+      }
+    },
+    "random": {
+      "0": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0
+      },
+      "20": {
+        "coverage_edit": 0.02688303935607857,
+        "coverage_file": 0.01656742591268984,
+        "invalidated_share": 0.127,
+        "cost_tokens": 3479.88,
+        "annotated": 20.0
+      },
+      "40": {
+        "coverage_edit": 0.04915720281161458,
+        "coverage_file": 0.032165212853362754,
+        "invalidated_share": 0.11764102564102563,
+        "cost_tokens": 6930.860000000001,
+        "annotated": 39.94
+      },
+      "80": {
+        "coverage_edit": 0.10060547025498005,
+        "coverage_file": 0.06464827463379869,
+        "invalidated_share": 0.11995675105485233,
+        "cost_tokens": 13836.679999999998,
+        "annotated": 79.66
+      },
+      "160": {
+        "coverage_edit": 0.18853878647015904,
+        "coverage_file": 0.13303667977697625,
+        "invalidated_share": 0.11428877479175507,
+        "cost_tokens": 27568.620000000003,
+        "annotated": 158.94
+      },
+      "all": {
+        "coverage_edit": 1.0,
+        "coverage_file": 1.0,
+        "invalidated_share": 0.08561848856845647,
+        "cost_tokens": 208568.4,
+        "annotated": 1199.4
+      }
+    },
+    "lazy": {
+      "0": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0,
+        "deferred_calls": 102.6,
+        "deferred_cost_tokens": 23124.5
+      },
+      "20": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0,
+        "deferred_calls": 102.6,
+        "deferred_cost_tokens": 23124.5
+      },
+      "40": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0,
+        "deferred_calls": 102.6,
+        "deferred_cost_tokens": 23124.5
+      },
+      "80": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0,
+        "deferred_calls": 102.6,
+        "deferred_cost_tokens": 23124.5
+      },
+      "160": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0,
+        "deferred_calls": 102.6,
+        "deferred_cost_tokens": 23124.5
+      },
+      "all": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "cost_tokens": 0.0,
+        "annotated": 0.0,
+        "deferred_calls": 102.6,
+        "deferred_cost_tokens": 23124.5
+      }
+    },
+    "oracle": {
+      "0": {
+        "coverage_edit": 0.0,
+        "coverage_file": 0.0,
+        "invalidated_share": null,
+        "cost_tokens": 0.0,
+        "annotated": 0.0
+      },
+      "20": {
+        "coverage_edit": 0.26448166619735247,
+        "coverage_file": 0.0348724550347619,
+        "invalidated_share": 1.0,
+        "cost_tokens": 5635.2,
+        "annotated": 20.0
+      },
+      "40": {
+        "coverage_edit": 0.5289633323947049,
+        "coverage_file": 0.07037693224532712,
+        "invalidated_share": 1.0,
+        "cost_tokens": 10352.1,
+        "annotated": 40.0
+      },
+      "80": {
+        "coverage_edit": 0.843019349882095,
+        "coverage_file": 0.1134339296024075,
+        "invalidated_share": 0.8625,
+        "cost_tokens": 19765.0,
+        "annotated": 80.0
+      },
+      "160": {
+        "coverage_edit": 0.9540540540540541,
+        "coverage_file": 0.22001875187196265,
+        "invalidated_share": 0.5611044520547945,
+        "cost_tokens": 38075.6,
+        "annotated": 158.6
+      },
+      "all": {
+        "coverage_edit": 1.0,
+        "coverage_file": 1.0,
+        "invalidated_share": 0.08561848856845647,
+        "cost_tokens": 208568.4,
+        "annotated": 1199.4
+      }
+    }
+  },
+  "per_base": [
+    {
+      "t": "9d022c0a88",
+      "t_plus_n": "1703da8706",
+      "symbols": 1262,
+      "files_changed": 21,
+      "d_edit": 44,
+      "d_file": 277,
+      "total_cost_tokens_all": 211631,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1262
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.06818181818181818,
+            "coverage_file": 0.021660649819494584,
+            "invalidated_share": 0.16666666666666666,
+            "cost_tokens": 6188.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.06818181818181818,
+            "coverage_file": 0.039711191335740074,
+            "invalidated_share": 0.07894736842105263,
+            "cost_tokens": 11016.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.06818181818181818,
+            "coverage_file": 0.06859205776173286,
+            "invalidated_share": 0.038461538461538464,
+            "cost_tokens": 20006.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.13636363636363635,
+            "coverage_file": 0.09747292418772563,
+            "invalidated_share": 0.03896103896103896,
+            "cost_tokens": 35777.0,
+            "annotated": 154.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.03666666666666667,
+            "cost_tokens": 211631.0,
+            "annotated": 1200.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.022727272727272728,
+            "coverage_file": 0.02888086642599278,
+            "invalidated_share": 0.05,
+            "cost_tokens": 6647.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.022727272727272728,
+            "coverage_file": 0.036101083032490974,
+            "invalidated_share": 0.025,
+            "cost_tokens": 13107.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.045454545454545456,
+            "coverage_file": 0.05415162454873646,
+            "invalidated_share": 0.025,
+            "cost_tokens": 22680.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.11363636363636363,
+            "coverage_file": 0.07220216606498195,
+            "invalidated_share": 0.03289473684210526,
+            "cost_tokens": 38070.0,
+            "annotated": 152.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.03666666666666667,
+            "cost_tokens": 211631.0,
+            "annotated": 1200.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.022727272727272728,
+            "coverage_file": 0.021660649819494584,
+            "invalidated_share": 0.05,
+            "cost_tokens": 6883.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.022727272727272728,
+            "coverage_file": 0.039711191335740074,
+            "invalidated_share": 0.025,
+            "cost_tokens": 11447.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.09090909090909091,
+            "coverage_file": 0.06498194945848375,
+            "invalidated_share": 0.05405405405405406,
+            "cost_tokens": 19792.0,
+            "annotated": 74.0
+          },
+          "160": {
+            "coverage_edit": 0.20454545454545456,
+            "coverage_file": 0.10469314079422383,
+            "invalidated_share": 0.06521739130434782,
+            "cost_tokens": 33750.0,
+            "annotated": 138.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.03666666666666667,
+            "cost_tokens": 211631.0,
+            "annotated": 1200.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.022727272727272728,
+            "coverage_file": 0.02888086642599278,
+            "invalidated_share": 0.05,
+            "cost_tokens": 6629.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.022727272727272728,
+            "coverage_file": 0.05415162454873646,
+            "invalidated_share": 0.025,
+            "cost_tokens": 11631.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.06818181818181818,
+            "coverage_file": 0.06859205776173286,
+            "invalidated_share": 0.039473684210526314,
+            "cost_tokens": 21162.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.13636363636363635,
+            "coverage_file": 0.09025270758122744,
+            "invalidated_share": 0.04054054054054054,
+            "cost_tokens": 38881.0,
+            "annotated": 148.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.03666666666666667,
+            "cost_tokens": 211631.0,
+            "annotated": 1200.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.0,
+            "cost_tokens": 6087.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.1590909090909091,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.21212121212121213,
+            "cost_tokens": 8372.0,
+            "annotated": 33.0
+          },
+          "80": {
+            "coverage_edit": 0.1590909090909091,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.0958904109589041,
+            "cost_tokens": 18898.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.1590909090909091,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.0457516339869281,
+            "cost_tokens": 31997.0,
+            "annotated": 153.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.03666666666666667,
+            "cost_tokens": 211631.0,
+            "annotated": 1200.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.13636363636363635,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.46153846153846156,
+            "cost_tokens": 5655.0,
+            "annotated": 13.0
+          },
+          "40": {
+            "coverage_edit": 0.13636363636363635,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.23076923076923078,
+            "cost_tokens": 10428.0,
+            "annotated": 26.0
+          },
+          "80": {
+            "coverage_edit": 0.13636363636363635,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.09090909090909091,
+            "cost_tokens": 18563.0,
+            "annotated": 66.0
+          },
+          "160": {
+            "coverage_edit": 0.3181818181818182,
+            "coverage_file": 0.0036101083032490976,
+            "invalidated_share": 0.10144927536231885,
+            "cost_tokens": 37857.0,
+            "annotated": 138.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.03666666666666667,
+            "cost_tokens": 211631.0,
+            "annotated": 1200.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.045454545454545456,
+            "coverage_file": 0.01660649819494585,
+            "invalidated_share": 0.1,
+            "cost_tokens": 3677.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.07272727272727272,
+            "coverage_file": 0.03393501805054151,
+            "invalidated_share": 0.08,
+            "cost_tokens": 7131.2,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.14545454545454545,
+            "coverage_file": 0.06570397111913358,
+            "invalidated_share": 0.08050632911392405,
+            "cost_tokens": 14173.6,
+            "annotated": 79.4
+          },
+          "160": {
+            "coverage_edit": 0.25,
+            "coverage_file": 0.14296028880866424,
+            "invalidated_share": 0.06925503542711567,
+            "cost_tokens": 28004.4,
+            "annotated": 158.8
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.03666666666666667,
+            "cost_tokens": 211631.0,
+            "annotated": 1200.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 44,
+            "deferred_cost_tokens": 7974
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 44,
+            "deferred_cost_tokens": 7974
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 44,
+            "deferred_cost_tokens": 7974
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 44,
+            "deferred_cost_tokens": 7974
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 44,
+            "deferred_cost_tokens": 7974
+          },
+          "1262": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 44,
+            "deferred_cost_tokens": 7974
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.45454545454545453,
+            "coverage_file": 0.021660649819494584,
+            "invalidated_share": 1.0,
+            "cost_tokens": 4622,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.9090909090909091,
+            "coverage_file": 0.07942238267148015,
+            "invalidated_share": 1.0,
+            "cost_tokens": 7443,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.08303249097472924,
+            "invalidated_share": 0.55,
+            "cost_tokens": 18941,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.08303249097472924,
+            "invalidated_share": 0.275,
+            "cost_tokens": 40586,
+            "annotated": 160
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.03666666666666667,
+            "cost_tokens": 211631,
+            "annotated": 1200
+          }
+        }
+      }
+    },
+    {
+      "t": "3a7f6d1a5d",
+      "t_plus_n": "e63b6594f2",
+      "symbols": 1262,
+      "files_changed": 18,
+      "d_edit": 52,
+      "d_file": 304,
+      "total_cost_tokens_all": 211624,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1262
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.07692307692307693,
+            "coverage_file": 0.02631578947368421,
+            "invalidated_share": 0.2222222222222222,
+            "cost_tokens": 6188.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.09615384615384616,
+            "coverage_file": 0.05921052631578947,
+            "invalidated_share": 0.13157894736842105,
+            "cost_tokens": 11016.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.11538461538461539,
+            "coverage_file": 0.12171052631578948,
+            "invalidated_share": 0.07692307692307693,
+            "cost_tokens": 20006.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.17307692307692307,
+            "coverage_file": 0.17763157894736842,
+            "invalidated_share": 0.05844155844155844,
+            "cost_tokens": 35796.0,
+            "annotated": 154.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.043333333333333335,
+            "cost_tokens": 211624.0,
+            "annotated": 1200.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.038461538461538464,
+            "coverage_file": 0.03618421052631579,
+            "invalidated_share": 0.1,
+            "cost_tokens": 6647.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.057692307692307696,
+            "coverage_file": 0.05921052631578947,
+            "invalidated_share": 0.075,
+            "cost_tokens": 13107.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.07692307692307693,
+            "coverage_file": 0.09868421052631579,
+            "invalidated_share": 0.05,
+            "cost_tokens": 22699.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.17307692307692307,
+            "coverage_file": 0.15789473684210525,
+            "invalidated_share": 0.05921052631578947,
+            "cost_tokens": 38089.0,
+            "annotated": 152.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.043333333333333335,
+            "cost_tokens": 211624.0,
+            "annotated": 1200.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.038461538461538464,
+            "coverage_file": 0.029605263157894735,
+            "invalidated_share": 0.1,
+            "cost_tokens": 6883.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.057692307692307696,
+            "coverage_file": 0.05263157894736842,
+            "invalidated_share": 0.075,
+            "cost_tokens": 11447.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.11538461538461539,
+            "coverage_file": 0.09210526315789473,
+            "invalidated_share": 0.08108108108108109,
+            "cost_tokens": 19811.0,
+            "annotated": 74.0
+          },
+          "160": {
+            "coverage_edit": 0.23076923076923078,
+            "coverage_file": 0.15789473684210525,
+            "invalidated_share": 0.08695652173913043,
+            "cost_tokens": 33769.0,
+            "annotated": 138.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.043333333333333335,
+            "cost_tokens": 211624.0,
+            "annotated": 1200.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.038461538461538464,
+            "coverage_file": 0.03618421052631579,
+            "invalidated_share": 0.1,
+            "cost_tokens": 6629.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.038461538461538464,
+            "coverage_file": 0.06578947368421052,
+            "invalidated_share": 0.05,
+            "cost_tokens": 11631.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.057692307692307696,
+            "coverage_file": 0.08881578947368421,
+            "invalidated_share": 0.039473684210526314,
+            "cost_tokens": 21181.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.17307692307692307,
+            "coverage_file": 0.14473684210526316,
+            "invalidated_share": 0.060810810810810814,
+            "cost_tokens": 38900.0,
+            "annotated": 148.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.043333333333333335,
+            "cost_tokens": 211624.0,
+            "annotated": 1200.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.06578947368421052,
+            "invalidated_share": 0.0,
+            "cost_tokens": 4125.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.13157894736842105,
+            "invalidated_share": 0.0,
+            "cost_tokens": 6184.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.1611842105263158,
+            "invalidated_share": 0.0,
+            "cost_tokens": 12643.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.09615384615384616,
+            "coverage_file": 0.39473684210526316,
+            "invalidated_share": 0.03205128205128205,
+            "cost_tokens": 26761.0,
+            "annotated": 156.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.043333333333333335,
+            "cost_tokens": 211624.0,
+            "annotated": 1200.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.11538461538461539,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.46153846153846156,
+            "cost_tokens": 5655.0,
+            "annotated": 13.0
+          },
+          "40": {
+            "coverage_edit": 0.11538461538461539,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.23076923076923078,
+            "cost_tokens": 10428.0,
+            "annotated": 26.0
+          },
+          "80": {
+            "coverage_edit": 0.15384615384615385,
+            "coverage_file": 0.08223684210526316,
+            "invalidated_share": 0.12121212121212122,
+            "cost_tokens": 18563.0,
+            "annotated": 66.0
+          },
+          "160": {
+            "coverage_edit": 0.36538461538461536,
+            "coverage_file": 0.1118421052631579,
+            "invalidated_share": 0.13768115942028986,
+            "cost_tokens": 37857.0,
+            "annotated": 138.0
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.043333333333333335,
+            "cost_tokens": 211624.0,
+            "annotated": 1200.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.03461538461538462,
+            "coverage_file": 0.014473684210526316,
+            "invalidated_share": 0.09,
+            "cost_tokens": 3676.4,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.06153846153846154,
+            "coverage_file": 0.028289473684210524,
+            "invalidated_share": 0.08,
+            "cost_tokens": 7130.6,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.13076923076923078,
+            "coverage_file": 0.059868421052631585,
+            "invalidated_share": 0.08550632911392406,
+            "cost_tokens": 14172.4,
+            "annotated": 79.4
+          },
+          "160": {
+            "coverage_edit": 0.23846153846153845,
+            "coverage_file": 0.13157894736842107,
+            "invalidated_share": 0.07806832656635618,
+            "cost_tokens": 28002.6,
+            "annotated": 158.8
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.043333333333333335,
+            "cost_tokens": 211624.0,
+            "annotated": 1200.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 11220
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 11220
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 11220
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 11220
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 11220
+          },
+          "1262": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 11220
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.38461538461538464,
+            "coverage_file": 0.023026315789473683,
+            "invalidated_share": 1.0,
+            "cost_tokens": 5572,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.7692307692307693,
+            "coverage_file": 0.05263157894736842,
+            "invalidated_share": 1.0,
+            "cost_tokens": 9455,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.08552631578947369,
+            "invalidated_share": 0.65,
+            "cost_tokens": 20848,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.13815789473684212,
+            "invalidated_share": 0.325,
+            "cost_tokens": 41465,
+            "annotated": 160
+          },
+          "1262": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.043333333333333335,
+            "cost_tokens": 211624,
+            "annotated": 1200
+          }
+        }
+      }
+    },
+    {
+      "t": "05b8e32844",
+      "t_plus_n": "87f39f12c9",
+      "symbols": 1265,
+      "files_changed": 26,
+      "d_edit": 81,
+      "d_file": 591,
+      "total_cost_tokens_all": 212424,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1265
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.09876543209876543,
+            "coverage_file": 0.02030456852791878,
+            "invalidated_share": 0.4444444444444444,
+            "cost_tokens": 6412.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.16049382716049382,
+            "coverage_file": 0.049069373942470386,
+            "invalidated_share": 0.34210526315789475,
+            "cost_tokens": 11035.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.20987654320987653,
+            "coverage_file": 0.09475465313028765,
+            "invalidated_share": 0.21794871794871795,
+            "cost_tokens": 20025.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.2716049382716049,
+            "coverage_file": 0.16074450084602368,
+            "invalidated_share": 0.14285714285714285,
+            "cost_tokens": 35815.0,
+            "annotated": 154.0
+          },
+          "1265": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.06733167082294264,
+            "cost_tokens": 212424.0,
+            "annotated": 1203.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.08641975308641975,
+            "coverage_file": 0.025380710659898477,
+            "invalidated_share": 0.35,
+            "cost_tokens": 6647.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.16049382716049382,
+            "coverage_file": 0.050761421319796954,
+            "invalidated_share": 0.325,
+            "cost_tokens": 12869.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.2345679012345679,
+            "coverage_file": 0.09475465313028765,
+            "invalidated_share": 0.2375,
+            "cost_tokens": 22718.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.24691358024691357,
+            "coverage_file": 0.16751269035532995,
+            "invalidated_share": 0.13157894736842105,
+            "cost_tokens": 38108.0,
+            "annotated": 152.0
+          },
+          "1265": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.06733167082294264,
+            "cost_tokens": 212424.0,
+            "annotated": 1203.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.09876543209876543,
+            "coverage_file": 0.023688663282571912,
+            "invalidated_share": 0.4,
+            "cost_tokens": 6883.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.1111111111111111,
+            "coverage_file": 0.04230118443316413,
+            "invalidated_share": 0.225,
+            "cost_tokens": 11447.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.1728395061728395,
+            "coverage_file": 0.08967851099830795,
+            "invalidated_share": 0.1891891891891892,
+            "cost_tokens": 19830.0,
+            "annotated": 74.0
+          },
+          "160": {
+            "coverage_edit": 0.2345679012345679,
+            "coverage_file": 0.15905245346869712,
+            "invalidated_share": 0.13768115942028986,
+            "cost_tokens": 33770.0,
+            "annotated": 138.0
+          },
+          "1265": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.06733167082294264,
+            "cost_tokens": 212424.0,
+            "annotated": 1203.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.08641975308641975,
+            "coverage_file": 0.025380710659898477,
+            "invalidated_share": 0.35,
+            "cost_tokens": 6629.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.09876543209876543,
+            "coverage_file": 0.047377326565143825,
+            "invalidated_share": 0.2,
+            "cost_tokens": 11631.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.13580246913580246,
+            "coverage_file": 0.09983079526226735,
+            "invalidated_share": 0.14473684210526316,
+            "cost_tokens": 21111.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.2345679012345679,
+            "coverage_file": 0.18612521150592218,
+            "invalidated_share": 0.12837837837837837,
+            "cost_tokens": 39046.0,
+            "annotated": 148.0
+          },
+          "1265": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.06733167082294264,
+            "cost_tokens": 212424.0,
+            "annotated": 1203.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.06172839506172839,
+            "coverage_file": 0.032148900169204735,
+            "invalidated_share": 0.2631578947368421,
+            "cost_tokens": 4797.0,
+            "annotated": 19.0
+          },
+          "40": {
+            "coverage_edit": 0.07407407407407407,
+            "coverage_file": 0.06429780033840947,
+            "invalidated_share": 0.15789473684210525,
+            "cost_tokens": 8291.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.12345679012345678,
+            "coverage_file": 0.12859560067681894,
+            "invalidated_share": 0.13157894736842105,
+            "cost_tokens": 14401.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.32098765432098764,
+            "coverage_file": 0.22673434856175972,
+            "invalidated_share": 0.16993464052287582,
+            "cost_tokens": 28316.0,
+            "annotated": 153.0
+          },
+          "1265": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.06733167082294264,
+            "cost_tokens": 212424.0,
+            "annotated": 1203.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.021996615905245348,
+            "invalidated_share": 0.0,
+            "cost_tokens": 5655.0,
+            "annotated": 13.0
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.028764805414551606,
+            "invalidated_share": 0.0,
+            "cost_tokens": 10428.0,
+            "annotated": 26.0
+          },
+          "80": {
+            "coverage_edit": 0.07407407407407407,
+            "coverage_file": 0.09475465313028765,
+            "invalidated_share": 0.09090909090909091,
+            "cost_tokens": 18589.0,
+            "annotated": 66.0
+          },
+          "160": {
+            "coverage_edit": 0.24691358024691357,
+            "coverage_file": 0.21489001692047377,
+            "invalidated_share": 0.14492753623188406,
+            "cost_tokens": 37865.0,
+            "annotated": 138.0
+          },
+          "1265": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.06733167082294264,
+            "cost_tokens": 212424.0,
+            "annotated": 1203.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.024691358024691357,
+            "coverage_file": 0.013874788494077833,
+            "invalidated_share": 0.1,
+            "cost_tokens": 3394.4,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.05185185185185185,
+            "coverage_file": 0.02876480541455161,
+            "invalidated_share": 0.10500000000000001,
+            "cost_tokens": 6975.2,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.09135802469135802,
+            "coverage_file": 0.06395939086294417,
+            "invalidated_share": 0.09325949367088607,
+            "cost_tokens": 13668.0,
+            "annotated": 79.4
+          },
+          "160": {
+            "coverage_edit": 0.16790123456790124,
+            "coverage_file": 0.1350253807106599,
+            "invalidated_share": 0.08554394554573681,
+            "cost_tokens": 27613.8,
+            "annotated": 159.0
+          },
+          "1265": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.06733167082294264,
+            "cost_tokens": 212424.0,
+            "annotated": 1203.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 81,
+            "deferred_cost_tokens": 16492
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 81,
+            "deferred_cost_tokens": 16492
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 81,
+            "deferred_cost_tokens": 16492
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 81,
+            "deferred_cost_tokens": 16492
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 81,
+            "deferred_cost_tokens": 16492
+          },
+          "1265": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 81,
+            "deferred_cost_tokens": 16492
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.24691358024691357,
+            "coverage_file": 0.032148900169204735,
+            "invalidated_share": 1.0,
+            "cost_tokens": 4811,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.49382716049382713,
+            "coverage_file": 0.06429780033840947,
+            "invalidated_share": 1.0,
+            "cost_tokens": 10510,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 0.9876543209876543,
+            "coverage_file": 0.12351945854483926,
+            "invalidated_share": 1.0,
+            "cost_tokens": 16378,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.21658206429780033,
+            "invalidated_share": 0.5547945205479452,
+            "cost_tokens": 34751,
+            "annotated": 146
+          },
+          "1265": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.06733167082294264,
+            "cost_tokens": 212424,
+            "annotated": 1203
+          }
+        }
+      }
+    },
+    {
+      "t": "497b315fc7",
+      "t_plus_n": "a11fc3849b",
+      "symbols": 1234,
+      "files_changed": 40,
+      "d_edit": 160,
+      "d_file": 988,
+      "total_cost_tokens_all": 204840,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1234
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.05625,
+            "coverage_file": 0.01720647773279352,
+            "invalidated_share": 0.5,
+            "cost_tokens": 6350.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.0875,
+            "coverage_file": 0.03744939271255061,
+            "invalidated_share": 0.3684210526315789,
+            "cost_tokens": 11009.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.13125,
+            "coverage_file": 0.0728744939271255,
+            "invalidated_share": 0.2692307692307692,
+            "cost_tokens": 19995.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.225,
+            "coverage_file": 0.14979757085020243,
+            "invalidated_share": 0.22784810126582278,
+            "cost_tokens": 36069.0,
+            "annotated": 158.0
+          },
+          "1234": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.13490725126475547,
+            "cost_tokens": 204840.0,
+            "annotated": 1186.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.04375,
+            "coverage_file": 0.019230769230769232,
+            "invalidated_share": 0.35,
+            "cost_tokens": 6585.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.1,
+            "coverage_file": 0.039473684210526314,
+            "invalidated_share": 0.4,
+            "cost_tokens": 12839.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.175,
+            "coverage_file": 0.07591093117408906,
+            "invalidated_share": 0.35,
+            "cost_tokens": 22688.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.225,
+            "coverage_file": 0.15384615384615385,
+            "invalidated_share": 0.225,
+            "cost_tokens": 38137.0,
+            "annotated": 160.0
+          },
+          "1234": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.13490725126475547,
+            "cost_tokens": 204840.0,
+            "annotated": 1186.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.05625,
+            "coverage_file": 0.019230769230769232,
+            "invalidated_share": 0.45,
+            "cost_tokens": 6821.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.05625,
+            "coverage_file": 0.0354251012145749,
+            "invalidated_share": 0.225,
+            "cost_tokens": 11652.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.10625,
+            "coverage_file": 0.06882591093117409,
+            "invalidated_share": 0.2236842105263158,
+            "cost_tokens": 19206.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.20625,
+            "coverage_file": 0.12955465587044535,
+            "invalidated_share": 0.22758620689655173,
+            "cost_tokens": 33123.0,
+            "annotated": 145.0
+          },
+          "1234": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.13490725126475547,
+            "cost_tokens": 204840.0,
+            "annotated": 1186.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.04375,
+            "coverage_file": 0.019230769230769232,
+            "invalidated_share": 0.35,
+            "cost_tokens": 6567.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.06875,
+            "coverage_file": 0.03643724696356275,
+            "invalidated_share": 0.275,
+            "cost_tokens": 11891.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.1125,
+            "coverage_file": 0.0708502024291498,
+            "invalidated_share": 0.23684210526315788,
+            "cost_tokens": 21081.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.20625,
+            "coverage_file": 0.14473684210526316,
+            "invalidated_share": 0.21568627450980393,
+            "cost_tokens": 39460.0,
+            "annotated": 153.0
+          },
+          "1234": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.13490725126475547,
+            "cost_tokens": 204840.0,
+            "annotated": 1186.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.025,
+            "coverage_file": 0.019230769230769232,
+            "invalidated_share": 0.21052631578947367,
+            "cost_tokens": 4735.0,
+            "annotated": 19.0
+          },
+          "40": {
+            "coverage_edit": 0.04375,
+            "coverage_file": 0.038461538461538464,
+            "invalidated_share": 0.18421052631578946,
+            "cost_tokens": 8229.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.06875,
+            "coverage_file": 0.07692307692307693,
+            "invalidated_share": 0.14473684210526316,
+            "cost_tokens": 14339.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.2,
+            "coverage_file": 0.15587044534412955,
+            "invalidated_share": 0.2064516129032258,
+            "cost_tokens": 30111.0,
+            "annotated": 155.0
+          },
+          "1234": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.13490725126475547,
+            "cost_tokens": 204840.0,
+            "annotated": 1186.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.06875,
+            "coverage_file": 0.019230769230769232,
+            "invalidated_share": 0.55,
+            "cost_tokens": 5306.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.08125,
+            "coverage_file": 0.039473684210526314,
+            "invalidated_share": 0.325,
+            "cost_tokens": 9598.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.15,
+            "coverage_file": 0.0728744939271255,
+            "invalidated_share": 0.3287671232876712,
+            "cost_tokens": 16419.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.2625,
+            "coverage_file": 0.15182186234817813,
+            "invalidated_share": 0.27631578947368424,
+            "cost_tokens": 36638.0,
+            "annotated": 152.0
+          },
+          "1234": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.13490725126475547,
+            "cost_tokens": 204840.0,
+            "annotated": 1186.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.026250000000000002,
+            "coverage_file": 0.01680161943319838,
+            "invalidated_share": 0.21000000000000002,
+            "cost_tokens": 3331.2,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.04375,
+            "coverage_file": 0.03319838056680162,
+            "invalidated_share": 0.175,
+            "cost_tokens": 6750.4,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.09375,
+            "coverage_file": 0.06700404858299595,
+            "invalidated_share": 0.1878481012658228,
+            "cost_tokens": 13460.8,
+            "annotated": 79.8
+          },
+          "160": {
+            "coverage_edit": 0.16749999999999998,
+            "coverage_file": 0.1311740890688259,
+            "invalidated_share": 0.16889274353891862,
+            "cost_tokens": 27059.0,
+            "annotated": 158.6
+          },
+          "1234": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.13490725126475547,
+            "cost_tokens": 204840.0,
+            "annotated": 1186.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 160,
+            "deferred_cost_tokens": 38180
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 160,
+            "deferred_cost_tokens": 38180
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 160,
+            "deferred_cost_tokens": 38180
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 160,
+            "deferred_cost_tokens": 38180
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 160,
+            "deferred_cost_tokens": 38180
+          },
+          "1234": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 160,
+            "deferred_cost_tokens": 38180
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.125,
+            "coverage_file": 0.020242914979757085,
+            "invalidated_share": 1.0,
+            "cost_tokens": 6155,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.25,
+            "coverage_file": 0.039473684210526314,
+            "invalidated_share": 1.0,
+            "cost_tokens": 11285,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 0.5,
+            "coverage_file": 0.07995951417004049,
+            "invalidated_share": 1.0,
+            "cost_tokens": 22718,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.15688259109311742,
+            "invalidated_share": 1.0,
+            "cost_tokens": 38180,
+            "annotated": 160
+          },
+          "1234": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.13490725126475547,
+            "cost_tokens": 204840,
+            "annotated": 1186
+          }
+        }
+      }
+    },
+    {
+      "t": "2318fd822c",
+      "t_plus_n": "d76607b112",
+      "symbols": 1242,
+      "files_changed": 34,
+      "d_edit": 52,
+      "d_file": 306,
+      "total_cost_tokens_all": 206310,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1242
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.11538461538461539,
+            "coverage_file": 0.02287581699346405,
+            "invalidated_share": 0.3333333333333333,
+            "cost_tokens": 6350.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.11538461538461539,
+            "coverage_file": 0.05228758169934641,
+            "invalidated_share": 0.15789473684210525,
+            "cost_tokens": 11013.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.15384615384615385,
+            "coverage_file": 0.08169934640522876,
+            "invalidated_share": 0.10256410256410256,
+            "cost_tokens": 20013.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.21153846153846154,
+            "coverage_file": 0.15359477124183007,
+            "invalidated_share": 0.06962025316455696,
+            "cost_tokens": 36146.0,
+            "annotated": 158.0
+          },
+          "1242": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.04355108877721943,
+            "cost_tokens": 206310.0,
+            "annotated": 1194.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.057692307692307696,
+            "coverage_file": 0.02287581699346405,
+            "invalidated_share": 0.15,
+            "cost_tokens": 6725.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.07692307692307693,
+            "coverage_file": 0.0392156862745098,
+            "invalidated_share": 0.1,
+            "cost_tokens": 12849.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.11538461538461539,
+            "coverage_file": 0.08496732026143791,
+            "invalidated_share": 0.075,
+            "cost_tokens": 22963.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.19230769230769232,
+            "coverage_file": 0.15359477124183007,
+            "invalidated_share": 0.0625,
+            "cost_tokens": 38214.0,
+            "annotated": 160.0
+          },
+          "1242": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.04355108877721943,
+            "cost_tokens": 206310.0,
+            "annotated": 1194.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.057692307692307696,
+            "coverage_file": 0.02287581699346405,
+            "invalidated_share": 0.15,
+            "cost_tokens": 6821.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.11538461538461539,
+            "coverage_file": 0.042483660130718956,
+            "invalidated_share": 0.15,
+            "cost_tokens": 11721.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.17307692307692307,
+            "coverage_file": 0.08823529411764706,
+            "invalidated_share": 0.11842105263157894,
+            "cost_tokens": 19221.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.3269230769230769,
+            "coverage_file": 0.17973856209150327,
+            "invalidated_share": 0.11724137931034483,
+            "cost_tokens": 33174.0,
+            "annotated": 145.0
+          },
+          "1242": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.04355108877721943,
+            "cost_tokens": 206310.0,
+            "annotated": 1194.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.057692307692307696,
+            "coverage_file": 0.0196078431372549,
+            "invalidated_share": 0.15,
+            "cost_tokens": 6567.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.09615384615384616,
+            "coverage_file": 0.03594771241830065,
+            "invalidated_share": 0.125,
+            "cost_tokens": 11901.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.17307692307692307,
+            "coverage_file": 0.06209150326797386,
+            "invalidated_share": 0.11842105263157894,
+            "cost_tokens": 21167.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.23076923076923078,
+            "coverage_file": 0.1437908496732026,
+            "invalidated_share": 0.0784313725490196,
+            "cost_tokens": 39486.0,
+            "annotated": 153.0
+          },
+          "1242": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.04355108877721943,
+            "cost_tokens": 206310.0,
+            "annotated": 1194.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.019230769230769232,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.05263157894736842,
+            "cost_tokens": 4735.0,
+            "annotated": 19.0
+          },
+          "40": {
+            "coverage_edit": 0.038461538461538464,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.05263157894736842,
+            "cost_tokens": 8239.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.07692307692307693,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.05263157894736842,
+            "cost_tokens": 14351.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.21153846153846154,
+            "coverage_file": 0.1111111111111111,
+            "invalidated_share": 0.07051282051282051,
+            "cost_tokens": 33239.0,
+            "annotated": 156.0
+          },
+          "1242": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.04355108877721943,
+            "cost_tokens": 206310.0,
+            "annotated": 1194.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.032679738562091505,
+            "invalidated_share": 0.0,
+            "cost_tokens": 5429.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.038461538461538464,
+            "coverage_file": 0.09803921568627451,
+            "invalidated_share": 0.05,
+            "cost_tokens": 9725.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.19230769230769232,
+            "coverage_file": 0.20588235294117646,
+            "invalidated_share": 0.136986301369863,
+            "cost_tokens": 16548.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.3269230769230769,
+            "coverage_file": 0.40522875816993464,
+            "invalidated_share": 0.1118421052631579,
+            "cost_tokens": 36802.0,
+            "annotated": 152.0
+          },
+          "1242": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.04355108877721943,
+            "cost_tokens": 206310.0,
+            "annotated": 1194.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.019230769230769232,
+            "coverage_file": 0.013725490196078433,
+            "invalidated_share": 0.05,
+            "cost_tokens": 3356.8,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.04230769230769231,
+            "coverage_file": 0.028104575163398694,
+            "invalidated_share": 0.055641025641025646,
+            "cost_tokens": 6691.6,
+            "annotated": 39.6
+          },
+          "80": {
+            "coverage_edit": 0.09230769230769231,
+            "coverage_file": 0.05490196078431373,
+            "invalidated_share": 0.06028481012658228,
+            "cost_tokens": 13367.2,
+            "annotated": 79.6
+          },
+          "160": {
+            "coverage_edit": 0.18076923076923077,
+            "coverage_file": 0.1222222222222222,
+            "invalidated_share": 0.059294642146325925,
+            "cost_tokens": 27568.4,
+            "annotated": 158.6
+          },
+          "1242": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.04355108877721943,
+            "cost_tokens": 206310.0,
+            "annotated": 1194.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 10078
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 10078
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 10078
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 10078
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 10078
+          },
+          "1242": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 52,
+            "deferred_cost_tokens": 10078
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.38461538461538464,
+            "coverage_file": 0.05228758169934641,
+            "invalidated_share": 1.0,
+            "cost_tokens": 4573,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.7692307692307693,
+            "coverage_file": 0.08169934640522876,
+            "invalidated_share": 1.0,
+            "cost_tokens": 8786,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.14705882352941177,
+            "invalidated_share": 0.65,
+            "cost_tokens": 17357,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.4084967320261438,
+            "invalidated_share": 0.325,
+            "cost_tokens": 37667,
+            "annotated": 160
+          },
+          "1242": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.04355108877721943,
+            "cost_tokens": 206310,
+            "annotated": 1194
+          }
+        }
+      }
+    },
+    {
+      "t": "419d3a9d80",
+      "t_plus_n": "6045186f7d",
+      "symbols": 1245,
+      "files_changed": 48,
+      "d_edit": 296,
+      "d_file": 721,
+      "total_cost_tokens_all": 207560,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1245
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.057432432432432436,
+            "coverage_file": 0.024965325936199722,
+            "invalidated_share": 0.9444444444444444,
+            "cost_tokens": 6350.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.0945945945945946,
+            "coverage_file": 0.052704576976421634,
+            "invalidated_share": 0.7368421052631579,
+            "cost_tokens": 11013.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.14864864864864866,
+            "coverage_file": 0.10818307905686546,
+            "invalidated_share": 0.5641025641025641,
+            "cost_tokens": 20008.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.23986486486486486,
+            "coverage_file": 0.21914008321775313,
+            "invalidated_share": 0.44936708860759494,
+            "cost_tokens": 36050.0,
+            "annotated": 158.0
+          },
+          "1245": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.24749163879598662,
+            "cost_tokens": 207560.0,
+            "annotated": 1196.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.060810810810810814,
+            "coverage_file": 0.027739251040221916,
+            "invalidated_share": 0.9,
+            "cost_tokens": 6725.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.10810810810810811,
+            "coverage_file": 0.05547850208044383,
+            "invalidated_share": 0.8,
+            "cost_tokens": 12849.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.16554054054054054,
+            "coverage_file": 0.11095700416088766,
+            "invalidated_share": 0.6125,
+            "cost_tokens": 22963.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.2668918918918919,
+            "coverage_file": 0.22191400832177532,
+            "invalidated_share": 0.49375,
+            "cost_tokens": 38343.0,
+            "annotated": 160.0
+          },
+          "1245": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.24749163879598662,
+            "cost_tokens": 207560.0,
+            "annotated": 1196.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.060810810810810814,
+            "coverage_file": 0.027739251040221916,
+            "invalidated_share": 0.9,
+            "cost_tokens": 6821.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.10135135135135136,
+            "coverage_file": 0.04854368932038835,
+            "invalidated_share": 0.75,
+            "cost_tokens": 11716.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.16216216216216217,
+            "coverage_file": 0.09431345353675451,
+            "invalidated_share": 0.631578947368421,
+            "cost_tokens": 19186.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.27364864864864863,
+            "coverage_file": 0.17753120665742025,
+            "invalidated_share": 0.5586206896551724,
+            "cost_tokens": 33104.0,
+            "annotated": 145.0
+          },
+          "1245": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.24749163879598662,
+            "cost_tokens": 207560.0,
+            "annotated": 1196.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.057432432432432436,
+            "coverage_file": 0.026352288488210817,
+            "invalidated_share": 0.85,
+            "cost_tokens": 6567.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.09121621621621621,
+            "coverage_file": 0.04576976421636616,
+            "invalidated_share": 0.675,
+            "cost_tokens": 11901.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.15202702702702703,
+            "coverage_file": 0.07073509015256588,
+            "invalidated_share": 0.5921052631578947,
+            "cost_tokens": 21384.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.2668918918918919,
+            "coverage_file": 0.14979195561719832,
+            "invalidated_share": 0.5163398692810458,
+            "cost_tokens": 39770.0,
+            "annotated": 153.0
+          },
+          "1245": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.24749163879598662,
+            "cost_tokens": 207560.0,
+            "annotated": 1196.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.04054054054054054,
+            "coverage_file": 0.027739251040221916,
+            "invalidated_share": 0.6,
+            "cost_tokens": 6082.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.0777027027027027,
+            "coverage_file": 0.04576976421636616,
+            "invalidated_share": 0.696969696969697,
+            "cost_tokens": 8367.0,
+            "annotated": 33.0
+          },
+          "80": {
+            "coverage_edit": 0.16216216216216217,
+            "coverage_file": 0.10124826629680998,
+            "invalidated_share": 0.6575342465753424,
+            "cost_tokens": 18912.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.30067567567567566,
+            "coverage_file": 0.20665742024965325,
+            "invalidated_share": 0.5973154362416108,
+            "cost_tokens": 34038.0,
+            "annotated": 149.0
+          },
+          "1245": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.24749163879598662,
+            "cost_tokens": 207560.0,
+            "annotated": 1196.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.037162162162162164,
+            "coverage_file": 0.027739251040221916,
+            "invalidated_share": 0.55,
+            "cost_tokens": 5429.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.07432432432432433,
+            "coverage_file": 0.05547850208044383,
+            "invalidated_share": 0.55,
+            "cost_tokens": 9725.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.14189189189189189,
+            "coverage_file": 0.10124826629680998,
+            "invalidated_share": 0.5753424657534246,
+            "cost_tokens": 16548.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.30067567567567566,
+            "coverage_file": 0.20943134535367544,
+            "invalidated_share": 0.5855263157894737,
+            "cost_tokens": 36800.0,
+            "annotated": 152.0
+          },
+          "1245": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.24749163879598662,
+            "cost_tokens": 207560.0,
+            "annotated": 1196.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.020945945945945947,
+            "coverage_file": 0.01914008321775312,
+            "invalidated_share": 0.31,
+            "cost_tokens": 3168.8,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.04054054054054054,
+            "coverage_file": 0.03439667128987517,
+            "invalidated_share": 0.3,
+            "cost_tokens": 6851.4,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.0804054054054054,
+            "coverage_file": 0.07073509015256588,
+            "invalidated_share": 0.2981962025316456,
+            "cost_tokens": 13959.4,
+            "annotated": 79.8
+          },
+          "160": {
+            "coverage_edit": 0.1614864864864865,
+            "coverage_file": 0.13703190013869623,
+            "invalidated_share": 0.301023903351644,
+            "cost_tokens": 27272.8,
+            "annotated": 158.8
+          },
+          "1245": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.24749163879598662,
+            "cost_tokens": 207560.0,
+            "annotated": 1196.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 296,
+            "deferred_cost_tokens": 68606
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 296,
+            "deferred_cost_tokens": 68606
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 296,
+            "deferred_cost_tokens": 68606
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 296,
+            "deferred_cost_tokens": 68606
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 296,
+            "deferred_cost_tokens": 68606
+          },
+          "1245": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 296,
+            "deferred_cost_tokens": 68606
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.06756756756756757,
+            "coverage_file": 0.027739251040221916,
+            "invalidated_share": 1.0,
+            "cost_tokens": 6125,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.13513513513513514,
+            "coverage_file": 0.05547850208044383,
+            "invalidated_share": 1.0,
+            "cost_tokens": 12621,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 0.2702702702702703,
+            "coverage_file": 0.10957004160887657,
+            "invalidated_share": 1.0,
+            "cost_tokens": 23229,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 0.5405405405405406,
+            "coverage_file": 0.22052704576976423,
+            "invalidated_share": 1.0,
+            "cost_tokens": 41268,
+            "annotated": 160
+          },
+          "1245": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.24749163879598662,
+            "cost_tokens": 207560,
+            "annotated": 1196
+          }
+        }
+      }
+    },
+    {
+      "t": "df5345140e",
+      "t_plus_n": "92e9dfb399",
+      "symbols": 1248,
+      "files_changed": 32,
+      "d_edit": 72,
+      "d_file": 604,
+      "total_cost_tokens_all": 207117,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1248
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.1111111111111111,
+            "coverage_file": 0.018211920529801324,
+            "invalidated_share": 0.4444444444444444,
+            "cost_tokens": 6347.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.1388888888888889,
+            "coverage_file": 0.039735099337748346,
+            "invalidated_share": 0.2631578947368421,
+            "cost_tokens": 11232.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.18055555555555555,
+            "coverage_file": 0.08112582781456953,
+            "invalidated_share": 0.16666666666666666,
+            "cost_tokens": 20071.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.2222222222222222,
+            "coverage_file": 0.16887417218543047,
+            "invalidated_share": 0.10126582278481013,
+            "cost_tokens": 35738.0,
+            "annotated": 158.0
+          },
+          "1248": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.060050041701417846,
+            "cost_tokens": 207117.0,
+            "annotated": 1199.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.06944444444444445,
+            "coverage_file": 0.018211920529801324,
+            "invalidated_share": 0.25,
+            "cost_tokens": 6811.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.125,
+            "coverage_file": 0.041390728476821195,
+            "invalidated_share": 0.225,
+            "cost_tokens": 13026.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.1388888888888889,
+            "coverage_file": 0.08609271523178808,
+            "invalidated_share": 0.125,
+            "cost_tokens": 22838.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.19444444444444445,
+            "coverage_file": 0.1490066225165563,
+            "invalidated_share": 0.0875,
+            "cost_tokens": 38178.0,
+            "annotated": 160.0
+          },
+          "1248": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.060050041701417846,
+            "cost_tokens": 207117.0,
+            "annotated": 1199.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.06944444444444445,
+            "coverage_file": 0.018211920529801324,
+            "invalidated_share": 0.25,
+            "cost_tokens": 6811.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.1388888888888889,
+            "coverage_file": 0.039735099337748346,
+            "invalidated_share": 0.25,
+            "cost_tokens": 12347.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.18055555555555555,
+            "coverage_file": 0.07947019867549669,
+            "invalidated_share": 0.17105263157894737,
+            "cost_tokens": 19634.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.25,
+            "coverage_file": 0.12251655629139073,
+            "invalidated_share": 0.12413793103448276,
+            "cost_tokens": 33384.0,
+            "annotated": 145.0
+          },
+          "1248": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.060050041701417846,
+            "cost_tokens": 207117.0,
+            "annotated": 1199.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.08333333333333333,
+            "coverage_file": 0.02152317880794702,
+            "invalidated_share": 0.3,
+            "cost_tokens": 6548.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.125,
+            "coverage_file": 0.046357615894039736,
+            "invalidated_share": 0.225,
+            "cost_tokens": 12075.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.16666666666666666,
+            "coverage_file": 0.09271523178807947,
+            "invalidated_share": 0.15789473684210525,
+            "cost_tokens": 21755.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.2222222222222222,
+            "coverage_file": 0.173841059602649,
+            "invalidated_share": 0.10457516339869281,
+            "cost_tokens": 39818.0,
+            "annotated": 153.0
+          },
+          "1248": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.060050041701417846,
+            "cost_tokens": 207117.0,
+            "annotated": 1199.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.125,
+            "coverage_file": 0.033112582781456956,
+            "invalidated_share": 0.45,
+            "cost_tokens": 5991.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.2222222222222222,
+            "coverage_file": 0.054635761589403975,
+            "invalidated_share": 0.48484848484848486,
+            "cost_tokens": 8200.0,
+            "annotated": 33.0
+          },
+          "80": {
+            "coverage_edit": 0.2361111111111111,
+            "coverage_file": 0.12086092715231789,
+            "invalidated_share": 0.2328767123287671,
+            "cost_tokens": 18464.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.3472222222222222,
+            "coverage_file": 0.21688741721854304,
+            "invalidated_share": 0.16778523489932887,
+            "cost_tokens": 32365.0,
+            "annotated": 149.0
+          },
+          "1248": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.060050041701417846,
+            "cost_tokens": 207117.0,
+            "annotated": 1199.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.0,
+            "cost_tokens": 5239.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.008278145695364239,
+            "invalidated_share": 0.0,
+            "cost_tokens": 9470.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.1388888888888889,
+            "coverage_file": 0.06291390728476821,
+            "invalidated_share": 0.136986301369863,
+            "cost_tokens": 16212.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.2638888888888889,
+            "coverage_file": 0.1291390728476821,
+            "invalidated_share": 0.125,
+            "cost_tokens": 36038.0,
+            "annotated": 152.0
+          },
+          "1248": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.060050041701417846,
+            "cost_tokens": 207117.0,
+            "annotated": 1199.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.02222222222222222,
+            "coverage_file": 0.016225165562913906,
+            "invalidated_share": 0.08,
+            "cost_tokens": 3494.2,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.04444444444444444,
+            "coverage_file": 0.03377483443708609,
+            "invalidated_share": 0.08,
+            "cost_tokens": 6960.2,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.08333333333333333,
+            "coverage_file": 0.06622516556291391,
+            "invalidated_share": 0.075,
+            "cost_tokens": 13962.6,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.20277777777777778,
+            "coverage_file": 0.1337748344370861,
+            "invalidated_share": 0.09171542870790542,
+            "cost_tokens": 27411.8,
+            "annotated": 159.2
+          },
+          "1248": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.060050041701417846,
+            "cost_tokens": 207117.0,
+            "annotated": 1199.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 72,
+            "deferred_cost_tokens": 16310
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 72,
+            "deferred_cost_tokens": 16310
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 72,
+            "deferred_cost_tokens": 16310
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 72,
+            "deferred_cost_tokens": 16310
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 72,
+            "deferred_cost_tokens": 16310
+          },
+          "1248": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 72,
+            "deferred_cost_tokens": 16310
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.2777777777777778,
+            "coverage_file": 0.033112582781456956,
+            "invalidated_share": 1.0,
+            "cost_tokens": 5526,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.5555555555555556,
+            "coverage_file": 0.056291390728476824,
+            "invalidated_share": 1.0,
+            "cost_tokens": 9830,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.10430463576158941,
+            "invalidated_share": 0.9,
+            "cost_tokens": 18960,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.19205298013245034,
+            "invalidated_share": 0.45,
+            "cost_tokens": 37558,
+            "annotated": 160
+          },
+          "1248": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.060050041701417846,
+            "cost_tokens": 207117,
+            "annotated": 1199
+          }
+        }
+      }
+    },
+    {
+      "t": "37593c1952",
+      "t_plus_n": "6f9b50990d",
+      "symbols": 1261,
+      "files_changed": 26,
+      "d_edit": 80,
+      "d_file": 310,
+      "total_cost_tokens_all": 209389,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1261
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.125,
+            "coverage_file": 0.03225806451612903,
+            "invalidated_share": 0.5555555555555556,
+            "cost_tokens": 6347.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.15,
+            "coverage_file": 0.054838709677419356,
+            "invalidated_share": 0.3157894736842105,
+            "cost_tokens": 11234.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.15,
+            "coverage_file": 0.1,
+            "invalidated_share": 0.15384615384615385,
+            "cost_tokens": 20097.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.2,
+            "coverage_file": 0.15161290322580645,
+            "invalidated_share": 0.10126582278481013,
+            "cost_tokens": 36108.0,
+            "annotated": 158.0
+          },
+          "1261": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.066006600660066,
+            "cost_tokens": 209389.0,
+            "annotated": 1212.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.075,
+            "coverage_file": 0.02903225806451613,
+            "invalidated_share": 0.3,
+            "cost_tokens": 6811.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.125,
+            "coverage_file": 0.04516129032258064,
+            "invalidated_share": 0.25,
+            "cost_tokens": 13030.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.1375,
+            "coverage_file": 0.09032258064516129,
+            "invalidated_share": 0.1375,
+            "cost_tokens": 22842.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.1625,
+            "coverage_file": 0.14838709677419354,
+            "invalidated_share": 0.08125,
+            "cost_tokens": 38520.0,
+            "annotated": 160.0
+          },
+          "1261": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.066006600660066,
+            "cost_tokens": 209389.0,
+            "annotated": 1212.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.0875,
+            "coverage_file": 0.035483870967741936,
+            "invalidated_share": 0.35,
+            "cost_tokens": 6811.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.125,
+            "coverage_file": 0.05806451612903226,
+            "invalidated_share": 0.25,
+            "cost_tokens": 12371.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.15,
+            "coverage_file": 0.1064516129032258,
+            "invalidated_share": 0.15789473684210525,
+            "cost_tokens": 19524.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.2125,
+            "coverage_file": 0.1774193548387097,
+            "invalidated_share": 0.11724137931034483,
+            "cost_tokens": 33357.0,
+            "annotated": 145.0
+          },
+          "1261": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.066006600660066,
+            "cost_tokens": 209389.0,
+            "annotated": 1212.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.075,
+            "coverage_file": 0.02903225806451613,
+            "invalidated_share": 0.3,
+            "cost_tokens": 6550.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.125,
+            "coverage_file": 0.04516129032258064,
+            "invalidated_share": 0.25,
+            "cost_tokens": 12264.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.15,
+            "coverage_file": 0.07419354838709677,
+            "invalidated_share": 0.15584415584415584,
+            "cost_tokens": 21876.0,
+            "annotated": 77.0
+          },
+          "160": {
+            "coverage_edit": 0.225,
+            "coverage_file": 0.15161290322580645,
+            "invalidated_share": 0.11764705882352941,
+            "cost_tokens": 39859.0,
+            "annotated": 153.0
+          },
+          "1261": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.066006600660066,
+            "cost_tokens": 209389.0,
+            "annotated": 1212.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.125,
+            "coverage_file": 0.06451612903225806,
+            "invalidated_share": 0.5,
+            "cost_tokens": 6015.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.2625,
+            "coverage_file": 0.1064516129032258,
+            "invalidated_share": 0.6363636363636364,
+            "cost_tokens": 8224.0,
+            "annotated": 33.0
+          },
+          "80": {
+            "coverage_edit": 0.4,
+            "coverage_file": 0.23548387096774193,
+            "invalidated_share": 0.4383561643835616,
+            "cost_tokens": 18426.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.5,
+            "coverage_file": 0.2870967741935484,
+            "invalidated_share": 0.2684563758389262,
+            "cost_tokens": 34486.0,
+            "annotated": 149.0
+          },
+          "1261": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.066006600660066,
+            "cost_tokens": 209389.0,
+            "annotated": 1212.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.1125,
+            "coverage_file": 0.02903225806451613,
+            "invalidated_share": 0.45,
+            "cost_tokens": 5239.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.1125,
+            "coverage_file": 0.04516129032258064,
+            "invalidated_share": 0.225,
+            "cost_tokens": 9470.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.275,
+            "coverage_file": 0.15161290322580645,
+            "invalidated_share": 0.3013698630136986,
+            "cost_tokens": 16125.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.5625,
+            "coverage_file": 0.35161290322580646,
+            "invalidated_share": 0.29605263157894735,
+            "cost_tokens": 36079.0,
+            "annotated": 152.0
+          },
+          "1261": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.066006600660066,
+            "cost_tokens": 209389.0,
+            "annotated": 1212.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.025,
+            "coverage_file": 0.01870967741935484,
+            "invalidated_share": 0.1,
+            "cost_tokens": 3723.4,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.045,
+            "coverage_file": 0.035483870967741936,
+            "invalidated_share": 0.09,
+            "cost_tokens": 7103.4,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.1075,
+            "coverage_file": 0.06451612903225806,
+            "invalidated_share": 0.10778481012658228,
+            "cost_tokens": 13717.0,
+            "annotated": 79.8
+          },
+          "160": {
+            "coverage_edit": 0.1775,
+            "coverage_file": 0.13096774193548386,
+            "invalidated_share": 0.0890880503144654,
+            "cost_tokens": 27608.2,
+            "annotated": 159.4
+          },
+          "1261": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.066006600660066,
+            "cost_tokens": 209389.0,
+            "annotated": 1212.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 80,
+            "deferred_cost_tokens": 19686
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 80,
+            "deferred_cost_tokens": 19686
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 80,
+            "deferred_cost_tokens": 19686
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 80,
+            "deferred_cost_tokens": 19686
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 80,
+            "deferred_cost_tokens": 19686
+          },
+          "1261": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 80,
+            "deferred_cost_tokens": 19686
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.25,
+            "coverage_file": 0.06451612903225806,
+            "invalidated_share": 1.0,
+            "cost_tokens": 7090,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.5,
+            "coverage_file": 0.12903225806451613,
+            "invalidated_share": 1.0,
+            "cost_tokens": 12382,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.1774193548387097,
+            "invalidated_share": 1.0,
+            "cost_tokens": 19686,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.35161290322580646,
+            "invalidated_share": 0.5,
+            "cost_tokens": 36664,
+            "annotated": 160
+          },
+          "1261": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.066006600660066,
+            "cost_tokens": 209389,
+            "annotated": 1212
+          }
+        }
+      }
+    },
+    {
+      "t": "95a9527ed6",
+      "t_plus_n": "b47d94c904",
+      "symbols": 1263,
+      "files_changed": 41,
+      "d_edit": 119,
+      "d_file": 861,
+      "total_cost_tokens_all": 209910,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1263
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.10084033613445378,
+            "coverage_file": 0.017421602787456445,
+            "invalidated_share": 0.6666666666666666,
+            "cost_tokens": 6347.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.13445378151260504,
+            "coverage_file": 0.03484320557491289,
+            "invalidated_share": 0.42105263157894735,
+            "cost_tokens": 11234.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.15966386554621848,
+            "coverage_file": 0.07084785133565621,
+            "invalidated_share": 0.24358974358974358,
+            "cost_tokens": 20097.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.25210084033613445,
+            "coverage_file": 0.1254355400696864,
+            "invalidated_share": 0.189873417721519,
+            "cost_tokens": 36459.0,
+            "annotated": 158.0
+          },
+          "1263": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.09802306425041186,
+            "cost_tokens": 209910.0,
+            "annotated": 1214.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.06722689075630252,
+            "coverage_file": 0.018583042973286876,
+            "invalidated_share": 0.4,
+            "cost_tokens": 6811.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.1092436974789916,
+            "coverage_file": 0.036004645760743324,
+            "invalidated_share": 0.325,
+            "cost_tokens": 13030.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.15966386554621848,
+            "coverage_file": 0.06968641114982578,
+            "invalidated_share": 0.2375,
+            "cost_tokens": 22842.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.24369747899159663,
+            "coverage_file": 0.13240418118466898,
+            "invalidated_share": 0.18125,
+            "cost_tokens": 38520.0,
+            "annotated": 160.0
+          },
+          "1263": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.09802306425041186,
+            "cost_tokens": 209910.0,
+            "annotated": 1214.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.08403361344537816,
+            "coverage_file": 0.020905923344947737,
+            "invalidated_share": 0.5,
+            "cost_tokens": 6811.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.1092436974789916,
+            "coverage_file": 0.03948896631823461,
+            "invalidated_share": 0.325,
+            "cost_tokens": 12022.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.13445378151260504,
+            "coverage_file": 0.07200929152148665,
+            "invalidated_share": 0.21052631578947367,
+            "cost_tokens": 19831.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.19327731092436976,
+            "coverage_file": 0.13356562137049943,
+            "invalidated_share": 0.15862068965517243,
+            "cost_tokens": 33638.0,
+            "annotated": 145.0
+          },
+          "1263": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.09802306425041186,
+            "cost_tokens": 209910.0,
+            "annotated": 1214.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.06722689075630252,
+            "coverage_file": 0.019744483159117306,
+            "invalidated_share": 0.4,
+            "cost_tokens": 6550.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.10084033613445378,
+            "coverage_file": 0.04065040650406504,
+            "invalidated_share": 0.3,
+            "cost_tokens": 12264.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.15966386554621848,
+            "coverage_file": 0.08013937282229965,
+            "invalidated_share": 0.24675324675324675,
+            "cost_tokens": 21876.0,
+            "annotated": 77.0
+          },
+          "160": {
+            "coverage_edit": 0.2605042016806723,
+            "coverage_file": 0.156794425087108,
+            "invalidated_share": 0.20261437908496732,
+            "cost_tokens": 39859.0,
+            "annotated": 153.0
+          },
+          "1263": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.09802306425041186,
+            "cost_tokens": 209910.0,
+            "annotated": 1214.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.07563025210084033,
+            "coverage_file": 0.023228803716608595,
+            "invalidated_share": 0.45,
+            "cost_tokens": 6015.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.13445378151260504,
+            "coverage_file": 0.03832752613240418,
+            "invalidated_share": 0.48484848484848486,
+            "cost_tokens": 8225.0,
+            "annotated": 33.0
+          },
+          "80": {
+            "coverage_edit": 0.2184873949579832,
+            "coverage_file": 0.08478513356562137,
+            "invalidated_share": 0.3561643835616438,
+            "cost_tokens": 18429.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.3445378151260504,
+            "coverage_file": 0.17421602787456447,
+            "invalidated_share": 0.2733333333333333,
+            "cost_tokens": 35162.0,
+            "annotated": 150.0
+          },
+          "1263": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.09802306425041186,
+            "cost_tokens": 209910.0,
+            "annotated": 1214.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.07563025210084033,
+            "coverage_file": 0.010452961672473868,
+            "invalidated_share": 0.45,
+            "cost_tokens": 5240.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.09243697478991597,
+            "coverage_file": 0.016260162601626018,
+            "invalidated_share": 0.275,
+            "cost_tokens": 9471.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.2184873949579832,
+            "coverage_file": 0.0545876887340302,
+            "invalidated_share": 0.3561643835616438,
+            "cost_tokens": 16127.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.3277310924369748,
+            "coverage_file": 0.14634146341463414,
+            "invalidated_share": 0.2565789473684211,
+            "cost_tokens": 36083.0,
+            "annotated": 152.0
+          },
+          "1263": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.09802306425041186,
+            "cost_tokens": 209910.0,
+            "annotated": 1214.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.021848739495798318,
+            "coverage_file": 0.01835075493612079,
+            "invalidated_share": 0.13,
+            "cost_tokens": 3704.2,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.043697478991596636,
+            "coverage_file": 0.03321718931475029,
+            "invalidated_share": 0.13076923076923078,
+            "cost_tokens": 7189.0,
+            "annotated": 39.8
+          },
+          "80": {
+            "coverage_edit": 0.08403361344537816,
+            "coverage_file": 0.06504065040650406,
+            "invalidated_share": 0.12618143459915612,
+            "cost_tokens": 13980.0,
+            "annotated": 79.4
+          },
+          "160": {
+            "coverage_edit": 0.16470588235294117,
+            "coverage_file": 0.13263646922183508,
+            "invalidated_share": 0.12340896425443834,
+            "cost_tokens": 27639.0,
+            "annotated": 159.0
+          },
+          "1263": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.09802306425041186,
+            "cost_tokens": 209910.0,
+            "annotated": 1214.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 119,
+            "deferred_cost_tokens": 27156
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 119,
+            "deferred_cost_tokens": 27156
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 119,
+            "deferred_cost_tokens": 27156
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 119,
+            "deferred_cost_tokens": 27156
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 119,
+            "deferred_cost_tokens": 27156
+          },
+          "1263": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 119,
+            "deferred_cost_tokens": 27156
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.16806722689075632,
+            "coverage_file": 0.023228803716608595,
+            "invalidated_share": 1.0,
+            "cost_tokens": 6213,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.33613445378151263,
+            "coverage_file": 0.04645760743321719,
+            "invalidated_share": 1.0,
+            "cost_tokens": 10566,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 0.6722689075630253,
+            "coverage_file": 0.08943089430894309,
+            "invalidated_share": 1.0,
+            "cost_tokens": 22030,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.13588850174216027,
+            "invalidated_share": 0.74375,
+            "cost_tokens": 35461,
+            "annotated": 160
+          },
+          "1263": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.09802306425041186,
+            "cost_tokens": 209910,
+            "annotated": 1214
+          }
+        }
+      }
+    },
+    {
+      "t": "1805ee0d22",
+      "t_plus_n": "9e8ab40369",
+      "symbols": 1238,
+      "files_changed": 23,
+      "d_edit": 70,
+      "d_file": 394,
+      "total_cost_tokens_all": 204879,
+      "budgets": [
+        0,
+        20,
+        40,
+        80,
+        160,
+        1238
+      ],
+      "policies": {
+        "callers": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.1,
+            "coverage_file": 0.030456852791878174,
+            "invalidated_share": 0.3888888888888889,
+            "cost_tokens": 6347.0,
+            "annotated": 18.0
+          },
+          "40": {
+            "coverage_edit": 0.12857142857142856,
+            "coverage_file": 0.06091370558375635,
+            "invalidated_share": 0.23684210526315788,
+            "cost_tokens": 11567.0,
+            "annotated": 38.0
+          },
+          "80": {
+            "coverage_edit": 0.17142857142857143,
+            "coverage_file": 0.12436548223350254,
+            "invalidated_share": 0.15384615384615385,
+            "cost_tokens": 20085.0,
+            "annotated": 78.0
+          },
+          "160": {
+            "coverage_edit": 0.22857142857142856,
+            "coverage_file": 0.20050761421319796,
+            "invalidated_share": 0.10126582278481013,
+            "cost_tokens": 36031.0,
+            "annotated": 158.0
+          },
+          "1238": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.058823529411764705,
+            "cost_tokens": 204879.0,
+            "annotated": 1190.0
+          }
+        },
+        "callers_exact": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.07142857142857142,
+            "coverage_file": 0.027918781725888325,
+            "invalidated_share": 0.25,
+            "cost_tokens": 6851.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.1,
+            "coverage_file": 0.06091370558375635,
+            "invalidated_share": 0.175,
+            "cost_tokens": 13049.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.12857142857142856,
+            "coverage_file": 0.1116751269035533,
+            "invalidated_share": 0.1125,
+            "cost_tokens": 22635.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.2,
+            "coverage_file": 0.1802030456852792,
+            "invalidated_share": 0.0875,
+            "cost_tokens": 38065.0,
+            "annotated": 160.0
+          },
+          "1238": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.058823529411764705,
+            "cost_tokens": 204879.0,
+            "annotated": 1190.0
+          }
+        },
+        "pagerank": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.08571428571428572,
+            "coverage_file": 0.03553299492385787,
+            "invalidated_share": 0.3,
+            "cost_tokens": 6851.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.08571428571428572,
+            "coverage_file": 0.0532994923857868,
+            "invalidated_share": 0.15,
+            "cost_tokens": 12112.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.11428571428571428,
+            "coverage_file": 0.10913705583756345,
+            "invalidated_share": 0.10526315789473684,
+            "cost_tokens": 19786.0,
+            "annotated": 76.0
+          },
+          "160": {
+            "coverage_edit": 0.2,
+            "coverage_file": 0.17766497461928935,
+            "invalidated_share": 0.09655172413793103,
+            "cost_tokens": 33180.0,
+            "annotated": 145.0
+          },
+          "1238": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.058823529411764705,
+            "cost_tokens": 204879.0,
+            "annotated": 1190.0
+          }
+        },
+        "degree": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.07142857142857142,
+            "coverage_file": 0.030456852791878174,
+            "invalidated_share": 0.25,
+            "cost_tokens": 6590.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.1,
+            "coverage_file": 0.05583756345177665,
+            "invalidated_share": 0.175,
+            "cost_tokens": 12434.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.14285714285714285,
+            "coverage_file": 0.09137055837563451,
+            "invalidated_share": 0.12987012987012986,
+            "cost_tokens": 21876.0,
+            "annotated": 77.0
+          },
+          "160": {
+            "coverage_edit": 0.22857142857142856,
+            "coverage_file": 0.1700507614213198,
+            "invalidated_share": 0.10457516339869281,
+            "cost_tokens": 39963.0,
+            "annotated": 153.0
+          },
+          "1238": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.058823529411764705,
+            "cost_tokens": 204879.0,
+            "annotated": 1190.0
+          }
+        },
+        "git_churn": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.0,
+            "cost_tokens": 4351.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.0,
+            "cost_tokens": 6600.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": 0.0,
+            "cost_tokens": 12066.0,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.15714285714285714,
+            "coverage_file": 0.15736040609137056,
+            "invalidated_share": 0.06918238993710692,
+            "cost_tokens": 29117.0,
+            "annotated": 159.0
+          },
+          "1238": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.058823529411764705,
+            "cost_tokens": 204879.0,
+            "annotated": 1190.0
+          }
+        },
+        "file_order": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.12857142857142856,
+            "coverage_file": 0.02284263959390863,
+            "invalidated_share": 0.45,
+            "cost_tokens": 5022.0,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.12857142857142856,
+            "coverage_file": 0.03553299492385787,
+            "invalidated_share": 0.225,
+            "cost_tokens": 9254.0,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.2857142857142857,
+            "coverage_file": 0.11928934010152284,
+            "invalidated_share": 0.273972602739726,
+            "cost_tokens": 15840.0,
+            "annotated": 73.0
+          },
+          "160": {
+            "coverage_edit": 0.4,
+            "coverage_file": 0.26903553299492383,
+            "invalidated_share": 0.1830065359477124,
+            "cost_tokens": 35112.0,
+            "annotated": 153.0
+          },
+          "1238": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.058823529411764705,
+            "cost_tokens": 204879.0,
+            "annotated": 1190.0
+          }
+        },
+        "random": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0
+          },
+          "20": {
+            "coverage_edit": 0.02857142857142857,
+            "coverage_file": 0.017766497461928935,
+            "invalidated_share": 0.1,
+            "cost_tokens": 3272.4,
+            "annotated": 20.0
+          },
+          "40": {
+            "coverage_edit": 0.045714285714285714,
+            "coverage_file": 0.032487309644670045,
+            "invalidated_share": 0.08,
+            "cost_tokens": 6525.6,
+            "annotated": 40.0
+          },
+          "80": {
+            "coverage_edit": 0.09714285714285714,
+            "coverage_file": 0.06852791878172589,
+            "invalidated_share": 0.08499999999999999,
+            "cost_tokens": 13905.8,
+            "annotated": 80.0
+          },
+          "160": {
+            "coverage_edit": 0.1742857142857143,
+            "coverage_file": 0.132994923857868,
+            "invalidated_share": 0.07659670806464454,
+            "cost_tokens": 27506.2,
+            "annotated": 159.2
+          },
+          "1238": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.058823529411764705,
+            "cost_tokens": 204879.0,
+            "annotated": 1190.0
+          }
+        },
+        "lazy": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 70,
+            "deferred_cost_tokens": 15543
+          },
+          "20": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 70,
+            "deferred_cost_tokens": 15543
+          },
+          "40": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 70,
+            "deferred_cost_tokens": 15543
+          },
+          "80": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 70,
+            "deferred_cost_tokens": 15543
+          },
+          "160": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 70,
+            "deferred_cost_tokens": 15543
+          },
+          "1238": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": null,
+            "cost_tokens": 0.0,
+            "annotated": 0.0,
+            "deferred_calls": 70,
+            "deferred_cost_tokens": 15543
+          }
+        },
+        "oracle": {
+          "0": {
+            "coverage_edit": 0.0,
+            "coverage_file": 0.0,
+            "invalidated_share": NaN,
+            "cost_tokens": 0,
+            "annotated": 0
+          },
+          "20": {
+            "coverage_edit": 0.2857142857142857,
+            "coverage_file": 0.050761421319796954,
+            "invalidated_share": 1.0,
+            "cost_tokens": 5665,
+            "annotated": 20
+          },
+          "40": {
+            "coverage_edit": 0.5714285714285714,
+            "coverage_file": 0.09898477157360407,
+            "invalidated_share": 1.0,
+            "cost_tokens": 10643,
+            "annotated": 40
+          },
+          "80": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.13451776649746192,
+            "invalidated_share": 0.875,
+            "cost_tokens": 17503,
+            "annotated": 80
+          },
+          "160": {
+            "coverage_edit": 1.0,
+            "coverage_file": 0.2969543147208122,
+            "invalidated_share": 0.4375,
+            "cost_tokens": 37156,
+            "annotated": 160
+          },
+          "1238": {
+            "coverage_edit": 1.0,
+            "coverage_file": 1.0,
+            "invalidated_share": 0.058823529411764705,
+            "cost_tokens": 204879,
+            "annotated": 1190
+          }
+        }
+      }
+    }
+  ]
+}

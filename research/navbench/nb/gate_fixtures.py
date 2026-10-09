@@ -40,6 +40,20 @@ def check_py(root: Path) -> list[str]:
         got = {(idx.calls[c].file, idx.calls[c].line) for (c, d), v in tr["pairs"].items() if d == did and v["confirmed"]}
         if want != got:
             errs.append(f"{root.name}:{t['key']} manifest-only={sorted(want - got)} trace-only={sorted(got - want)}")
+    # T3 gold: every generator-recorded non-target edge must be an observed, confirmed call
+    by_qual = {(d.file, d.qualname): d.id for d in idx.decls.values()}
+    for e in man.get("edges", []):
+        did = by_qual.get((e["callee_file"], e["callee"]))
+        if did is None:
+            errs.append(f"{root.name}: edge callee not in index {e}")
+            continue
+        # A class without a Python-level __init__ never enters Python code on construction, so its
+        # constructor call can only be *attempted*, not confirmed, by the tracer.
+        is_class = idx.decls[did].kind == "class"
+        if not any((v["confirmed"] or (is_class and v["attempted"])) and d == did
+                   and idx.calls[c].file == e["file"] and idx.calls[c].line == e["line"]
+                   for (c, d), v in tr["pairs"].items()):
+            errs.append(f"{root.name}: edge not observed at runtime {e}")
     if tr["unmapped"]["site"] or tr["unmapped"]["callee"]:  # decorator applications are expected
         errs.append(f"{root.name}: unmapped trace records {tr['unmapped']}")
     return errs
@@ -53,6 +67,9 @@ def check_ts(root: Path) -> list[str]:
     decl_ids = {d["id"] for d in ix["decls"]}
     call_ids = {x["id"] for x in ix["calls"]}
     errs = []
+    for e in man.get("edges", []):  # T3 gold edges: a call node at each recorded site
+        if f"{e['file']}:{e['line']}:{e['col']}" not in call_ids:
+            errs.append(f"{root.name}: no call node at edge site {e}")
     for t in man["targets"]:
         if f"{t['file']}:{t['line']}:{t['col']}" not in decl_ids:
             errs.append(f"{root.name}: decl missing {t['key']}")

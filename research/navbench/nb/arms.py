@@ -64,6 +64,7 @@ def rg(ix: Index, name: str, context: int = 0, pattern: str | None = None, label
         if not m:
             continue
         f, ln, text = m.group(1), int(m.group(2)), m.group(4)
+        f = f.replace("\\", "/")  # Windows ripgrep prints backslash paths (no-op on POSIX)
         f = f[2:] if f.startswith("./") else f
         for mm in rx.finditer(text):
             facts.append((f, ln, mm.start()))
@@ -223,12 +224,12 @@ class CBM:
         except Exception as e:  # noqa: BLE001
             return f"__error__ {e}", True
 
-    def callers(self, ix: Index, name: str, decl: dict) -> ArmResult:
+    def callers(self, ix: Index, name: str, decl: dict, depth: int = 1) -> ArmResult:
         arm = f"cbm_{self.version}"
         t = time.perf_counter()
         natives, n_calls = [], 0
         if self.version == "cur":
-            base = {"project": self.project, "direction": "inbound", "depth": 1, "include_tests": True}
+            base = {"project": self.project, "direction": "inbound", "depth": depth, "include_tests": True}
             txt, err = self._call("trace_path", dict(base, function_name=name)); n_calls += 1
             if txt.startswith("__error__"):
                 return ArmResult(arm, "error", note=txt[:200], latency_s=time.perf_counter() - t)
@@ -271,7 +272,7 @@ class CBM:
                                  n_calls=n_calls)
         else:
             txt, err = self._call("trace_call_path", {"function_name": name, "project": self.project,
-                                                      "direction": "inbound", "depth": 1}); n_calls += 1
+                                                      "direction": "inbound", "depth": depth}); n_calls += 1
             lat = time.perf_counter() - t
             if txt.startswith("__error__"):
                 return ArmResult(arm, "error", note=txt[:200], latency_s=lat)

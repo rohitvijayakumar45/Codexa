@@ -1,28 +1,127 @@
 {
-  "criteria": "Fixed before any natural-repository result was observed. Public GitHub, OSI-permissive licence, primary language Python or TypeScript/JavaScript, library code without a required build step for parsing, maintained (default branch updated in 2025-2026). Python repositories additionally need a pytest/unittest suite that runs from a source checkout (layer C). Purposive selection spanning sizes; not a random sample of GitHub (threat to validity).",
-  "pilot": ["click", "zod", "axios"],
+ "criteria": "Fixed before any natural-repository result was observed. Public GitHub, OSI-permissive licence, primary language Python or TypeScript/JavaScript, library code without a required build step for parsing, maintained (default branch updated in 2025-2026). Python repositories additionally need a pytest/unittest suite that runs from a source checkout (layer C). Purposive selection spanning sizes; not a random sample of GitHub (threat to validity).",
+ "pilot": [
+  "click",
+  "zod",
+  "axios"
+ ],
+ "python": [
+  {
+   "name": "click",
+   "url": "https://github.com/pallets/click"
+  },
+  {
+   "name": "more-itertools",
+   "url": "https://github.com/more-itertools/more-itertools"
+  },
+  {
+   "name": "toolz",
+   "url": "https://github.com/pytoolz/toolz"
+  },
+  {
+   "name": "marshmallow",
+   "url": "https://github.com/marshmallow-code/marshmallow"
+  },
+  {
+   "name": "itsdangerous",
+   "url": "https://github.com/pallets/itsdangerous"
+  },
+  {
+   "name": "jinja",
+   "url": "https://github.com/pallets/jinja"
+  },
+  {
+   "name": "attrs",
+   "url": "https://github.com/python-attrs/attrs"
+  },
+  {
+   "name": "rich",
+   "url": "https://github.com/Textualize/rich"
+  },
+  {
+   "name": "httpx",
+   "url": "https://github.com/encode/httpx"
+  },
+  {
+   "name": "boltons",
+   "url": "https://github.com/mahmoud/boltons"
+  }
+ ],
+ "typescript": [
+  {
+   "name": "axios",
+   "url": "https://github.com/axios/axios"
+  },
+  {
+   "name": "zod",
+   "url": "https://github.com/colinhacks/zod"
+  },
+  {
+   "name": "immer",
+   "url": "https://github.com/immerjs/immer"
+  },
+  {
+   "name": "ky",
+   "url": "https://github.com/sindresorhus/ky"
+  },
+  {
+   "name": "superstruct",
+   "url": "https://github.com/ianstormtaylor/superstruct"
+  },
+  {
+   "name": "neverthrow",
+   "url": "https://github.com/supermacro/neverthrow"
+  },
+  {
+   "name": "ts-pattern",
+   "url": "https://github.com/gvergnaud/ts-pattern"
+  },
+  {
+   "name": "commander.js",
+   "url": "https://github.com/tj/commander.js"
+  },
+  {
+   "name": "redux",
+   "url": "https://github.com/reduxjs/redux"
+  },
+  {
+   "name": "dayjs",
+   "url": "https://github.com/iamkun/dayjs"
+  }
+ ],
+ "large_extension": {
+  "criteria": "Added 2026-10-09 after review, fixed before any NavBench result on these repositories was observed (only clone sizes and frame counts were seen). Same base criteria as above, plus >= 5,000 declarations in the independent frame (functions, methods, classes; all files). Python: pytest suite that runs from a checkout without external services. TypeScript: parses without a build step. Purpose: falsification test for Q1/Q3 in large repositories with common names. Cloned at default-branch HEAD on 2026-10-09.",
   "python": [
-    {"name": "click", "url": "https://github.com/pallets/click"},
-    {"name": "more-itertools", "url": "https://github.com/more-itertools/more-itertools"},
-    {"name": "toolz", "url": "https://github.com/pytoolz/toolz"},
-    {"name": "marshmallow", "url": "https://github.com/marshmallow-code/marshmallow"},
-    {"name": "itsdangerous", "url": "https://github.com/pallets/itsdangerous"},
-    {"name": "jinja", "url": "https://github.com/pallets/jinja"},
-    {"name": "attrs", "url": "https://github.com/python-attrs/attrs"},
-    {"name": "rich", "url": "https://github.com/Textualize/rich"},
-    {"name": "httpx", "url": "https://github.com/encode/httpx"},
-    {"name": "boltons", "url": "https://github.com/mahmoud/boltons"}
+   {
+    "name": "networkx",
+    "url": "https://github.com/networkx/networkx",
+    "sha": "6da4704cbf32ba6f50f6d9c46cc0a071e3a87985",
+    "frame_decls": 8294,
+    "nontest_fn_method_class": 2627
+   },
+   {
+    "name": "sqlalchemy",
+    "url": "https://github.com/sqlalchemy/sqlalchemy",
+    "sha": "e75a4651657f1d12dd747cc8e6f93d2815ea8936",
+    "frame_decls": 40719,
+    "nontest_fn_method_class": 12360
+   }
   ],
   "typescript": [
-    {"name": "axios", "url": "https://github.com/axios/axios"},
-    {"name": "zod", "url": "https://github.com/colinhacks/zod"},
-    {"name": "immer", "url": "https://github.com/immerjs/immer"},
-    {"name": "ky", "url": "https://github.com/sindresorhus/ky"},
-    {"name": "superstruct", "url": "https://github.com/ianstormtaylor/superstruct"},
-    {"name": "neverthrow", "url": "https://github.com/supermacro/neverthrow"},
-    {"name": "ts-pattern", "url": "https://github.com/gvergnaud/ts-pattern"},
-    {"name": "commander.js", "url": "https://github.com/tj/commander.js"},
-    {"name": "redux", "url": "https://github.com/reduxjs/redux"},
-    {"name": "dayjs", "url": "https://github.com/iamkun/dayjs"}
+   {
+    "name": "typeorm",
+    "url": "https://github.com/typeorm/typeorm",
+    "sha": "9f5a345d23b87e4ffdc282b441f6ff15c426c130",
+    "frame_decls": 7503,
+    "nontest_fn_method_class": 3955
+   },
+   {
+    "name": "nest",
+    "url": "https://github.com/nestjs/nest",
+    "sha": "2731c18054fb348779311d81e4e20949e313be78",
+    "frame_decls": 7622,
+    "nontest_fn_method_class": 4454
+   }
   ]
+ }
 }

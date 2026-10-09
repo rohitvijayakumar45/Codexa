@@ -10,7 +10,7 @@ Acceptance cannot be guaranteed. This document records what was checked, what wa
 
 ## Numbers
 - Every decimal number in `main.tex` was checked automatically against `results/main/analysis/report.md`. The exceptions, now committed and reproducible, are:
-  - 85.3× [56.9, 126.8] and 3.0× [2.4, 4.0] in `results/main/analysis/original_method.json` (`nb/replicate_original.py`);
+  - 85.3× [57.2, 126.9] and 3.0× [2.4, 4.0] in `results/main/analysis/original_method.json` (`nb/replicate_original.py`);
   - the 1.5 margin (from FREEZE.md);
   - 2.3 (= 1/0.44);
   - arXiv identifiers.
@@ -22,8 +22,8 @@ Acceptance cannot be guaranteed. This document records what was checked, what wa
 | Graph tools' recall on observed Python calls 0.64–0.75 | PyCG (ICSE 2021): ≈70% recall for static Python call graphs | Consistent |
 | Lexical search ≥ graph tools on recall; graph close behind | Codebase-Memory: graph agent 83% vs grep-and-read explorer 92% quality | Same direction |
 | Language-server JSON costs more tokens than grep or graph | Xu 2026: LSP costs tokens on localization | Consistent |
-| Graph-derived query sampling biases evaluation | CodeNib states its queries come from the static graph | We quantify it |
-| grep is a strong baseline | Sen et al. 2026 | Consistent |
+| Graph-derived query sampling biases evaluation | CodeNib states its queries come from the static graph | We quantify it, adjusted for composition |
+| (context only) grep beats vector retrieval for agent memory | Sen et al. 2026: LongMemEval *conversation* retrieval, not code | Not direct evidence; cited only as context |
 (Prior-work statements are from abstracts and search snippets. Read the full texts before submission.)
 
 ## Mock review: likely objections and responses (fixes applied)
@@ -38,6 +38,36 @@ Acceptance cannot be guaranteed. This document records what was checked, what wa
 | 7 | "Primary contrast conditions on joint completeness" | Complete-answer rates are reported next to every ratio. |
 | 8 | "Tokenizer substitute" | Stated; validated against known ids; a local tiktoken cross-check is recommended. |
 | 9 | "Post-freeze change" | Disclosed with before/after numbers; pre-fix results released. |
+
+## External review, round 3 (applied)
+| # | Point | Verdict | Change |
+|---|---|---|---|
+| 1 | The most complete graph tool has a large precision advantage (0.98 vs 0.35) | Correct | Abstract, Q3 and recommendations now report the token–recall–precision trade-off (F1 0.95 vs 0.50). |
+| 2 | Jointly complete subsets are selected on success and differ by arm | Correct | n per arm stated (64/64/127/79/128 of 160). Full-workload ratio added (1.01 [0.93, 1.09]). Wording says "jointly complete targets", not "matched operating points". |
+| 3 | S-cond vs S-ind differences may be target composition, not conditioning | Partly correct | Post-stratified on repo × kind × fan-out. G1, the conditioning tool, keeps +32/+42 points of answer rate. Its recall gap shrinks to +0.13, with CIs reaching 0. The language server shows no difference (−1 [−5, 3]), and the other graph tool shrinks to +8–9. The earlier claim "sampling from the graph's own edges" for all graph tools was wrong for codebase-memory, because S-cond uses G1's edges; it has been corrected. While checking this, a **scoring bug** was found and fixed: 76 S-ind targets also drawn into S-cond had been dropped from S-ind. See FREEZE.md; S-ind numbers changed, conclusions did not. |
+| 4 | Normalised-form results should be shown | Correct | Location-form column added to Table III; form ratios in the text (graph tools 0.24–0.28 of rg). Caveat: different units (callers vs occurrences). |
+| 5 | Caller-level credit may reward comment/declaration hits inside a caller | Checked | Strict variant: rg/LSP recall changes by at most 0.01, no contrast changes. A human audit was not done (author decision: fully automatic); stated as a limitation. |
+| 6 | codebase-memory's paper evaluates v0.5.5, not v0.5.7 | Correct (search-index evidence; arXiv blocked here) | v0.5.5 was built and run on the frozen targets. It matches v0.5.7 on all fixture queries; on natural code it differs on 5.8% of queries, about as often as v0.5.7 differs from its own re-run (5.3%; current version 0.4%). The aggregates agree within 0.03, so the paper uses one row, "v0.5.5/7" (`results/main/supplement_cbm_versions/`). Current is pinned to `bf93f0b7` in the paper. |
+| 7 | Artifact link is a placeholder | Correct | Still an author action (below). |
+| 8 | 1.03 reads as an equivalence claim; 0.65 rule unclear | Correct | "No evidence of a substantial saving (not an equivalence test)"; 0.65 [0.62, 0.672] explained against 1/1.5 = 0.667. |
+| 9 | Xu 2026 overlap; Sen et al. is conversation memory; 85× is G1's own definition, not codebase-memory's 10× | Correct | Related work and Q1 reworded accordingly. |
+
+## Round 4 (2026-10-09): strengthening for submission
+| Weakness (REVIEW_2026-10-08 / round 3) | Done |
+|---|---|
+| External validity: only small and medium libraries | Large-repository falsification test on networkx, SQLAlchemy, TypeORM and NestJS, with criteria fixed first. Payload ratio unchanged (3.2×); recall falls (cbm 0.42 vs rg 0.78) |
+| Graph tools may help where they claim to (multi-hop) | T3 depth-2 callers: cbm current 0.22 [0.20, 0.24] of rg's tokens at matched completeness. This balances the paper |
+| Seed-specific fixture results | Fresh-seed split reproduces every primary contrast (cbm current 1.02 [0.94, 1.12]) |
+| Unweighted stratified estimates | Weighted S-ind (R6) strengthens Q2 |
+| Table I rows use different subsets | Per-row n added; common subset of 226 targets (R7) gives the same ordering |
+| Layer C may only reflect unindexed tests | Library-caller recall (R8): graph tools 0.63–0.76 vs rg 0.94, LSP 0.86 |
+| Writing errors (141×/134×, ambiguity arm, CodeNib misrepresented, missing citations) | Fixed. Added Total Recall, DyPyBench, SWARM-CG/JS, Agent Retrieval Bench, CORE-Bench, all verified |
+| Tokenizer | o200k changes rg/graph ratios by ≤ 0.06 |
+| Number check | 107 decimals traced to released files (except 0.672 = unrounded CI bound; 85.8 = original claim) |
+| Artifact and anonymity | `local/make_artifact.sh`, `SUBMISSION_CHECKLIST.md` |
+
+Still open (author decisions or actions): the anonymous artifact URL; the 85.8× wording; reading the cited full
+texts; human audit and agent-level slice (not done, by design: fully automatic and model-free).
 
 ## Residual risks (not fixable by editing)
 - Reviewers may prefer an agent-level outcome (resolve rate or answer quality). Mitigation, if wanted: a small agent slice, which needs an API budget.

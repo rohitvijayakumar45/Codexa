@@ -1,0 +1,1384 @@
+{
+ "summary": {
+  "queries": 1376,
+  "same_facts": 1319,
+  "same_tokens": 1320
+ },
+ "differences": [
+  {
+   "key": [
+    "attrs",
+    "src/attr/setters.py:32:4",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:typing_tests/mypy.py",
+     "tests/test_slots.py:772:4",
+     "tests/test_slots.py:791:4",
+     "module:typing_tests/pyrefly.py",
+     "module:typing_tests/baseline.py"
+    ],
+    206
+   ],
+   "b": [
+    "empty",
+    [],
+    15
+   ]
+  },
+  {
+   "key": [
+    "attrs",
+    "typing_tests/baseline.py:47:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:typing_tests/mypy.py"
+    ],
+    42
+   ],
+   "b": [
+    "ok",
+    [
+     "module:typing_tests/pyrefly.py"
+    ],
+    44
+   ]
+  },
+  {
+   "key": [
+    "attrs",
+    "typing_tests/mypy.py:295:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:typing_tests/mypy.py"
+    ],
+    44
+   ],
+   "b": [
+    "ok",
+    [
+     "module:typing_tests/pyrefly.py"
+    ],
+    46
+   ]
+  },
+  {
+   "key": [
+    "attrs",
+    "typing_tests/mypy.py:328:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    16
+   ],
+   "b": [
+    "ok",
+    [
+     "module:typing_tests/pyrefly.py"
+    ],
+    46
+   ]
+  },
+  {
+   "key": [
+    "attrs",
+    "typing_tests/mypy.py:383:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:typing_tests/mypy.py"
+    ],
+    43
+   ],
+   "b": [
+    "ok",
+    [
+     "module:typing_tests/pyrefly.py"
+    ],
+    45
+   ]
+  },
+  {
+   "key": [
+    "attrs",
+    "typing_tests/pyrefly.py:113:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:typing_tests/mypy.py"
+    ],
+    44
+   ],
+   "b": [
+    "ok",
+    [
+     "module:typing_tests/pyrefly.py"
+    ],
+    46
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/dictutils.py:200:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "boltons/dictutils.py:208:8",
+     "boltons/dictutils.py:336:8"
+    ],
+    81
+   ],
+   "b": [
+    "ok",
+    [
+     "boltons/urlutils.py:1106:8",
+     "boltons/urlutils.py:1234:8"
+    ],
+    81
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/dictutils.py:287:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:boltons/debugutils.py",
+     "module:boltons/funcutils.py",
+     "module:tests/test_iterutils.py",
+     "boltons/iterutils.py:1075:4",
+     "boltons/dictutils.py:165:8"
+    ],
+    743
+   ],
+   "b": [
+    "ok",
+    [
+     "module:boltons/urlutils.py",
+     "boltons/urlutils.py:1071:8",
+     "boltons/urlutils.py:1280:8"
+    ],
+    112
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/dictutils.py:867:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "boltons/dictutils.py:398:8",
+     "boltons/dictutils.py:410:8",
+     "boltons/dictutils.py:436:8",
+     "boltons/dictutils.py:443:8",
+     "boltons/dictutils.py:534:8"
+    ],
+    480
+   ],
+   "b": [
+    "ok",
+    [
+     "module:boltons/tbutils.py",
+     "module:boltons/tableutils.py",
+     "module:tests/test_funcutils_fb.py",
+     "boltons/iterutils.py:316:4",
+     "boltons/iterutils.py:1098:4"
+    ],
+    705
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/ioutils.py:358:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:boltons/ioutils.py",
+     "boltons/ioutils.py:170:8",
+     "boltons/ioutils.py:192:8",
+     "boltons/ioutils.py:210:8",
+     "boltons/ioutils.py:238:8"
+    ],
+    436
+   ],
+   "b": [
+    "ok",
+    [
+     "module:boltons/jsonutils.py",
+     "tests/test_ioutils.py:64:8",
+     "tests/test_ioutils.py:156:8",
+     "tests/test_ioutils.py:404:8",
+     "tests/test_ioutils.py:416:8"
+    ],
+    418
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/ioutils.py:468:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "boltons/ioutils.py:468:8"
+    ],
+    47
+   ],
+   "b": [
+    "ok",
+    [
+     "tests/test_ioutils.py:173:8"
+    ],
+    48
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/listutils.py:314:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    14
+   ],
+   "b": [
+    "ok",
+    [
+     "module:boltons/tbutils.py",
+     "module:boltons/fileutils.py",
+     "boltons/excutils.py:215:4"
+    ],
+    106
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/setutils.py:446:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "boltons/dictutils.py:398:8",
+     "boltons/dictutils.py:410:8",
+     "boltons/dictutils.py:436:8",
+     "boltons/dictutils.py:443:8",
+     "boltons/dictutils.py:534:8"
+    ],
+    480
+   ],
+   "b": [
+    "ok",
+    [
+     "module:boltons/tbutils.py",
+     "module:boltons/tableutils.py",
+     "module:tests/test_funcutils_fb.py",
+     "boltons/iterutils.py:316:4",
+     "boltons/iterutils.py:1098:4"
+    ],
+    705
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/setutils.py:740:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:boltons/debugutils.py",
+     "module:boltons/funcutils.py",
+     "module:tests/test_iterutils.py",
+     "boltons/iterutils.py:1075:4",
+     "boltons/dictutils.py:165:8"
+    ],
+    743
+   ],
+   "b": [
+    "ok",
+    [
+     "module:boltons/urlutils.py",
+     "boltons/urlutils.py:1071:8",
+     "boltons/urlutils.py:1280:8"
+    ],
+    112
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/tbutils.py:194:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "boltons/ioutils.py:267:8"
+    ],
+    51
+   ],
+   "b": [
+    "empty",
+    [],
+    16
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "boltons/urlutils.py:1385:8",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "boltons/dictutils.py:609:8"
+    ],
+    46
+   ],
+   "b": [
+    "ok",
+    [
+     "boltons/urlutils.py:1507:8"
+    ],
+    46
+   ]
+  },
+  {
+   "key": [
+    "boltons",
+    "misc/table_html_app.py:153:4",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:misc/linkify_changelog.py"
+    ],
+    44
+   ],
+   "b": [
+    "ok",
+    [
+     "module:boltons/ecoutils.py"
+    ],
+    45
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/index.js:39:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:src/plugin/arraySupport/index.js",
+     "module:src/plugin/negativeYear/index.js",
+     "module:src/plugin/objectSupport/index.js",
+     "module:src/index.js",
+     "module:test/plugin/utc.test.js"
+    ],
+    2891
+   ],
+   "b": [
+    "ok",
+    [
+     "module:src/plugin/arraySupport/index.js",
+     "module:src/plugin/negativeYear/index.js",
+     "module:src/plugin/objectSupport/index.js",
+     "module:src/index.js",
+     "module:test/comparison.test.js"
+    ],
+    2894
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/locale/be.js:12:9",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "src/locale/ru.js:16:9"
+    ],
+    45
+   ],
+   "b": [
+    "ok",
+    [
+     "src/locale/cs.js:8:9"
+    ],
+    37
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/locale/be.js:43:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "unresolved:src.plugin.localeData.index"
+    ],
+    44
+   ],
+   "b": [
+    "ok",
+    [
+     "module:test/locale/keys.test.js",
+     "module:test/plugin/localeData.test.js"
+    ],
+    72
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/locale/pl.js:31:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "src/plugin/duration/index.js:261:6",
+     "unresolved:src.plugin.localeData.index"
+    ],
+    72
+   ],
+   "b": [
+    "empty",
+    [],
+    14
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/locale/ru.js:12:9",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "src/locale/ru.js:16:9"
+    ],
+    45
+   ],
+   "b": [
+    "ok",
+    [
+     "src/locale/cs.js:8:9"
+    ],
+    37
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/locale/ru.js:12:9",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "src/locale/ru.js:16:9"
+    ],
+    45
+   ],
+   "b": [
+    "ok",
+    [
+     "src/locale/cs.js:8:9"
+    ],
+    37
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/locale/uk.js:9:9",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "src/locale/ru.js:16:9"
+    ],
+    45
+   ],
+   "b": [
+    "ok",
+    [
+     "src/locale/cs.js:8:9"
+    ],
+    37
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/plugin/duration/index.js:192:2",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    14
+   ],
+   "b": [
+    "ok",
+    [
+     "module:test/plugin/pluralGetSet.test.js",
+     "module:test/plugin/duration.test.js",
+     "src/plugin/duration/index.js:243:2",
+     "src/plugin/duration/index.js:245:2",
+     "src/plugin/duration/index.js:247:2"
+    ],
+    298
+   ]
+  },
+  {
+   "key": [
+    "dayjs",
+    "src/plugin/duration/index.js:192:2",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    14
+   ],
+   "b": [
+    "ok",
+    [
+     "module:test/plugin/pluralGetSet.test.js",
+     "module:test/plugin/duration.test.js",
+     "src/plugin/duration/index.js:243:2",
+     "src/plugin/duration/index.js:245:2",
+     "src/plugin/duration/index.js:247:2"
+    ],
+    298
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_client.py:1275:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:tests/client/test_client.py"
+    ],
+    44
+   ],
+   "b": [
+    "empty",
+    [],
+    16
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_client.py:179:14",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:httpx/_client.py",
+     "httpx/_client.py:1594:14",
+     "httpx/_client.py:1645:14",
+     "httpx/_client.py:1679:14",
+     "httpx/_client.py:1978:14"
+    ],
+    303
+   ],
+   "b": [
+    "empty",
+    [],
+    15
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_exceptions.py:315:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "httpx/_client.py:639:8",
+     "httpx/_client.py:1353:8"
+    ],
+    75
+   ],
+   "b": [
+    "empty",
+    [],
+    16
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_models.py:202:8",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "httpx/_urls.py:606:8"
+    ],
+    44
+   ],
+   "b": [
+    "ok",
+    [
+     "module:httpx/_multipart.py",
+     "tests/test_exported_members.py:4:4",
+     "module:httpx/_client.py",
+     "tests/models/test_queryparams.py:16:4",
+     "httpx/_models.py:274:8"
+    ],
+    214
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_models.py:202:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "httpx/_urls.py:606:8"
+    ],
+    44
+   ],
+   "b": [
+    "ok",
+    [
+     "module:httpx/_multipart.py",
+     "tests/test_exported_members.py:4:4",
+     "module:httpx/_client.py",
+     "tests/models/test_queryparams.py:16:4",
+     "httpx/_models.py:274:8"
+    ],
+    214
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_models.py:216:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "httpx/_urls.py:77:8",
+     "httpx/_urls.py:425:8",
+     "httpx/_urls.py:474:8",
+     "httpx/_urls.py:498:8"
+    ],
+    127
+   ],
+   "b": [
+    "ok",
+    [
+     "tests/client/test_auth.py:59:8",
+     "httpx/_main.py:194:4",
+     "httpx/_transports/default.py:96:4",
+     "httpx/_auth.py:311:8",
+     "httpx/_multipart.py:186:8"
+    ],
+    926
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_transports/asgi.py:87:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "httpx/_client.py:639:8",
+     "httpx/_client.py:1353:8"
+    ],
+    75
+   ],
+   "b": [
+    "empty",
+    [],
+    16
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_transports/base.py:15:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:tests/client/test_client.py"
+    ],
+    44
+   ],
+   "b": [
+    "empty",
+    [],
+    16
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_urls.py:327:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "httpx/_urls.py:77:8",
+     "httpx/_urls.py:342:8",
+     "httpx/_urls.py:345:8",
+     "httpx/_urls.py:348:8",
+     "httpx/_urls.py:351:8"
+    ],
+    160
+   ],
+   "b": [
+    "ok",
+    [
+     "httpx/_config.py:202:8",
+     "tests/client/test_client.py:47:4",
+     "tests/client/test_client.py:62:4",
+     "tests/client/test_client.py:134:4",
+     "tests/client/test_client.py:402:4"
+    ],
+    1040
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_urls.py:463:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "httpx/_urls.py:606:8"
+    ],
+    44
+   ],
+   "b": [
+    "ok",
+    [
+     "module:httpx/_multipart.py",
+     "tests/test_exported_members.py:4:4",
+     "module:httpx/_client.py",
+     "tests/models/test_queryparams.py:16:4",
+     "httpx/_models.py:274:8"
+    ],
+    214
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_urls.py:498:8",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "httpx/_urls.py:618:8",
+     "httpx/_urls.py:623:8"
+    ],
+    75
+   ],
+   "b": [
+    "ok",
+    [
+     "module:httpx/_models.py",
+     "httpx/_models.py:366:8",
+     "tests/client/test_headers.py:13:4",
+     "tests/models/test_headers.py:6:4"
+    ],
+    132
+   ]
+  },
+  {
+   "key": [
+    "httpx",
+    "httpx/_urls.py:537:8",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "httpx/_urls.py:342:8"
+    ],
+    43
+   ],
+   "b": [
+    "ok",
+    [
+     "module:httpx/_transports/asgi.py",
+     "httpx/_transports/asgi.py:99:14",
+     "tests/models/test_cookies.py:23:4",
+     "tests/models/test_cookies.py:33:4",
+     "tests/models/test_cookies.py:45:4"
+    ],
+    318
+   ]
+  },
+  {
+   "key": [
+    "immer",
+    "src/core/immerClass.ts:178:1",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    17
+   ],
+   "b": [
+    "ok",
+    [
+     "src/core/immerClass.ts:52:1",
+     "module:__tests__/not-strict-copy.ts",
+     "module:__tests__/readme.js",
+     "__tests__/current.js:18:9",
+     "__tests__/frozen.js:16:9"
+    ],
+    159
+   ]
+  },
+  {
+   "key": [
+    "immer",
+    "src/core/immerClass.ts:205:1",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    16
+   ],
+   "b": [
+    "ok",
+    [
+     "module:__tests__/patch.js",
+     "__tests__/base.js:56:9",
+     "module:__tests__/produce.ts",
+     "module:__tests__/readme.js",
+     "module:__tests__/plugins.js"
+    ],
+    236
+   ]
+  },
+  {
+   "key": [
+    "ky",
+    "source/utils/type-guards.ts:36:16",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    16
+   ],
+   "b": [
+    "ok",
+    [
+     "module:test/main.ts",
+     "module:test/response-size.ts",
+     "module:test/retry.ts",
+     "module:test/type-guards.ts"
+    ],
+    115
+   ]
+  },
+  {
+   "key": [
+    "redux",
+    "examples/tree-view/src/containers/Node.js:37:2",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "unresolved:examples.counter.src.index",
+     "unresolved:examples.tree-view.src.index",
+     "module:examples/counter/src/App.test.js",
+     "unresolved:examples.todos.src.index",
+     "unresolved:examples.shopping-cart.src.index"
+    ],
+    216
+   ],
+   "b": [
+    "ok",
+    [
+     "unresolved:examples.counter-ts.src.index",
+     "unresolved:examples.tree-view.src.index",
+     "unresolved:examples.counter.src.index",
+     "module:examples/counter-ts/src/App.test.tsx",
+     "unresolved:examples.todos.src.index"
+    ],
+    215
+   ]
+  },
+  {
+   "key": [
+    "rich",
+    "rich/console.py:892:8",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "tests/test_theme.py:43:4"
+    ],
+    41
+   ],
+   "b": [
+    "ok",
+    [
+     "rich/console.py:355:8"
+    ],
+    43
+   ]
+  },
+  {
+   "key": [
+    "rich",
+    "rich/containers.py:105:8",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:rich/segment.py",
+     "rich/progress.py:104:4",
+     "rich/progress.py:306:4",
+     "rich/progress.py:372:4",
+     "rich/layout.py:286:8"
+    ],
+    340
+   ],
+   "b": [
+    "ok",
+    [
+     "rich/text.py:572:8",
+     "rich/text.py:964:8",
+     "rich/text.py:1008:8",
+     "rich/text.py:1054:8",
+     "rich/text.py:1201:8"
+    ],
+    164
+   ]
+  },
+  {
+   "key": [
+    "rich",
+    "rich/spinner.py:95:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "module:rich/progress_bar.py"
+    ],
+    40
+   ],
+   "b": [
+    "ok",
+    [
+     "module:rich/layout.py"
+    ],
+    37
+   ]
+  },
+  {
+   "key": [
+    "rich",
+    "rich/syntax.py:186:8",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "rich/markdown.py:153:8",
+     "rich/markdown.py:443:8"
+    ],
+    74
+   ],
+   "b": [
+    "empty",
+    [],
+    16
+   ]
+  },
+  {
+   "key": [
+    "rich",
+    "rich/text.py:443:8",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "rich/markdown.py:158:8",
+     "rich/markdown.py:247:8"
+    ],
+    76
+   ],
+   "b": [
+    "ok",
+    [
+     "module:rich/panel.py",
+     "rich/prompt.py:162:8",
+     "rich/console.py:157:8",
+     "rich/console.py:194:8",
+     "rich/console.py:207:8"
+    ],
+    437
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/curried/exceptions.py:8:4",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "ok",
+    [
+     "toolz/tests/test_dicttoolz.py:37:8",
+     "toolz/tests/test_dicttoolz.py:49:8",
+     "toolz/tests/test_dicttoolz.py:253:4"
+    ],
+    124
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_curried.py:24:4",
+     "toolz/tests/test_curried.py:28:4",
+     "toolz/tests/test_curried.py:80:4"
+    ],
+    109
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/functoolz.py:832:6",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    15
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_functoolz.py:864:4"
+    ],
+    47
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/itertoolz.py:312:4",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    14
+   ],
+   "b": [
+    "ok",
+    [
+     "module:toolz/sandbox/tests/test_core.py",
+     "toolz/itertoolz.py:1008:4",
+     "toolz/tests/test_itertoolz.py:183:4",
+     "toolz/tests/test_itertoolz.py:239:4",
+     "toolz/tests/test_itertoolz.py:245:4"
+    ],
+    225
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/itertoolz.py:341:4",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    14
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_itertoolz.py:194:4"
+    ],
+    44
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/itertoolz.py:383:4",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    14
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_itertoolz.py:150:4"
+    ],
+    44
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/itertoolz.py:501:4",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    15
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_itertoolz.py:223:4"
+    ],
+    47
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/itertoolz.py:520:4",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    15
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_itertoolz.py:251:4",
+     "toolz/tests/test_itertoolz.py:258:4"
+    ],
+    81
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/itertoolz.py:520:4",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    15
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_itertoolz.py:251:4",
+     "toolz/tests/test_itertoolz.py:258:4"
+    ],
+    81
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/itertoolz.py:632:4",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    14
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_itertoolz.py:305:4"
+    ],
+    46
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/itertoolz.py:682:4",
+    "S-cond",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    14
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_itertoolz.py:338:4",
+     "tlz/_build_tlz.py:16:8",
+     "tlz/_build_tlz.py:33:8",
+     "tlz/_build_tlz.py:47:8",
+     "tlz/_build_tlz.py:55:8"
+    ],
+    172
+   ]
+  },
+  {
+   "key": [
+    "toolz",
+    "toolz/itertoolz.py:969:4",
+    "S-ind",
+    "T1"
+   ],
+   "a": [
+    "empty",
+    [],
+    15
+   ],
+   "b": [
+    "ok",
+    [
+     "toolz/tests/test_itertoolz.py:531:4",
+     "toolz/tests/test_itertoolz.py:547:4"
+    ],
+    85
+   ]
+  }
+ ]
+}

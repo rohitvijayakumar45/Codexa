@@ -1,8 +1,14 @@
 """Run all arms on one repository (fixture or natural) and write JSONL results.
 
 Usage: python -m nb.run <repo_name> <lang py|ts> <layer fixture|natural> <out_dir> [--per-sample N]
+                         [--arms a,b,...] [--tasks T1,T2,T3] [--t3-depth 2]
 
 Repositories live in $CODEXA_DATA_DIR/repos/<repo_name> (Codexa requires this layout).
+
+Arms come from the adapter registry (nb/adapters.py). The defaults (--arms = adapters.FROZEN,
+--tasks T1,T2) reproduce the frozen confirmatory configuration (FREEZE.md); T3 (multi-hop callers)
+and the codexa2 adapter (G1-v2) are opt-in. An adapter whose tool is not installed writes
+`unsupported` rows instead of aborting the run.
 """
 from __future__ import annotations
 
@@ -18,7 +24,9 @@ NB_ROOT = Path(__file__).resolve().parent.parent
 CODEXA_ROOT = NB_ROOT.parent.parent
 sys.path.insert(0, str(CODEXA_ROOT))
 
+from nb import adapters as AD  # noqa: E402
 from nb import arms as A  # noqa: E402
+from nb import forms as common_forms  # noqa: E402
 from nb import index as I  # noqa: E402
 from nb import tokens  # noqa: E402
 from nb.lsp import PyrightClient  # noqa: E402
@@ -81,19 +89,30 @@ def record(out, base: dict, res: A.ArmResult, ix: Index, cache: dict, gate: list
     n_cl, n_o2 = tokens.count(res.native)
     l_cl, l_o2 = tokens.count(loc)
     s_cl, s_o2 = tokens.count(src) if src is not None else (None, None)
+    m_cl = None
+    if base.get("task") in ("T1", "T3") and res.status != "unsupported":
+        m_cl = tokens.count(common_forms.msa_text(ix, res.fact_kind, res.facts))[0]  # feature B: common answer form
     row = dict(base, arm=res.arm, status=res.status, fact_kind=res.fact_kind, facts=res.facts, truncated=res.truncated,
                latency_s=round(res.latency_s, 4), n_calls=res.n_calls, note=res.note,
                tok_native_cl100k=n_cl, tok_native_o200k=n_o2, tok_loc_cl100k=l_cl, tok_loc_o200k=l_o2,
-               tok_src_cl100k=s_cl, tok_src_o200k=s_o2, native_chars=len(res.native))
+               tok_src_cl100k=s_cl, tok_src_o200k=s_o2, tok_msa_cl100k=m_cl, native_chars=len(res.native))
     out.write(json.dumps(row) + "\n")
+
+
+def _opt(name: str, default: str) -> str:
+    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
 
 
 def main() -> None:
     repo, lang, layer, outdir = sys.argv[1], sys.argv[2], sys.argv[3], Path(sys.argv[4])
-    per_sample = int(sys.argv[sys.argv.index("--per-sample") + 1]) if "--per-sample" in sys.argv else 40
+    per_sample = int(_opt("--per-sample", "40"))
+    adapter_names = [a for a in _opt("--arms", ",".join(AD.FROZEN)).split(",") if a]
+    tasks = [t for t in _opt("--tasks", "T1,T2").split(",") if t]
+    t3_depth = int(_opt("--t3-depth", "2"))
     root = Path(os.environ["CODEXA_DATA_DIR"]) / "repos" / repo
     outdir.mkdir(parents=True, exist_ok=True)
-    meta = {"repo": repo, "lang": lang, "layer": layer, "started": time.time()}
+    meta = {"repo": repo, "lang": lang, "layer": layer, "started": time.time(), "adapters": adapter_names,
+            "tasks": tasks, "t3_depth": t3_depth}
     gate: list[str] = []
     rng = random.Random(f"{SEED}:{repo}")
 
@@ -117,18 +136,25 @@ def main() -> None:
         meta["provider_warmup"] = provider.warm(ix.files, [(d["file"], d["line"], d["col"]) for d in probe_decls])
     else:
         provider = ts_client
-    t = time.perf_counter()
-    cx = A.CodexaGraph(repo)
-    meta["codexa_index_s"] = cx.index_s
-    meta["codexa_ok"] = cx.ok
-    cbms = {}
-    for ver, binary in (("cur", CBM_CUR), ("057", CBM_057)):
-        home = f"/work/nb/cbmhome-{ver}"
-        Path(home).mkdir(parents=True, exist_ok=True)
-        c = A.CBM(binary, home, root, ver)
-        cbms[ver] = c
-        meta[f"cbm_{ver}_index_s"] = c.index_s
-        meta[f"cbm_{ver}_ok"] = c.ok
+    ctx = AD.Ctx(repo=repo, lang=lang, layer=layer, root=root, ix=ix, provider=provider,
+                 data_dir=Path(os.environ["CODEXA_DATA_DIR"]))
+    adapters, unavailable = [], {}
+    for ad in AD.make(adapter_names):
+        ok, why = ad.available()
+        if not ok:
+            unavailable[ad.name] = why
+            adapters.append(ad)
+            continue
+        meta.update(ad.setup(ctx))
+        adapters.append(ad)
+    meta["unavailable"] = unavailable
+    by_name = {a.name: a for a in adapters}
+    # Sampling (S-cond) and coverage always use the frozen G1 graph (resolution v1), whichever arms run.
+    if "codexa" in by_name and "codexa" not in unavailable:
+        cx = by_name["codexa"].cx
+    else:
+        with AD.resolution("v1"):
+            cx = A.CodexaGraph(repo)
 
     # Codexa graph coverage of the frame (missing definitions), by (file, def line)
     cx_nodes = [n for n in cx.graph.list_nodes() if n.node_type == "CodeSymbol" and n.properties.get("repository") == repo]
@@ -204,12 +230,23 @@ def main() -> None:
             d = ix.decls[tg["decl"]]
             base = {"repo": repo, "lang": lang, "layer": layer, "target": tg["decl"], "sample": tg["sample"],
                     "task": "T1", "query_index": qi, "name": d["name"]}
-            r0 = A.rg(ix, d["name"], 0)
-            tg["name_occurrences"] = len(r0.facts)
-            for res in (r0, A.rg(ix, d["name"], 3), A.lsp_refs(ix, provider, d), cx.refs(ix, d["name"]),
-                        cx.orig(ix, d["name"], d), cbms["cur"].callers(ix, d["name"], d),
-                        cbms["057"].callers(ix, d["name"], d)):
-                record(out, base, res, ix, cache, gate)
+            tg["name_occurrences"] = len(A.rg(ix, d["name"], 0).facts)
+            if "T1" in tasks:
+                for ad in adapters:
+                    if ad.name in unavailable:
+                        results = [ad.unsupported(arm, unavailable[ad.name]) for arm in ad.t1_arms]
+                    else:
+                        results = ad.t1(ctx, d)
+                    for res in results:
+                        record(out, base, res, ix, cache, gate)
+            if "T3" in tasks:
+                b3 = dict(base, task="T3", depth=t3_depth)
+                for ad in adapters:
+                    if not ad.t3_arm:
+                        continue
+                    res = (ad.unsupported(ad.t3_arm, unavailable[ad.name]) if ad.name in unavailable
+                           else ad.t3(ctx, d, t3_depth))
+                    record(out, b3, res, ix, cache, gate)
             # whole-file sensitivity payload: defining file + files of every provider call-site reference
             # (fixtures: + gold explicit sites)
             # T2: definition lookup from one call site
@@ -219,19 +256,23 @@ def main() -> None:
                 if ex:
                     g = ex[0]
                     site = (g["file"], g["line"], g["col"])
-            if site:
+            if site and "T2" in tasks:
                 b2 = dict(base, task="T2", site=list(site))
-                for res in (A.lsp_def(ix, provider, site, d["name"]),
-                            A.rg(ix, d["name"], 0, pattern=A.DEF_PATTERNS[lang](d["name"]), label="rg_def"),
-                            cx.lookup(ix, d["name"]), cbms["cur"].definition(ix, d["name"]),
-                            cbms["057"].definition(ix, d["name"])):
+                order = [n for n in AD.FROZEN_T2_ORDER if n in by_name] + [n for n in by_name if n not in AD.FROZEN_T2_ORDER]
+                for name in order:
+                    ad = by_name[name]
+                    if not ad.t2_arm:
+                        continue
+                    res = (ad.unsupported(ad.t2_arm, unavailable[name]) if name in unavailable
+                           else ad.t2(ctx, d, site))
                     record(out, b2, res, ix, cache, gate)
     (outdir / f"{repo}.targets.json").write_text(json.dumps(targets))
     meta["gate_messages"] = gate
     meta["finished"] = time.time()
     (outdir / f"{repo}.meta.json").write_text(json.dumps(meta, indent=1))
-    for c in cbms.values():
-        c.close()
+    for ad in adapters:
+        if ad.name not in unavailable:
+            ad.close()
     if lang == "py":
         provider.close()
     if ts_client:

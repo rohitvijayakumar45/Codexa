@@ -11,13 +11,16 @@ a question about one function gets that function's neighborhood, not the whole r
 from __future__ import annotations
 
 import json
+import os
 import re
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from backend.graph.schemas import GraphNode
 from backend.graph.service import GraphService
+from backend.memory.anchors import DESCRIPTIVE_TYPES, check_anchors, is_outdated
 from backend.memory.store import MemoryStore
 
 _TARGETABLE = {"File", "CodeSymbol"}
@@ -81,6 +84,42 @@ def _relevance_score(query: str, title: str, content: str, memory_type: str | No
     if signal and signal.search(query):
         score += _TYPE_MATCH_BONUS
     return score
+
+
+def _type_enabled(memory_type: str) -> bool:
+    """Memory-type ablation switch: CODEXA_MEMORY_TYPES=semantic,procedural restricts retrieval to
+    those types (unset = all four). Exists so each type's contribution can be measured in isolation."""
+    allowed = os.getenv("CODEXA_MEMORY_TYPES", "").strip()
+    if not allowed:
+        return True
+    return memory_type in {t.strip() for t in allowed.split(",") if t.strip()}
+
+
+def _fresh_records(store: MemoryStore, repository: str, records: list) -> list:
+    """Retrieval-time anchor check for records anchored purely to files (a few hashes — cheap).
+    Symbol/tree anchors need a full parse, so those are left to the sweep that runs on every
+    (re)index. A descriptive record found stale here is invalidated on the spot and not served;
+    an episodic one is flagged outdated and still served, marked as such."""
+    try:
+        from backend.files.api import repo_root
+
+        root = repo_root(repository)
+    except Exception:  # noqa: BLE001 - unknown repository: nothing to check against
+        return records
+    cache: dict = {}
+    fresh = []
+    for r in records:
+        if r.anchors and all(a.get("kind") == "file" for a in r.anchors):
+            result = check_anchors(root, r.anchors, _file_cache=cache)
+            if result.status == "stale":
+                if r.memory_type in DESCRIPTIVE_TYPES:
+                    store.invalidate(r.id, reason=result.reason)
+                    continue
+                if not is_outdated(r):
+                    store.update_metadata(r.id, {"outdated_at": datetime.now(UTC).isoformat(),
+                                                 "outdated_reason": result.reason})
+        fresh.append(r)
+    return fresh
 
 
 class ContextItem(BaseModel):
@@ -178,10 +217,11 @@ def create_context_router(*, store: MemoryStore, graph: GraphService) -> APIRout
                     ))
                     neighbor_count += 1
 
-        digest_records = [
+        digest_records = _fresh_records(store, repository, [
             r for r in store.list(repository=repository)
             if r.metadata.get("source") not in ("docs_cache", "symbol_annotations")
-        ]
+            and _type_enabled(r.memory_type)
+        ])
         if matched:
             # Symbols matched → add up to 2 baseline facts for broader context.
             baseline = sorted(
@@ -199,7 +239,10 @@ def create_context_router(*, store: MemoryStore, graph: GraphService) -> APIRout
         for r in baseline:
             if len(items) >= _MAX_ITEMS:
                 break
-            items.append(ContextItem(kind=r.memory_type, title=r.title, content=_truncate(r.content)))
+            content = r.content
+            if is_outdated(r):
+                content = "(code changed since) " + content
+            items.append(ContextItem(kind=r.memory_type, title=r.title, content=_truncate(content)))
 
         return items[:_MAX_ITEMS]
 

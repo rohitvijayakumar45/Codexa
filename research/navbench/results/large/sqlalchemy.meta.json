@@ -1,0 +1,108 @@
+{
+ "repo": "sqlalchemy",
+ "lang": "py",
+ "layer": "natural",
+ "started": 1791546526.7654176,
+ "adapters": [
+  "rg0",
+  "rg3",
+  "lsp",
+  "codexa",
+  "cbm_cur",
+  "cbm_057"
+ ],
+ "tasks": [
+  "T1",
+  "T2"
+ ],
+ "t3_depth": 2,
+ "index_frame_s": 18.996226277000005,
+ "frame": {
+  "files": 675,
+  "decls": 40719,
+  "calls": 189303,
+  "parse_failures": [
+   "test/orm/test_tstring_py314.py",
+   "test/sql/test_tstrings_py314.py"
+  ],
+  "n_parse_failures": 2
+ },
+ "provider_warmup": {
+  "warm_s": 166.37180304527283,
+  "probe_rounds": 9,
+  "stable": true,
+  "probe_ref_counts": [
+   10808,
+   5117,
+   5875,
+   3,
+   5376
+  ]
+ },
+ "codexa_index_s": 30.903012752999985,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 45.69865055699984,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 13.289226660000168,
+ "cbm_057_ok": true,
+ "unavailable": {},
+ "coverage": {
+  "frame_targets": 12360,
+  "codexa_has": 2835,
+  "codexa_nodes": 2887,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "strata": {
+  "function|0-0": [
+   22,
+   3
+  ],
+  "class|3-9": [
+   7,
+   2
+  ],
+  "method|1-2": [
+   43,
+   6
+  ],
+  "method|0-0": [
+   138,
+   12
+  ],
+  "method|10-inf": [
+   12,
+   2
+  ],
+  "method|3-9": [
+   17,
+   2
+  ],
+  "class|0-0": [
+   19,
+   3
+  ],
+  "function|3-9": [
+   9,
+   2
+  ],
+  "function|1-2": [
+   8,
+   2
+  ],
+  "class|10-inf": [
+   4,
+   2
+  ],
+  "class|1-2": [
+   12,
+   2
+  ],
+  "function|10-inf": [
+   9,
+   2
+  ]
+ },
+ "n_cond_frame": 540,
+ "gate_messages": [],
+ "finished": 1791547030.6237082
+}

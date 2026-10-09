@@ -230,11 +230,11 @@ def main():
             lines.append(f"| {samp} | {len(s)} | {fmt(hboot(g, macro_mean('_in')), pct=True)} | {fmt(hboot(g, macro_mean('_edge')), pct=True)} | "
                          f"{fmt(hboot(g, macro_mean('_fan0')), pct=True)} |")
     # layer C site-level for location arms
-    lines.append("\n### Layer C — observed-call recall (Python natural repositories; targets with ≥1 observed call; both samples)")
+    lines.append("\n### Layer C — observed-call recall (Python natural repositories; targets with ≥1 observed call; both samples, each target once)")
     lines.append("| arm | targets | caller recall | site recall | complete % |")
     lines.append("|---|---|---|---|---|")
     for arm in T1_ARMS:
-        s = [r for r in N if r["arm"] == arm and r.get("C_n_gold")]
+        s = list({(r["repo"], r["target"]): r for r in N if r["arm"] == arm and r.get("C_n_gold")}.values())  # once per target
         if s:
             g = by_repo(s)
             lines.append(f"| {arm} | {len(s)} | {fmt(hboot(g, macro_mean('C_caller_recall')))} | "

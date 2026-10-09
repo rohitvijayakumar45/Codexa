@@ -1,0 +1,59 @@
+{
+ "repo": "fx-py-heldout-113",
+ "lang": "py",
+ "layer": "fixture",
+ "started": 1791485971.85183,
+ "adapters": [
+  "rg0",
+  "rg3",
+  "lsp",
+  "codexa",
+  "codexa2",
+  "cbm_cur",
+  "cbm_057"
+ ],
+ "tasks": [
+  "T1",
+  "T2",
+  "T3"
+ ],
+ "t3_depth": 2,
+ "index_frame_s": 0.004467245999990155,
+ "frame": {
+  "files": 5,
+  "decls": 32,
+  "calls": 42,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "provider_warmup": {
+  "warm_s": 5.024439811706543,
+  "probe_rounds": 3,
+  "stable": true,
+  "probe_ref_counts": [
+   3,
+   1,
+   1,
+   1,
+   5
+  ]
+ },
+ "codexa_index_s": 0.3529976309999938,
+ "codexa_ok": true,
+ "codexa2_index_s": 0.1205835670000397,
+ "codexa2_ok": true,
+ "cbm_cur_index_s": 10.465528830999915,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.04617359399992438,
+ "cbm_057_ok": true,
+ "unavailable": {},
+ "coverage": {
+  "frame_targets": 32,
+  "codexa_has": 32,
+  "codexa_nodes": 32,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "split": "heldout",
+ "gate_messages": [],
+ "finished": 1791486003.1761816
+}

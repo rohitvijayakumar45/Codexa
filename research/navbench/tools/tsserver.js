@@ -132,7 +132,8 @@ rl.on("line", (line) => {
       const abs = path.join(root, msg.file);
       if (msg.cmd === "refs") {
         const refs = ls.getReferencesAtPosition(abs, pos) || [];
-        res = locs(refs.filter((r) => !r.isDefinition && !(r.fileName === abs && r.textSpan.start === pos)));
+        // path.resolve normalises separators (TS reports "C:/x" on Windows; path.join gives "C:\x")
+        res = locs(refs.filter((r) => !r.isDefinition && !(path.resolve(r.fileName) === path.resolve(abs) && r.textSpan.start === pos)));
       } else if (msg.cmd === "def") res = locs(ls.getDefinitionAtPosition(abs, pos));
     }
     process.stdout.write(JSON.stringify({ ok: true, res }) + "\n");

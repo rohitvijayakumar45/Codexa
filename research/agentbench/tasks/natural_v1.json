@@ -1,0 +1,1630 @@
+[
+ {
+  "id": "attrs:_ClassBuilder.add_str",
+  "repo": "attrs",
+  "lang": "py",
+  "target_key": "src/attr/_make.py:1014:8",
+  "name": "add_str",
+  "qualname": "_ClassBuilder.add_str",
+  "file": "src/attr/_make.py",
+  "line": 1014,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/attr/_make.py",
+    1580
+   ],
+   [
+    "tests/test_make.py",
+    2141
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 3.5,
+  "rg_hostile": true,
+  "baseline_failed": [
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attr]",
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attrs]",
+   "tests.test_pyright::test_pyright_baseline"
+  ],
+  "lookalike_checks": []
+ },
+ {
+  "id": "boltons:BufferedSocket.settimeout",
+  "repo": "boltons",
+  "lang": "py",
+  "target_key": "boltons/socketutils.py:171:8",
+  "name": "settimeout",
+  "qualname": "BufferedSocket.settimeout",
+  "file": "boltons/socketutils.py",
+  "line": 171,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "tests/test_socketutils.py",
+    235
+   ],
+   [
+    "tests/test_socketutils.py",
+    358
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 6.5,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": [
+   {
+    "site": [
+     "boltons/socketutils.py",
+     460,
+     34
+    ],
+    "detected": true
+   },
+   {
+    "site": [
+     "tests/test_socketutils.py",
+     332,
+     11
+    ],
+    "detected": true
+   },
+   {
+    "site": [
+     "boltons/socketutils.py",
+     388,
+     26
+    ],
+    "detected": true
+   }
+  ]
+ },
+ {
+  "id": "httpx:validate_path",
+  "repo": "httpx",
+  "lang": "py",
+  "target_key": "httpx/_urlparse.py:422:4",
+  "name": "validate_path",
+  "qualname": "validate_path",
+  "file": "httpx/_urlparse.py",
+  "line": 422,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "httpx/_urlparse.py",
+    327
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.0,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.client.test_client::test_all_mounted_transport",
+   "tests.client.test_proxies::test_async_proxy_close[asyncio]",
+   "tests.client.test_proxies::test_async_proxy_close[trio]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env4-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env6-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env7-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://courses.mit.edu-env8-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://google.com-env3-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://foo.example.com-env13-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env10-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env11-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env12-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env9-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example1.com-env14-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example2.com-env15-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example3.com-env16-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env4-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env6-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env7-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://courses.mit.edu-env8-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://google.com-env3-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://foo.example.com-env13-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env10-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env11-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env12-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env9-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example1.com-env14-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example2.com-env15-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example3.com-env16-None]",
+   "tests.client.test_proxies::test_sync_proxy_close",
+   "tests.client.test_proxies::test_transport_for_request[https://example.com-proxies4-None]",
+   "tests.test_timeouts::test_write_timeout[trio]",
+   "tests.test_utils::test_get_environment_proxies[environment0-proxies0]",
+   "tests.test_utils::test_get_environment_proxies[environment1-proxies1]",
+   "tests.test_utils::test_get_environment_proxies[environment10-proxies10]",
+   "tests.test_utils::test_get_environment_proxies[environment11-proxies11]",
+   "tests.test_utils::test_get_environment_proxies[environment2-proxies2]",
+   "tests.test_utils::test_get_environment_proxies[environment3-proxies3]",
+   "tests.test_utils::test_get_environment_proxies[environment4-proxies4]",
+   "tests.test_utils::test_get_environment_proxies[environment5-proxies5]",
+   "tests.test_utils::test_get_environment_proxies[environment6-proxies6]",
+   "tests.test_utils::test_get_environment_proxies[environment7-proxies7]",
+   "tests.test_utils::test_get_environment_proxies[environment8-proxies8]",
+   "tests.test_utils::test_get_environment_proxies[environment9-proxies9]"
+  ],
+  "lookalike_checks": []
+ },
+ {
+  "id": "itsdangerous:TimestampSigner.timestamp_to_datetime",
+  "repo": "itsdangerous",
+  "lang": "py",
+  "target_key": "src/itsdangerous/timed.py:35:8",
+  "name": "timestamp_to_datetime",
+  "qualname": "TimestampSigner.timestamp_to_datetime",
+  "file": "src/itsdangerous/timed.py",
+  "line": 35,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/itsdangerous/timed.py",
+    122
+   ],
+   [
+    "src/itsdangerous/timed.py",
+    145
+   ],
+   [
+    "src/itsdangerous/timed.py",
+    152
+   ],
+   [
+    "src/itsdangerous/timed.py",
+    156
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 1.25,
+  "rg_hostile": false,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "jinja:CodeGenerator.buffer",
+  "repo": "jinja",
+  "lang": "py",
+  "target_key": "src/jinja2/compiler.py:387:8",
+  "name": "buffer",
+  "qualname": "CodeGenerator.buffer",
+  "file": "src/jinja2/compiler.py",
+  "line": 387,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/jinja2/compiler.py",
+    664
+   ],
+   [
+    "src/jinja2/compiler.py",
+    1228
+   ],
+   [
+    "src/jinja2/compiler.py",
+    1357
+   ],
+   [
+    "src/jinja2/compiler.py",
+    1616
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 10.75,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "marshmallow:Tuple._bind_to_schema",
+  "repo": "marshmallow",
+  "lang": "py",
+  "target_key": "src/marshmallow/fields.py:845:8",
+  "name": "_bind_to_schema",
+  "qualname": "Tuple._bind_to_schema",
+  "file": "src/marshmallow/fields.py",
+  "line": 845,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/marshmallow/schema.py",
+    1073
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 16.0,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": [
+   {
+    "site": [
+     "src/marshmallow/fields.py",
+     1654,
+     29
+    ],
+    "detected": false
+   },
+   {
+    "site": [
+     "src/marshmallow/fields.py",
+     2046,
+     16
+    ],
+    "detected": false
+   },
+   {
+    "site": [
+     "src/marshmallow/fields.py",
+     1660,
+     27
+    ],
+    "detected": false
+   }
+  ]
+ },
+ {
+  "id": "more-itertools:totient",
+  "repo": "more-itertools",
+  "lang": "py",
+  "target_key": "more_itertools/recipes.py:1169:4",
+  "name": "totient",
+  "qualname": "totient",
+  "file": "more_itertools/recipes.py",
+  "line": 1169,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "tests/test_recipes.py",
+    1338
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 5.0,
+  "rg_hostile": true,
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
+  ]
+ },
+ {
+  "id": "rich:Lines.extend",
+  "repo": "rich",
+  "lang": "py",
+  "target_key": "rich/containers.py:105:8",
+  "name": "extend",
+  "qualname": "Lines.extend",
+  "file": "rich/containers.py",
+  "line": 105,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "rich/text.py",
+    1249
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 35.0,
+  "rg_hostile": true,
+  "baseline_failed": [
+   "tests.test_card::test_card_render",
+   "tests.test_markdown::test_inline_code_in_table_cells",
+   "tests.test_syntax::test_option_no_wrap",
+   "tests.test_syntax::test_python_render",
+   "tests.test_syntax::test_python_render_indent_guides",
+   "tests.test_syntax::test_python_render_simple",
+   "tests.test_syntax::test_python_render_simple_passing_lexer_instance",
+   "tests.test_syntax::test_syntax_highlight_ranges"
+  ],
+  "lookalike_checks": [
+   {
+    "site": [
+     "rich/console.py",
+     2023,
+     16
+    ],
+    "detected": false
+   },
+   {
+    "site": [
+     "rich/console.py",
+     1618,
+     29
+    ],
+    "detected": true
+   },
+   {
+    "site": [
+     "rich/console.py",
+     1405,
+     26
+    ],
+    "detected": false
+   }
+  ]
+ },
+ {
+  "id": "toolz:countby",
+  "repo": "toolz",
+  "lang": "py",
+  "target_key": "toolz/recipes.py:8:4",
+  "name": "countby",
+  "qualname": "countby",
+  "file": "toolz/recipes.py",
+  "line": 8,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "toolz/tests/test_recipes.py",
+    9
+   ],
+   [
+    "toolz/tests/test_recipes.py",
+    10
+   ],
+   [
+    "toolz/tests/test_recipes.py",
+    11
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 4.67,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": [
+   {
+    "site": [
+     "examples/graph.py",
+     11,
+     13
+    ],
+    "detected": false
+   },
+   {
+    "site": [
+     "examples/graph.py",
+     8,
+     14
+    ],
+    "detected": false
+   }
+  ]
+ },
+ {
+  "id": "attrs:_AnnotationExtractor.get_return_type",
+  "repo": "attrs",
+  "lang": "py",
+  "target_key": "src/attr/_compat.py:68:8",
+  "name": "get_return_type",
+  "qualname": "_AnnotationExtractor.get_return_type",
+  "file": "src/attr/_compat.py",
+  "line": 68,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/attr/_make.py",
+    3193
+   ],
+   [
+    "src/attr/_make.py",
+    3456
+   ],
+   [
+    "src/attr/converters.py",
+    54
+   ],
+   [
+    "tests/test_converters.py",
+    298
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 1.25,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attr]",
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attrs]",
+   "tests.test_pyright::test_pyright_baseline"
+  ],
+  "lookalike_checks": []
+ },
+ {
+  "id": "boltons:ExceptionInfo.from_current",
+  "repo": "boltons",
+  "lang": "py",
+  "target_key": "boltons/tbutils.py:404:8",
+  "name": "from_current",
+  "qualname": "ExceptionInfo.from_current",
+  "file": "boltons/tbutils.py",
+  "line": 404,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "tests/test_tbutils.py",
+    33
+   ],
+   [
+    "tests/test_tbutils.py",
+    96
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 4.0,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": [
+   {
+    "site": [
+     "tests/test_tbutils.py",
+     69,
+     35
+    ],
+    "detected": true
+   }
+  ]
+ },
+ {
+  "id": "httpx:BaseClient._merge_url",
+  "repo": "httpx",
+  "lang": "py",
+  "target_key": "httpx/_client.py:391:8",
+  "name": "_merge_url",
+  "qualname": "BaseClient._merge_url",
+  "file": "httpx/_client.py",
+  "line": 391,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "httpx/_client.py",
+    366
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.0,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.client.test_client::test_all_mounted_transport",
+   "tests.client.test_proxies::test_async_proxy_close[asyncio]",
+   "tests.client.test_proxies::test_async_proxy_close[trio]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env4-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env6-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env7-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://courses.mit.edu-env8-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://google.com-env3-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://foo.example.com-env13-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env10-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env11-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env12-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env9-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example1.com-env14-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example2.com-env15-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example3.com-env16-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env4-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env6-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env7-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://courses.mit.edu-env8-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://google.com-env3-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://foo.example.com-env13-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env10-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env11-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env12-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env9-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example1.com-env14-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example2.com-env15-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example3.com-env16-None]",
+   "tests.client.test_proxies::test_sync_proxy_close",
+   "tests.client.test_proxies::test_transport_for_request[https://example.com-proxies4-None]",
+   "tests.test_timeouts::test_write_timeout[trio]",
+   "tests.test_utils::test_get_environment_proxies[environment0-proxies0]",
+   "tests.test_utils::test_get_environment_proxies[environment1-proxies1]",
+   "tests.test_utils::test_get_environment_proxies[environment10-proxies10]",
+   "tests.test_utils::test_get_environment_proxies[environment11-proxies11]",
+   "tests.test_utils::test_get_environment_proxies[environment2-proxies2]",
+   "tests.test_utils::test_get_environment_proxies[environment3-proxies3]",
+   "tests.test_utils::test_get_environment_proxies[environment4-proxies4]",
+   "tests.test_utils::test_get_environment_proxies[environment5-proxies5]",
+   "tests.test_utils::test_get_environment_proxies[environment6-proxies6]",
+   "tests.test_utils::test_get_environment_proxies[environment7-proxies7]",
+   "tests.test_utils::test_get_environment_proxies[environment8-proxies8]",
+   "tests.test_utils::test_get_environment_proxies[environment9-proxies9]"
+  ],
+  "lookalike_checks": []
+ },
+ {
+  "id": "itsdangerous:_make_keys_list",
+  "repo": "itsdangerous",
+  "lang": "py",
+  "target_key": "src/itsdangerous/signer.py:67:4",
+  "name": "_make_keys_list",
+  "qualname": "_make_keys_list",
+  "file": "src/itsdangerous/signer.py",
+  "line": 67,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/itsdangerous/serializer.py",
+    208
+   ],
+   [
+    "src/itsdangerous/signer.py",
+    143
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.0,
+  "rg_hostile": false,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "jinja:NodeVisitor.get_visitor",
+  "repo": "jinja",
+  "lang": "py",
+  "target_key": "src/jinja2/visitor.py:28:8",
+  "name": "get_visitor",
+  "qualname": "NodeVisitor.get_visitor",
+  "file": "src/jinja2/visitor.py",
+  "line": 28,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/jinja2/visitor.py",
+    37
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 3.0,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "marshmallow:ContainsNoneOf._format_error",
+  "repo": "marshmallow",
+  "lang": "py",
+  "target_key": "src/marshmallow/validate.py:700:8",
+  "name": "_format_error",
+  "qualname": "ContainsNoneOf._format_error",
+  "file": "src/marshmallow/validate.py",
+  "line": 700,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/marshmallow/validate.py",
+    707
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 28.0,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": [
+   {
+    "site": [
+     "src/marshmallow/validate.py",
+     286,
+     23
+    ],
+    "detected": true
+   },
+   {
+    "site": [
+     "src/marshmallow/validate.py",
+     582,
+     43
+    ],
+    "detected": true
+   },
+   {
+    "site": [
+     "src/marshmallow/validate.py",
+     702,
+     23
+    ],
+    "detected": true
+   }
+  ]
+ },
+ {
+  "id": "more-itertools:run_length.decode",
+  "repo": "more-itertools",
+  "lang": "py",
+  "target_key": "more_itertools/more.py:3192:8",
+  "name": "decode",
+  "qualname": "run_length.decode",
+  "file": "more_itertools/more.py",
+  "line": 3192,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "tests/test_more.py",
+    3936
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 4.0,
+  "rg_hostile": true,
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
+  ]
+ },
+ {
+  "id": "rich:Style._add",
+  "repo": "rich",
+  "lang": "py",
+  "target_key": "rich/style.py:733:8",
+  "name": "_add",
+  "qualname": "Style._add",
+  "file": "rich/style.py",
+  "line": 733,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "rich/style.py",
+    758
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.0,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.test_card::test_card_render",
+   "tests.test_markdown::test_inline_code_in_table_cells",
+   "tests.test_syntax::test_option_no_wrap",
+   "tests.test_syntax::test_python_render",
+   "tests.test_syntax::test_python_render_indent_guides",
+   "tests.test_syntax::test_python_render_simple",
+   "tests.test_syntax::test_python_render_simple_passing_lexer_instance",
+   "tests.test_syntax::test_syntax_highlight_ranges"
+  ],
+  "lookalike_checks": []
+ },
+ {
+  "id": "toolz:mapcat",
+  "repo": "toolz",
+  "lang": "py",
+  "target_key": "toolz/itertoolz.py:501:4",
+  "name": "mapcat",
+  "qualname": "mapcat",
+  "file": "toolz/itertoolz.py",
+  "line": 501,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "toolz/tests/test_itertoolz.py",
+    224
+   ],
+   [
+    "toolz/tests/test_itertoolz.py",
+    227
+   ],
+   [
+    "toolz/tests/test_itertoolz.py",
+    232
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 3.0,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "attrs:get_generic_base",
+  "repo": "attrs",
+  "lang": "py",
+  "target_key": "src/attr/_compat.py:98:4",
+  "name": "get_generic_base",
+  "qualname": "get_generic_base",
+  "file": "src/attr/_compat.py",
+  "line": 98,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/attr/_funcs.py",
+    370
+   ],
+   [
+    "src/attr/_make.py",
+    1948
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.5,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attr]",
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attrs]",
+   "tests.test_pyright::test_pyright_baseline"
+  ],
+  "lookalike_checks": []
+ },
+ {
+  "id": "boltons:_ComplementSet.update",
+  "repo": "boltons",
+  "lang": "py",
+  "target_key": "boltons/setutils.py:740:8",
+  "name": "update",
+  "qualname": "_ComplementSet.update",
+  "file": "boltons/setutils.py",
+  "line": 740,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "tests/test_setutils.py",
+    167
+   ],
+   [
+    "tests/test_setutils.py",
+    169
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 35.5,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": [
+   {
+    "site": [
+     "tests/test_cacheutils.py",
+     515,
+     10
+    ],
+    "detected": true
+   },
+   {
+    "site": [
+     "tests/test_dictutils.py",
+     435,
+     8
+    ],
+    "detected": true
+   },
+   {
+    "site": [
+     "boltons/funcutils.py",
+     855,
+     15
+    ],
+    "detected": true
+   }
+  ]
+ },
+ {
+  "id": "httpx:BaseClient._get_proxy_map",
+  "repo": "httpx",
+  "lang": "py",
+  "target_key": "httpx/_client.py:239:8",
+  "name": "_get_proxy_map",
+  "qualname": "BaseClient._get_proxy_map",
+  "file": "httpx/_client.py",
+  "line": 239,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "httpx/_client.py",
+    686
+   ],
+   [
+    "httpx/_client.py",
+    1400
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 1.5,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.client.test_client::test_all_mounted_transport",
+   "tests.client.test_proxies::test_async_proxy_close[asyncio]",
+   "tests.client.test_proxies::test_async_proxy_close[trio]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env4-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env6-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env7-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://courses.mit.edu-env8-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://google.com-env3-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://foo.example.com-env13-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env10-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env11-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env12-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env9-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example1.com-env14-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example2.com-env15-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example3.com-env16-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env4-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env6-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env7-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://courses.mit.edu-env8-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://google.com-env3-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://foo.example.com-env13-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env10-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env11-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env12-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env9-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example1.com-env14-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example2.com-env15-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example3.com-env16-None]",
+   "tests.client.test_proxies::test_sync_proxy_close",
+   "tests.client.test_proxies::test_transport_for_request[https://example.com-proxies4-None]",
+   "tests.test_timeouts::test_write_timeout[trio]",
+   "tests.test_utils::test_get_environment_proxies[environment0-proxies0]",
+   "tests.test_utils::test_get_environment_proxies[environment1-proxies1]",
+   "tests.test_utils::test_get_environment_proxies[environment10-proxies10]",
+   "tests.test_utils::test_get_environment_proxies[environment11-proxies11]",
+   "tests.test_utils::test_get_environment_proxies[environment2-proxies2]",
+   "tests.test_utils::test_get_environment_proxies[environment3-proxies3]",
+   "tests.test_utils::test_get_environment_proxies[environment4-proxies4]",
+   "tests.test_utils::test_get_environment_proxies[environment5-proxies5]",
+   "tests.test_utils::test_get_environment_proxies[environment6-proxies6]",
+   "tests.test_utils::test_get_environment_proxies[environment7-proxies7]",
+   "tests.test_utils::test_get_environment_proxies[environment8-proxies8]",
+   "tests.test_utils::test_get_environment_proxies[environment9-proxies9]"
+  ],
+  "lookalike_checks": []
+ },
+ {
+  "id": "itsdangerous:base64_encode",
+  "repo": "itsdangerous",
+  "lang": "py",
+  "target_key": "src/itsdangerous/encoding.py:20:4",
+  "name": "base64_encode",
+  "qualname": "base64_encode",
+  "file": "src/itsdangerous/encoding.py",
+  "line": 20,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/itsdangerous/signer.py",
+    220
+   ],
+   [
+    "src/itsdangerous/timed.py",
+    48
+   ],
+   [
+    "src/itsdangerous/url_safe.py",
+    64
+   ],
+   [
+    "tests/test_itsdangerous/test_encoding.py",
+    19
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.75,
+  "rg_hostile": false,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "jinja:consume",
+  "repo": "jinja",
+  "lang": "py",
+  "target_key": "src/jinja2/utils.py:121:4",
+  "name": "consume",
+  "qualname": "consume",
+  "file": "src/jinja2/utils.py",
+  "line": 121,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/jinja2/environment.py",
+    1563
+   ],
+   [
+    "tests/test_utils.py",
+    192
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 3.5,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "marshmallow:is_generator",
+  "repo": "marshmallow",
+  "lang": "py",
+  "target_key": "src/marshmallow/utils.py:13:4",
+  "name": "is_generator",
+  "qualname": "is_generator",
+  "file": "src/marshmallow/utils.py",
+  "line": 13,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/marshmallow/utils.py",
+    20
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.0,
+  "rg_hostile": false,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "more-itertools:_running_median_windowed",
+  "repo": "more-itertools",
+  "lang": "py",
+  "target_key": "more_itertools/recipes.py:1379:4",
+  "name": "_running_median_windowed",
+  "qualname": "_running_median_windowed",
+  "file": "more_itertools/recipes.py",
+  "line": 1379,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "more_itertools/recipes.py",
+    1427
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.0,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
+  ]
+ },
+ {
+  "id": "toolz:iterate",
+  "repo": "toolz",
+  "lang": "py",
+  "target_key": "toolz/itertoolz.py:632:4",
+  "name": "iterate",
+  "qualname": "iterate",
+  "file": "toolz/itertoolz.py",
+  "line": 632,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "toolz/tests/test_itertoolz.py",
+    306
+   ],
+   [
+    "toolz/tests/test_itertoolz.py",
+    307
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 4.5,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "attrs:_ClassBuilder.make_unhashable",
+  "repo": "attrs",
+  "lang": "py",
+  "target_key": "src/attr/_make.py:1066:8",
+  "name": "make_unhashable",
+  "qualname": "_ClassBuilder.make_unhashable",
+  "file": "src/attr/_make.py",
+  "line": 1066,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/attr/_make.py",
+    1593
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.0,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attr]",
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attrs]",
+   "tests.test_pyright::test_pyright_baseline"
+  ],
+  "lookalike_checks": []
+ },
+ {
+  "id": "boltons:JSONLIterator._align_to_newline",
+  "repo": "boltons",
+  "lang": "py",
+  "target_key": "boltons/jsonutils.py:172:8",
+  "name": "_align_to_newline",
+  "qualname": "JSONLIterator._align_to_newline",
+  "file": "boltons/jsonutils.py",
+  "line": 172,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "boltons/jsonutils.py",
+    202
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 4.0,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "httpx:is_ipv4_hostname",
+  "repo": "httpx",
+  "lang": "py",
+  "target_key": "httpx/_utils.py:229:4",
+  "name": "is_ipv4_hostname",
+  "qualname": "is_ipv4_hostname",
+  "file": "httpx/_utils.py",
+  "line": 229,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "httpx/_utils.py",
+    67
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.0,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.client.test_client::test_all_mounted_transport",
+   "tests.client.test_proxies::test_async_proxy_close[asyncio]",
+   "tests.client.test_proxies::test_async_proxy_close[trio]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env4-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env6-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://127.0.0.1-env7-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://courses.mit.edu-env8-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-http://google.com-env3-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://foo.example.com-env13-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env10-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env11-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env12-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://mit.edu.info-env9-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example1.com-env14-None]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example2.com-env15-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[AsyncClient-https://www.example3.com-env16-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env4-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env6-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://127.0.0.1-env7-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://courses.mit.edu-env8-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-http://google.com-env3-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://foo.example.com-env13-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env10-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env11-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env12-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://mit.edu.info-env9-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example1.com-env14-None]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example2.com-env15-http://localhost:123]",
+   "tests.client.test_proxies::test_proxies_environ[Client-https://www.example3.com-env16-None]",
+   "tests.client.test_proxies::test_sync_proxy_close",
+   "tests.client.test_proxies::test_transport_for_request[https://example.com-proxies4-None]",
+   "tests.test_timeouts::test_write_timeout[trio]",
+   "tests.test_utils::test_get_environment_proxies[environment0-proxies0]",
+   "tests.test_utils::test_get_environment_proxies[environment1-proxies1]",
+   "tests.test_utils::test_get_environment_proxies[environment10-proxies10]",
+   "tests.test_utils::test_get_environment_proxies[environment11-proxies11]",
+   "tests.test_utils::test_get_environment_proxies[environment2-proxies2]",
+   "tests.test_utils::test_get_environment_proxies[environment3-proxies3]",
+   "tests.test_utils::test_get_environment_proxies[environment4-proxies4]",
+   "tests.test_utils::test_get_environment_proxies[environment5-proxies5]",
+   "tests.test_utils::test_get_environment_proxies[environment6-proxies6]",
+   "tests.test_utils::test_get_environment_proxies[environment7-proxies7]",
+   "tests.test_utils::test_get_environment_proxies[environment8-proxies8]",
+   "tests.test_utils::test_get_environment_proxies[environment9-proxies9]"
+  ],
+  "lookalike_checks": []
+ },
+ {
+  "id": "itsdangerous:Signer.verify_signature",
+  "repo": "itsdangerous",
+  "lang": "py",
+  "target_key": "src/itsdangerous/signer.py:227:8",
+  "name": "verify_signature",
+  "qualname": "Signer.verify_signature",
+  "file": "src/itsdangerous/signer.py",
+  "line": 227,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/itsdangerous/signer.py",
+    253
+   ],
+   [
+    "tests/test_itsdangerous/test_signer.py",
+    46
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.5,
+  "rg_hostile": false,
+  "baseline_failed": [],
+  "lookalike_checks": [
+   {
+    "site": [
+     "src/itsdangerous/signer.py",
+     239,
+     30
+    ],
+    "detected": true
+   }
+  ]
+ },
+ {
+  "id": "jinja:Environment._filter_test_common",
+  "repo": "jinja",
+  "lang": "py",
+  "target_key": "src/jinja2/environment.py:497:8",
+  "name": "_filter_test_common",
+  "qualname": "Environment._filter_test_common",
+  "file": "src/jinja2/environment.py",
+  "line": 497,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/jinja2/environment.py",
+    568
+   ],
+   [
+    "src/jinja2/environment.py",
+    593
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 3.0,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": [
+   {
+    "site": [
+     "src/jinja2/compiler.py",
+     1849,
+     18
+    ],
+    "detected": true
+   },
+   {
+    "site": [
+     "src/jinja2/compiler.py",
+     1832,
+     18
+    ],
+    "detected": true
+   }
+  ]
+ },
+ {
+  "id": "more-itertools:set_partitions.set_partitions_helper",
+  "repo": "more-itertools",
+  "lang": "py",
+  "target_key": "more_itertools/more.py:3588:8",
+  "name": "set_partitions_helper",
+  "qualname": "set_partitions.set_partitions_helper",
+  "file": "more_itertools/more.py",
+  "line": 3588,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "more_itertools/more.py",
+    3596
+   ],
+   [
+    "more_itertools/more.py",
+    3598
+   ],
+   [
+    "more_itertools/more.py",
+    3606
+   ],
+   [
+    "more_itertools/more.py",
+    3611
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 1.25,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
+  ]
+ },
+ {
+  "id": "toolz:_merge_sorted_binary",
+  "repo": "toolz",
+  "lang": "py",
+  "target_key": "toolz/itertoolz.py:135:4",
+  "name": "_merge_sorted_binary",
+  "qualname": "_merge_sorted_binary",
+  "file": "toolz/itertoolz.py",
+  "line": 135,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "toolz/itertoolz.py",
+    130
+   ],
+   [
+    "toolz/itertoolz.py",
+    141
+   ],
+   [
+    "toolz/itertoolz.py",
+    146
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 1.33,
+  "rg_hostile": false,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "attrs:fields_dict",
+  "repo": "attrs",
+  "lang": "py",
+  "target_key": "src/attr/_make.py:1975:4",
+  "name": "fields_dict",
+  "qualname": "fields_dict",
+  "file": "src/attr/_make.py",
+  "line": 1975,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "tests/test_make.py",
+    1273
+   ],
+   [
+    "tests/test_make.py",
+    1278
+   ],
+   [
+    "tests/test_make.py",
+    1307
+   ],
+   [
+    "tests/test_make.py",
+    1313
+   ],
+   [
+    "tests/test_make.py",
+    1322
+   ],
+   [
+    "tests/test_make.py",
+    1357
+   ],
+   [
+    "tests/test_make.py",
+    1363
+   ],
+   [
+    "tests/test_make.py",
+    1372
+   ],
+   [
+    "tests/test_make.py",
+    1683
+   ],
+   [
+    "tests/test_make.py",
+    1692
+   ],
+   [
+    "tests/test_make.py",
+    1703
+   ],
+   [
+    "tests/test_make.py",
+    2394
+   ],
+   [
+    "tests/test_make.py",
+    2478
+   ],
+   [
+    "tests/test_next_gen.py",
+    150
+   ],
+   [
+    "tests/test_next_gen.py",
+    165
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 1.53,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attr]",
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attrs]",
+   "tests.test_pyright::test_pyright_baseline"
+  ],
+  "lookalike_checks": [
+   {
+    "site": [
+     "tests/test_annotations.py",
+     451,
+     37
+    ],
+    "detected": false
+   }
+  ]
+ },
+ {
+  "id": "boltons:SplayList.swap",
+  "repo": "boltons",
+  "lang": "py",
+  "target_key": "boltons/listutils.py:349:8",
+  "name": "swap",
+  "qualname": "SplayList.swap",
+  "file": "boltons/listutils.py",
+  "line": 349,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "tests/test_listutils.py",
+    8
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 4.0,
+  "rg_hostile": true,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "itsdangerous:base64_decode",
+  "repo": "itsdangerous",
+  "lang": "py",
+  "target_key": "src/itsdangerous/encoding.py:28:4",
+  "name": "base64_decode",
+  "qualname": "base64_decode",
+  "file": "src/itsdangerous/encoding.py",
+  "line": 28,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/itsdangerous/signer.py",
+    230
+   ],
+   [
+    "src/itsdangerous/timed.py",
+    113
+   ],
+   [
+    "src/itsdangerous/url_safe.py",
+    37
+   ],
+   [
+    "tests/test_itsdangerous/test_encoding.py",
+    21
+   ],
+   [
+    "tests/test_itsdangerous/test_encoding.py",
+    27
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.4,
+  "rg_hostile": false,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "jinja:find_referenced_templates",
+  "repo": "jinja",
+  "lang": "py",
+  "target_key": "src/jinja2/meta.py:62:4",
+  "name": "find_referenced_templates",
+  "qualname": "find_referenced_templates",
+  "file": "src/jinja2/meta.py",
+  "line": 62,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "tests/test_api.py",
+    184
+   ],
+   [
+    "tests/test_api.py",
+    195
+   ],
+   [
+    "tests/test_api.py",
+    200
+   ],
+   [
+    "tests/test_api.py",
+    204
+   ],
+   [
+    "tests/test_api.py",
+    208
+   ],
+   [
+    "tests/test_api.py",
+    212
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 1.33,
+  "rg_hostile": false,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "more-itertools:_full_period_lcg",
+  "repo": "more-itertools",
+  "lang": "py",
+  "target_key": "more_itertools/more.py:5604:4",
+  "name": "_full_period_lcg",
+  "qualname": "_full_period_lcg",
+  "file": "more_itertools/more.py",
+  "line": 5604,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "more_itertools/more.py",
+    5633
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 2.0,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
+  ]
+ },
+ {
+  "id": "toolz:signature_or_spec",
+  "repo": "toolz",
+  "lang": "py",
+  "target_key": "toolz/_signatures.py:620:4",
+  "name": "signature_or_spec",
+  "qualname": "signature_or_spec",
+  "file": "toolz/_signatures.py",
+  "line": 620,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "toolz/_signatures.py",
+    651
+   ],
+   [
+    "toolz/_signatures.py",
+    654
+   ],
+   [
+    "toolz/functoolz.py",
+    317
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 1.33,
+  "rg_hostile": false,
+  "baseline_failed": [],
+  "lookalike_checks": []
+ },
+ {
+  "id": "attrs:Converter._get_global_name",
+  "repo": "attrs",
+  "lang": "py",
+  "target_key": "src/attr/_make.py:3198:8",
+  "name": "_get_global_name",
+  "qualname": "Converter._get_global_name",
+  "file": "src/attr/_make.py",
+  "line": 3198,
+  "param": "tag",
+  "value": "v2",
+  "gold_sites": [
+   [
+    "src/attr/_make.py",
+    2264
+   ],
+   [
+    "src/attr/_make.py",
+    2285
+   ],
+   [
+    "src/attr/_make.py",
+    2310
+   ],
+   [
+    "src/attr/_make.py",
+    2343
+   ],
+   [
+    "src/attr/_make.py",
+    2373
+   ],
+   [
+    "src/attr/_make.py",
+    3212
+   ],
+   [
+    "src/attr/_make.py",
+    3215
+   ],
+   [
+    "src/attr/_make.py",
+    3218
+   ],
+   [
+    "src/attr/_make.py",
+    3220
+   ]
+  ],
+  "natural": true,
+  "rg_ratio": 1.11,
+  "rg_hostile": false,
+  "baseline_failed": [
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attr]",
+   "tests.test_packaging.TestLegacyMetadataHack::test_version_info[attrs]",
+   "tests.test_pyright::test_pyright_baseline"
+  ],
+  "lookalike_checks": []
+ }
+]

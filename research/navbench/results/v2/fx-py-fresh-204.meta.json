@@ -1,0 +1,59 @@
+{
+ "repo": "fx-py-fresh-204",
+ "lang": "py",
+ "layer": "fixture",
+ "started": 1791486654.4508128,
+ "adapters": [
+  "rg0",
+  "rg3",
+  "lsp",
+  "codexa",
+  "codexa2",
+  "cbm_cur",
+  "cbm_057"
+ ],
+ "tasks": [
+  "T1",
+  "T2",
+  "T3"
+ ],
+ "t3_depth": 2,
+ "index_frame_s": 0.004095744000096602,
+ "frame": {
+  "files": 5,
+  "decls": 30,
+  "calls": 38,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "provider_warmup": {
+  "warm_s": 4.973208665847778,
+  "probe_rounds": 3,
+  "stable": true,
+  "probe_ref_counts": [
+   3,
+   1,
+   1,
+   5,
+   1
+  ]
+ },
+ "codexa_index_s": 0.3966769749999912,
+ "codexa_ok": true,
+ "codexa2_index_s": 0.20497098800001368,
+ "codexa2_ok": true,
+ "cbm_cur_index_s": 10.134957622000002,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 0.044732115999977395,
+ "cbm_057_ok": true,
+ "unavailable": {},
+ "coverage": {
+  "frame_targets": 30,
+  "codexa_has": 30,
+  "codexa_nodes": 30,
+  "codexa_nodes_not_in_frame": 0
+ },
+ "split": "fresh",
+ "gate_messages": [],
+ "finished": 1791486684.4951606
+}

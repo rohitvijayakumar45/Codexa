@@ -1,0 +1,84 @@
+{
+  "assessment_date_local": "2026-10-08",
+  "timezone": "Asia/Calcutta",
+  "head": "93e8e88dbe546b037d60c8c5172c3a1de246c28e",
+  "mode": "inspection and planning; no application edits, no live model calls",
+  "test_results": {
+    "initial_full": {
+      "passed": 1131,
+      "failed": 25,
+      "xfailed": 1,
+      "seconds": 124.94,
+      "caveat": "configured Postgres selected; fixtures wrote persistent records; no pre-run DB backup"
+    },
+    "database_disabled_full": {
+      "passed": 1147,
+      "failed": 9,
+      "xfailed": 1,
+      "seconds": 94.45
+    },
+    "targeted_quorum_verification_audit": {
+      "passed": 42,
+      "seconds": 3.41
+    }
+  },
+  "usage_deduplicated": {
+    "calls": 22,
+    "duplicate_backup_rows": 9,
+    "quorum_debate_calls": 0,
+    "prompt_tokens": 5845,
+    "completion_tokens": 15143
+  },
+  "configured_postgres_readonly": {
+    "quorum_decision_rows": 0,
+    "not_a_global_historical_absence_claim": true
+  },
+  "inspected_file_hashes": {
+    "AGENTS.md": "c34a169b8ed0d4716d4f66cd9ebe3756cc8e1377c4fb9416e234140bdb69b6f5",
+    "README.md": "2352898910cd0096e103a3a48ccc9112f2b6c67a61a220a77dfef0f58532d281",
+    "pyproject.toml": "7c35a522a3fb3b31f566d3e083acda6aa1a6c1b91217d3ba1faaaf577170f4fe",
+    "docs/codexa_os_build_prompt_v5.md": "63de288ea57b5d8a960a9444e23ddc13a93a9eac496daa955ed8dc0c03d5a9e6",
+    "backend/agents/quorum.py": "f02a4a6890c171474aa14f723cdce25c0c6ecf27f8c5a036c82bbd378584c921",
+    "backend/agents/verification.py": "66a8d773f7a18be4bf474682a9afa57c56955c692997952dc9f6c01f42115976",
+    "backend/agents/llm.py": "f2bb9d59eee20583f1425327f1aaeda6965fae6ade864fa481b7d679f7d891b3",
+    "backend/agents/usage.py": "1cc2a75ec6b3176b8085f5a05e441481122b6226b329ac9d90bc90ad4f18737f",
+    "backend/agents/api.py": "948425b064325c48f66f144b6e77176e9e60a39a31f9ef7087c1e551b07d0cde",
+    "backend/main.py": "26d610509af1017f7e54a1361aaca0d3ed99429638e001516f2a59c54a057c7e",
+    "backend/graph/service.py": "4fae068651bd4fad5d9138c207917408f992473ecc178627a99b931874e3544e",
+    "backend/graph/repository.py": "0f25140216e61cc3f127be5331429fe3ac813c1b7f2d9a2f8a76bf44cc377da8",
+    "backend/graph/events.py": "129bdfc32fc3498755689c5ddec94de462eca1bd1f9e9fe9f2940f966a01a0c9",
+    "backend/graph/schemas.py": "39a46dff0ea1da916358bb59477d8a3b8aa5a48ef94ba176e4e459988f577e8b",
+    "backend/files/api.py": "d5d8f8cc4a81aee51748467ba692f53b75064b09bd954195e8602acb89eab351",
+    "backend/repository/analyze.py": "897f89be2e21219ad31b3d6b0c7547e23d712751affbd5c657519442242ab13b",
+    "tests/conftest.py": "49b905eccee1fe97c80d8ccd38caaa9534499dc0132eae2ccde411cc680af61b",
+    "tests/test_quorum.py": "f20b2dc481b0e99692cdf04d16e043265a0a687906881ec2bea91f97667806df",
+    "tests/test_verification.py": "9a519048893075abdec2b23ab036b3d57505c23782260fc7febae7fa6ad3cbe2",
+    "tests/audit/codexa_claims/test_claim_quorum.py": "2e2a2ce636c2a0d48f52d5239f8f93ad24ef0f71aa4d9ee5a26f3c6ca195a489",
+    "tests/audit/codexa_claims/evidence/test_claim_quorum_evidence.json": "b018ce7ce2bbe9cd8c57591f98ff0030e0a11fe54a0b7be1938a86f6ceb72d65",
+    "tests/benchmarks/memory_graph/runner.py": "de9c47c833f154730968b0a75c0278e20e5ff48b22b7e29843c28b49be8afa76",
+    "tests/benchmarks/memory_graph/questions.json": "a9ac00ae379095609ecfccc82cfb72571e56aa0d373ea4661ac83fd4bf30044c",
+    "tests/benchmarks/memory_graph/configs.json": "964ed9b3241e858612c98875f0e30313fb097e5d48f69d0f47f782a46b92cfe5",
+    "tests/benchmarks/memory_graph/retrieval_payload.py": "87aaf19c54e3ec38be74bc7e2b1654ac2e9fb5e335efb43a2e5c14168c2f85ea",
+    "tests/benchmarks/memory_anchoring/replay.py": "decdac50875915277040d032cecefa067481846fe0c263b3862376b30e398730",
+    "tests/benchmarks/memory_anchoring/anchoring_facts.py": "56a367fb819bde3160da60b3306e4412e83f0df1b4495acffe8837ccaa984f78",
+    "tests/benchmarks/annotation_budget/run.py": "1c44645975547626e531b557c7f93ca532799a072ed18a397611fffe3f5a5729",
+    ".codexa/usage.jsonl": "16f5efa58526c48f082d4b2093ae592556c8d2d312674f84f1a491dc74e21b12",
+    ".codexa/usage.backup-2026-09-11.jsonl": "74e6d990b419cfbee761bbe858cf55f0b27c79e9765c223c6ae4f2767271007f",
+    "tests/benchmarks/memory_graph/payload_results/Exam-Proctoring.json": "e1f30e40dab70a34acb0522db44ccd9c8080bc5a349970a38cfcaad6992e3a20",
+    "tests/benchmarks/memory_graph/payload_results/FitQuest.json": "6f467eed5ee989981cd6ff7c793a7e710307e5a9196fd706fceeda1f493072da",
+    "tests/benchmarks/memory_graph/payload_results/gods-eye-view.json": "7badd30766b6ea5028dbb9cd3c32bb6ae3df1f442efe009ec9c6b988afce6e96",
+    "tests/benchmarks/memory_graph/payload_results/MOMENTUM.json": "067d0cc9e9b7454e3a71957d0ef6bfb3c5a3c609d8b84d7976203c032b8e003c",
+    "tests/benchmarks/memory_graph/payload_results/Tourism-Management.json": "06501e9940f68b703e1700585730d57a8866fae3d296dc73d6a4ca20ae3c547e",
+    "tests/benchmarks/memory_anchoring/results/Codexa.json": "82d9c1a17cd0fc2816d4c60b744487285959729bbfe347652d483b8a7cb469ac",
+    "tests/benchmarks/memory_anchoring/results/fullstack-typescript-mern-todo.json": "3337495b0e49e4cf6368121e5db79520777785b6d33156f04912400fa0e9eef0",
+    "tests/benchmarks/memory_anchoring/results/gods-eye-view.json": "af3669172037ed2132dc764872596d5219135382a6e5b3e971e10b4572094820",
+    "tests/benchmarks/memory_anchoring/results/httpx.json": "bd78b4847c52ce968fdbdf31d9015333ebe73c2e0f42fdb49f6976ddcca1e7a1",
+    "tests/benchmarks/memory_anchoring/results/mern-todo-app.json": "f70fef6b3e05e8a3df23b56ab80ff4de4581f63f8361078bb3ddde200a0e802f",
+    "tests/benchmarks/annotation_budget/results/Codexa.json": "faa2a1a5a3427b6d2420ba29e3bcb2d551e8f31cc5e370fd780435a2b140fd15",
+    "tests/benchmarks/annotation_budget/results/gods-eye-view.json": "5b99a305cd77ba5e68391e470dc9aaaff91a13796340143a3b9e07602d458215",
+    "tests/benchmarks/annotation_budget/results/httpx.json": "0aac165918cbbb30d6f77868ecbd9e97fd8391a3204ba5694043322a70e1bf80",
+    "tests/benchmarks/annotation_budget/results/mern-todo-app.json": "57a30eb6dc7951d8c68d432d2598f753eb6e00c19e03aa6ec6a1f92f10ef4763"
+  },
+  "test_result_provenance": "tool outputs from this session, summarized here; raw pytest output not saved to repository",
+  "historical_results_rerun": false
+}
