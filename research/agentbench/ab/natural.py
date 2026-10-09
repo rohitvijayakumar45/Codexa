@@ -57,7 +57,18 @@ def pkg_path(root: Path) -> Path:
     return root / "src" if (root / "src").is_dir() else root
 
 
-def run_tests(root: Path, repo: str, stop_first: bool = False, timeout: int = 600) -> dict:
+def junit_to_nodeid(root: Path, test_id: str) -> str | None:
+    """'tests.test_more.TestX::test_y' (JUnit classname::name) -> 'tests/test_more.py::TestX::test_y'."""
+    cls, _, name = test_id.partition("::")
+    parts = cls.split(".")
+    for i in range(len(parts), 0, -1):
+        f = "/".join(parts[:i]) + ".py"
+        if (root / f).exists():
+            return "::".join([f] + parts[i:] + [name])
+    return None
+
+
+def run_tests(root: Path, repo: str, stop_first: bool = False, timeout: int = 600, deselect: list | None = None) -> dict:
     """Run the suite in `root` (imports resolve to `root` first); returns failing test ids from JUnit XML."""
     with tempfile.TemporaryDirectory() as td:
         xml = Path(td) / "junit.xml"
@@ -65,6 +76,7 @@ def run_tests(root: Path, repo: str, stop_first: bool = False, timeout: int = 60
                    TERM="dumb", PAGER="cat", CI="1")
         env.pop("CODEXA_DATA_DIR", None)
         cmd = [venv_python(repo)] + PYTEST + (["-x"] if stop_first else []) + [f"--junitxml={xml}"]
+        cmd += [f"--deselect={d}" for d in (deselect or [])]
         try:
             p = subprocess.run(cmd, cwd=root, env=env, capture_output=True, text=True, errors="replace",
                                timeout=timeout, stdin=subprocess.DEVNULL)
@@ -86,7 +98,7 @@ def run_tests(root: Path, repo: str, stop_first: bool = False, timeout: int = 60
 def check_natural(task, workdir: Path, timeout: int = 900) -> dict:
     """Hidden-test oracle for a natural task (see module docstring)."""
     from ab.tasks import signature_changed
-    res = run_tests(workdir, task.repo, timeout=timeout)
+    res = run_tests(workdir, task.repo, timeout=timeout, deselect=getattr(task, "deselect", None))
     base_failed = set(task.baseline_failed or [])
     nf = None if res["failed"] is None else sorted(res["failed"] - base_failed)
     ok = nf is not None and not nf
@@ -522,6 +534,8 @@ def rebaseline(tasks_file: str, runs: int) -> None:
         t["baseline_failed"] = sorted(set(t["baseline_failed"]) | union[t["repo"]])
         if extra:
             t["baseline_flaky_added"] = sorted(extra)
+            ids = [junit_to_nodeid(DATA / "repos" / t["repo"], x) for x in sorted(extra)]
+            t["deselect"] = [x for x in ids if x]
     Path(tasks_file).write_text(json.dumps(tasks, indent=1))
 
 

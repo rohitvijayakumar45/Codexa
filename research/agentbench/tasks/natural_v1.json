@@ -294,6 +294,9 @@
   "lookalike_checks": [],
   "baseline_flaky_added": [
    "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
   ]
  },
  {
@@ -668,6 +671,9 @@
   "lookalike_checks": [],
   "baseline_flaky_added": [
    "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
   ]
  },
  {
@@ -999,6 +1005,9 @@
   "lookalike_checks": [],
   "baseline_flaky_added": [
    "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
   ]
  },
  {
@@ -1264,6 +1273,9 @@
   "lookalike_checks": [],
   "baseline_flaky_added": [
    "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
   ]
  },
  {
@@ -1520,6 +1532,9 @@
   "lookalike_checks": [],
   "baseline_flaky_added": [
    "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "deselect": [
+   "tests/test_more.py::TestConcurrentTee::test_concurrent_consumers"
   ]
  },
  {

@@ -90,3 +90,18 @@ def test_over_edits_flags_non_gold_calls(tmp_path, monkeypatch):
     t = T()
     t.repo, t.gold_sites = repo, [("m.py", 11)]
     assert N.over_edits(t, work) == [["m.py", 17, "target"]]
+
+
+def test_signature_changed_finds_nested_functions(tmp_path):
+    from ab.tasks import Task, signature_changed
+    (tmp_path / "m.py").write_text("def outer(x):\n    def helper(a, tag):\n        return a\n    return helper\n")
+    t = Task(id="r:outer.helper", repo="r", lang="py", target_key="k", name="helper", qualname="outer.helper",
+             file="m.py", line=2, param="tag", value="v2")
+    assert signature_changed(t, tmp_path)
+
+
+def test_junit_to_nodeid(tmp_path):
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_more.py").write_text("")
+    assert N.junit_to_nodeid(tmp_path, "tests.test_more.TestX::test_y") == "tests/test_more.py::TestX::test_y"
+    assert N.junit_to_nodeid(tmp_path, "nowhere.TestX::t") is None

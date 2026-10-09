@@ -14,8 +14,16 @@ frozen `/work/nb` run happened.
 |---|---|
 | §1 NavBench v2 | **Done.** All 81 jobs ran. The frozen arms reproduce `results/main`: rg, LSP and T2 are identical; the only differences are known codebase-memory noise, plus G1 rows that hit an output cap. Results and write-up: `research/navbench/results/v2/RESULTS_V2.md`. **G1-v2 does not transfer to real code:** layer-C recall is 0.69 vs v1's 0.76, because of star re-exports and calls dispatched to overrides. **No routing policy beats rg0 on real code** at matched completeness. |
 | §2 Context rot | **Blocked.** The environment's network policy denies `zenodo.org`, so `context_files.csv` cannot be downloaded. Either allow the host or commit the CSV. GitHub clones work. |
-| §3 Agent study | The `cbm_cur` condition is wired and tested in `ab/run.py` (no LLM). The full run waits on a pinned model/provider, an API key and a budget, and on harder tasks (the pilot hit its ceiling). |
+| §3 Agent study | **Harder tasks are ready:** `research/agentbench/tasks/natural_v1.json` (see the paragraph below). The `cbm_cur` condition is wired. **The run waits only on a provider API key in this environment** (the keys are in the local `.env`, which is gitignored), a pinned model and a budget. |
 | §4 Claims audit | Not started (desk work; needs a second human coder for κ). |
+
+**The natural_v1 task set.**
+- 40 change-signature tasks on 9 real Python repositories, graded by each repository's hidden test suite.
+- All 40 were validated automatically: the reference solution passes, and omitting any single gold site fails.
+- 18 tasks are rg-hostile. Precision is measured by `strict_success`, which requires no over-edits.
+- They were drawn from 75 valid tasks out of 286 candidates.
+- `ab.natural selftest` passes on all 40 with every condition and no model calls. Flaky tests are deselected (`rebaseline`).
+- Run command: `research/agentbench/README.md`.
 
 The scoring fix from NavBench review round 3 (S-ind rows keyed by (declaration, sample)) is merged into `nb/score.py` here.
 

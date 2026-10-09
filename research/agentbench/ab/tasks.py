@@ -46,6 +46,7 @@ class Task:
     rg_ratio: float | None = None
     rg_hostile: bool | None = None
     lookalike_checks: list = field(default_factory=list)
+    deselect: list = field(default_factory=list)       # flaky tests skipped by the hidden-test oracle
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -132,8 +133,9 @@ def signature_changed(task: Task, workdir: Path) -> bool:
         return False
     *owners, name = task.qualname.split(".")
     scope = tree.body
-    for o in owners:
-        cls = next((n for n in scope if isinstance(n, ast.ClassDef) and n.name == o), None)
+    for o in owners:  # owners are classes or, for nested functions, enclosing functions
+        cls = next((n for n in scope if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+                    and n.name == o), None)
         if cls is None:
             return False
         scope = cls.body
