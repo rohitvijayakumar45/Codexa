@@ -62,3 +62,35 @@ Fan-out = number of call sites among the language server's references; buckets 0
 | cbm_057 | 84 → 62 | 84 → 80 | 84 → 76 (diff +8, 95% CI -0 to +15) | 0.72 → 0.60 | 0.70 → 0.62 (diff +0.09, 95% CI -0.04 to +0.23) |
 
 Sample composition: S-cond: n=331, fan-out 0 = 9%, median name occurrences = 9, fan-out buckets {'1-2': 155, '10-inf': 52, '0-0': 31, '3-9': 93}, kinds {'method': 111, 'function': 188, 'class': 32}; S-ind: n=661, fan-out 0 = 35%, median name occurrences = 15, fan-out buckets {'0-0': 231, '1-2': 195, '3-9': 128, '10-inf': 107}, kinds {'function': 302, 'class': 105, 'method': 254}
+
+## R6 S-ind estimates with the recorded inclusion weights (natural repositories)
+Weighted within each repository by the stratified-sampling inclusion weight, then averaged over repositories.
+| arm | non-empty % unweighted | non-empty % weighted | observed-call recall unweighted | weighted |
+|---|---|---|---|---|
+| rg0 | 100.0 | 100.0 | 0.95 | 0.93 |
+| rg3 | 100.0 | 100.0 | 0.95 | 0.93 |
+| lsp | 83.1 | 78.5 | 0.77 | 0.71 |
+| codexa_refs | 54.2 | 51.7 | 0.70 | 0.67 |
+| codexa_orig | 43.8 | 39.6 | 0.63 | 0.59 |
+| cbm_cur | 60.0 | 54.0 | 0.66 | 0.61 |
+| cbm_057 | 62.4 | 60.0 | 0.60 | 0.56 |
+
+## R7 Q1 on a common subset: S-ind targets where every graph arm answered (non-empty)
+226 targets in 17 repositories (of 661 S-ind targets). Per-cell n of the main Table I (non-empty answers of that arm):
+| graph arm | main-table n (targets / repos) | whole files | rg -w | LSP JSON | LSP loc. |
+|---|---|---|---|---|---|
+| codexa_refs | 358 / 17 | 131.62 [84.46, 204.78] | 4.73 [3.65, 6.45] | 4.17 [2.91, 5.90] | 0.86 [0.61, 1.22] |
+| codexa_orig | 290 / 17 | 83.84 [53.92, 129.39] | 3.01 [2.31, 4.19] | 2.66 [1.89, 3.85] | 0.55 [0.39, 0.78] |
+| cbm_cur | 395 / 17 | 68.72 [42.32, 115.20] | 2.47 [1.93, 3.31] | 2.18 [1.63, 2.93] | 0.45 [0.34, 0.60] |
+| cbm_057 | 413 / 17 | 70.92 [45.08, 114.95] | 2.55 [2.06, 3.21] | 2.25 [1.64, 3.10] | 0.46 [0.34, 0.64] |
+
+## R8 Layer C recall split by caller location (Python; each target once; both samples)
+| arm | recall on test-file callers | recall on library callers | targets with library callers |
+|---|---|---|---|
+| rg0 | 0.95 [0.91, 0.99] | 0.94 [0.89, 0.98] | 228 |
+| rg3 | 0.95 [0.91, 0.99] | 0.94 [0.89, 0.98] | 228 |
+| lsp | 0.76 [0.52, 0.93] | 0.86 [0.78, 0.93] | 228 |
+| codexa_refs | 0.70 [0.58, 0.81] | 0.76 [0.68, 0.84] | 228 |
+| codexa_orig | 0.67 [0.55, 0.79] | 0.67 [0.56, 0.78] | 228 |
+| cbm_cur | 0.63 [0.46, 0.80] | 0.73 [0.63, 0.82] | 228 |
+| cbm_057 | 0.65 [0.51, 0.77] | 0.63 [0.51, 0.73] | 228 |

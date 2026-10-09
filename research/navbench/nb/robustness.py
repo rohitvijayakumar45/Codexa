@@ -21,6 +21,7 @@ import gzip
 import json
 import math
 import os
+import re
 import statistics as st
 import sys
 from collections import Counter, defaultdict
@@ -94,7 +95,24 @@ def derive(run_dir: Path) -> dict:
                     rec[f"{lay}_strict_caller_precision"] = (len(strict & g_callers) / len(returned)) if returned else None
                     rec[f"{lay}_strict_complete"] = rc == 1.0
             out[key] = rec
+            if traced is not None and (repo, r["target"], "__goldC__") not in out:
+                g_calls = traced.get(r["target"], set())
+                g_callers = {ix.enclosing(ix.calls[c]["file"], ix.calls[c]["line"]) for c in g_calls}
+                out[(repo, r["target"], "__goldC__")] = {
+                    "test": sorted(g for g in g_callers if _is_test_caller(ix, g)),
+                    "lib": sorted(g for g in g_callers if not _is_test_caller(ix, g))}
     return out
+
+
+_TEST_PATH = re.compile(r"(^|/)(tests?|testing)/|(^|/)test_[^/]*\.py$|_test\.py$|conftest\.py$")
+
+
+def _is_test_caller(ix, caller: str) -> bool:
+    d = ix.decls.get(caller)
+    if d is not None:
+        return bool(d.get("is_test"))
+    f = caller[len("module:"):] if caller.startswith("module:") else caller.rsplit(":", 2)[0]
+    return bool(_TEST_PATH.search(f))
 
 
 def gm_ratio(pairs_by_repo, key_a, key_b=None):
@@ -125,6 +143,12 @@ def main():
             fh.write(json.dumps({"\t".join(k): v for k, v in der.items()}))
     for r in rows:
         r.update(der.get((r["repo"], r["target"], r["arm"]), {}))
+        gc = der.get((r["repo"], r["target"], "__goldC__"))
+        if gc is not None and r.get("C_n_gold"):
+            ret = set(r.get("_callers") or [])
+            for part in ("test", "lib"):
+                g = set(gc[part])
+                r[f"C_recall_{part}"] = (len(ret & g) / len(g)) if g else None
     L: list[str] = ["# Supplementary robustness analyses (post hoc; not part of the frozen protocol)"]
     rep: dict = {}
 
@@ -308,6 +332,66 @@ def main():
     L.append("\nSample composition: " + "; ".join(
         f"{k}: n={v['n']}, fan-out 0 = {100*v['fan0']:.0f}%, median name occurrences = {v['median_name_occ']}, "
         f"fan-out buckets {dict(v['fanb'])}, kinds {dict(v['kind'])}" for k, v in comp.items()))
+
+    # ------------------------------------------------------------- R6 weighted S-ind
+    L.append("\n## R6 S-ind estimates with the recorded inclusion weights (natural repositories)")
+    L.append("Weighted within each repository by the stratified-sampling inclusion weight, then averaged over repositories.")
+    L.append("| arm | non-empty % unweighted | non-empty % weighted | observed-call recall unweighted | weighted |")
+    L.append("|---|---|---|---|---|")
+    def wmacro(rows_, key):
+        per = defaultdict(lambda: [0.0, 0.0])
+        for r in rows_:
+            if r.get(key) is None:
+                continue
+            w = r.get("weight") or 1.0
+            per[r["repo"]][0] += w * float(r[key])
+            per[r["repo"]][1] += w
+        vals = [a / b for a, b in per.values() if b]
+        return st.mean(vals) if vals else None
+    for arm in ARMS:
+        si = [r for r in N if r["arm"] == arm and r["sample"] == "S-ind"]
+        siC = [r for r in si if r.get("C_n_gold")]
+        u, w = macro_mean("_ok")([v for v in by_repo(si).values()]), wmacro(si, "_ok")
+        uc, wc = macro_mean("C_caller_recall")([v for v in by_repo(siC).values()]), wmacro(siC, "C_caller_recall")
+        rep[f"R6_{arm}"] = {"nonempty": [u, w], "recallC": [uc, wc]}
+        L.append(f"| {arm} | {100*u:.1f} | {100*w:.1f} | {uc:.2f} | {wc:.2f} |")
+
+    # ------------------------------------------------------------- R7 common-subset Q1
+    L.append("\n## R7 Q1 on a common subset: S-ind targets where every graph arm answered (non-empty)")
+    S = [r for r in N if r["sample"] == "S-ind"]
+    by_t = defaultdict(dict)
+    for r in S:
+        by_t[(r["repo"], r["target"])][r["arm"]] = r
+    common = {k: v for k, v in by_t.items() if all(v.get(g, {}).get("status") == "ok" for g in GRAPH)}
+    ncommon, nrepos = len(common), len({k[0] for k in common})
+    L.append(f"{ncommon} targets in {nrepos} repositories (of {len(by_t)} S-ind targets). Per-cell n of the main Table I (non-empty answers of that arm):")
+    L.append("| graph arm | main-table n (targets / repos) | whole files | rg -w | LSP JSON | LSP loc. |")
+    L.append("|---|---|---|---|---|---|")
+    for g in GRAPH:
+        own = [v for v in by_t.values() if v.get(g, {}).get("status") == "ok"]
+        def ratio(sel, num_arm, num_key):
+            gr = defaultdict(list)
+            for v in sel:
+                a_, b_ = (v[g] if num_arm is None else v.get(num_arm)), v[g]
+                if a_ and a_.get(num_key) and b_.get("tok_native_cl100k"):
+                    gr[b_["repo"]].append((a_, b_))
+            return gm_ratio(gr, num_key, "tok_native_cl100k")
+        cells = [ratio(common.values(), None, "wholefile_graphsel_tokens"), ratio(common.values(), "rg0", "tok_native_cl100k"),
+                 ratio(common.values(), "lsp", "tok_native_cl100k"), ratio(common.values(), "lsp", "tok_loc_cl100k")]
+        rep[f"R7_{g}"] = {"main_n": [len(own), len({v[g]["repo"] for v in own})], "common": cells}
+        L.append(f"| {g} | {len(own)} / {len({v[g]['repo'] for v in own})} | " + " | ".join(fmt(c, nd=2) for c in cells) + " |")
+
+    # ------------------------------------------------------------- R8 layer C by caller location
+    L.append("\n## R8 Layer C recall split by caller location (Python; each target once; both samples)")
+    L.append("| arm | recall on test-file callers | recall on library callers | targets with library callers |")
+    L.append("|---|---|---|---|")
+    for arm in ARMS:
+        s_ = [r for r in C if r["arm"] == arm]
+        rt = hboot(by_repo([r for r in s_ if r.get("C_recall_test") is not None]), macro_mean("C_recall_test"))
+        rl = hboot(by_repo([r for r in s_ if r.get("C_recall_lib") is not None]), macro_mean("C_recall_lib"))
+        nl = sum(1 for r in s_ if r.get("C_recall_lib") is not None)
+        rep[f"R8_{arm}"] = {"test": rt, "lib": rl, "n_lib": nl}
+        L.append(f"| {arm} | {fmt(rt)} | {fmt(rl)} | {nl} |")
 
     (out / "robustness.md").write_text("\n".join(L) + "\n")
     (out / "robustness.json").write_text(json.dumps(rep, default=str, indent=1))
