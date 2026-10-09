@@ -288,8 +288,13 @@
   "natural": true,
   "rg_ratio": 5.0,
   "rg_hostile": true,
-  "baseline_failed": [],
-  "lookalike_checks": []
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ]
  },
  {
   "id": "rich:Lines.extend",
@@ -657,8 +662,13 @@
   "natural": true,
   "rg_ratio": 4.0,
   "rg_hostile": true,
-  "baseline_failed": [],
-  "lookalike_checks": []
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ]
  },
  {
   "id": "rich:Style._add",
@@ -983,8 +993,13 @@
   "natural": true,
   "rg_ratio": 2.0,
   "rg_hostile": false,
-  "baseline_failed": [],
-  "lookalike_checks": []
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ]
  },
  {
   "id": "toolz:iterate",
@@ -1243,8 +1258,13 @@
   "natural": true,
   "rg_ratio": 1.25,
   "rg_hostile": false,
-  "baseline_failed": [],
-  "lookalike_checks": []
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ]
  },
  {
   "id": "toolz:_merge_sorted_binary",
@@ -1494,8 +1514,13 @@
   "natural": true,
   "rg_ratio": 2.0,
   "rg_hostile": false,
-  "baseline_failed": [],
-  "lookalike_checks": []
+  "baseline_failed": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ],
+  "lookalike_checks": [],
+  "baseline_flaky_added": [
+   "tests.test_more.TestConcurrentTee::test_concurrent_consumers"
+  ]
  },
  {
   "id": "toolz:signature_or_spec",
