@@ -1,5 +1,7 @@
 # Reproducing the navbench study
 
+**Running on your own PC (Windows/WSL2 or Linux):** see `local/LOCAL_SETUP.md`. `local/setup_wsl.sh` automates every step below, with frozen package versions.
+
 Linux (or WSL), Python ≥ 3.12 (`sys.monitoring`), Node 22, gcc/make, ripgrep 14. About 3–4 hours on 4 cores.
 
 ```bash

@@ -111,3 +111,14 @@ v2 in the product; the frozen G1 arms pin `CODEXA_CALL_RESOLUTION=v1` (nb/adapte
 fact-identical to the stored raw results on 100 regenerated held-out rows
 (results/features-local/equivalence_v1_frozen.txt). The generator now also records non-target call
 edges in the manifest (T3 gold); every generated source file is byte-identical to before.
+
+## Large-repository extension (2026-10-09; post-freeze, criteria fixed before results)
+- Purpose: a falsification test. The rg/graph payload ratio grows with name frequency (elasticity ≈ 0.77), so graph tools should gain in large repositories with common names.
+- Repositories:
+  - networkx and SQLAlchemy (Python);
+  - TypeORM and NestJS (TypeScript).
+- Selection: listed with their criteria, SHAs and frame sizes in `corpus.json` → `large_extension`. They were chosen before any NavBench result on them existed; only clone sizes and frame counts had been seen.
+- Criterion: ≥ 5,000 declarations in the independent frame. networkx qualifies on all declarations (8,294); it has 2,627 non-test functions, methods and classes.
+- Protocol: unchanged, with the frozen arms (`nb.run` defaults) and the same sampling, scoring and analysis, and the (declaration, sample)-keyed scorer.
+- Layer C: for Python, the test suites are traced with the same budgets.
+- Output: `results/large/`, reported separately from the 17-repository corpus.
