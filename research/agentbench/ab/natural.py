@@ -16,6 +16,7 @@ Gold sites = language-server call sites (NavBench out-v2 `lsp` row) U runtime-ob
 
 Usage: python -m ab.natural build <navbench_run_dir> <out_dir> [--repos a,b] [--max-candidates 30] [--workers 3]
        python -m ab.natural select <out_dir>/validated.jsonl <tasks.json> [--n 40] [--seed 20261008]
+       python -m ab.natural rebaseline <tasks.json> [--runs 5]     (flaky tests -> baseline_failed)
        python -m ab.natural selftest <tasks.json> <out_dir>/validated.jsonl [--n 40] [--conditions ...]
 """
 from __future__ import annotations
@@ -499,18 +500,48 @@ def selftest(tasks_file: str, conditions: list[str], limit: int) -> None:
 _gold_with_cols: dict = {}
 
 
+def rebaseline(tasks_file: str, runs: int) -> None:
+    """Make the hidden-test oracle robust to flaky tests: run each repository's untouched suite `runs` times in a
+    materialized copy (as agent runs use) and store the union of failing tests as `baseline_failed`."""
+    tasks = json.loads(Path(tasks_file).read_text())
+    work = Path(os.environ["CODEXA_DATA_DIR"]) / "repos"
+    union: dict = {}
+    for repo in sorted({t["repo"] for t in tasks}):
+        root = work / f"ab-baseline-{repo}"
+        if root.exists():
+            shutil.rmtree(root)
+        shutil.copytree(DATA / "repos" / repo, root, ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"))
+        fails = set()
+        for _ in range(runs):
+            fails |= run_tests(root, repo)["failed"] or set()
+        shutil.rmtree(root, ignore_errors=True)
+        union[repo] = fails
+        print(f"{repo}: {len(fails)} tests fail in at least one of {runs} untouched runs")
+    for t in tasks:
+        extra = union[t["repo"]] - set(t["baseline_failed"])
+        t["baseline_failed"] = sorted(set(t["baseline_failed"]) | union[t["repo"]])
+        if extra:
+            t["baseline_flaky_added"] = sorted(extra)
+    Path(tasks_file).write_text(json.dumps(tasks, indent=1))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=("build", "select", "selftest"))
+    ap.add_argument("cmd", choices=("build", "select", "selftest", "rebaseline"))
     ap.add_argument("a")
-    ap.add_argument("b")
+    ap.add_argument("rest", nargs="*")
     ap.add_argument("--repos", default=",".join(PY_REPOS))
     ap.add_argument("--max-candidates", type=int, default=30)
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--n", type=int, default=40)
     ap.add_argument("--seed", type=int, default=20261008)
     ap.add_argument("--conditions", default="rg,lsp,codexa,codexa2,routed,cbm_cur")
+    ap.add_argument("--runs", type=int, default=5)
     a = ap.parse_args()
+    a.b = a.rest[0] if a.rest else None
+    if a.cmd == "rebaseline":  # a = tasks file (updated in place)
+        rebaseline(a.a, a.runs)
+        return
     if a.cmd == "selftest":  # a = tasks file, b = validated.jsonl (for gold-site columns)
         for line in open(a.b):
             r = json.loads(line)
