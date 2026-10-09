@@ -52,6 +52,23 @@ Acceptance cannot be guaranteed. This document records what was checked, what wa
 | 8 | 1.03 reads as an equivalence claim; 0.65 rule unclear | Correct | "No evidence of a substantial saving (not an equivalence test)"; 0.65 [0.62, 0.672] explained against 1/1.5 = 0.667. |
 | 9 | Xu 2026 overlap; Sen et al. is conversation memory; 85× is G1's own definition, not codebase-memory's 10× | Correct | Related work and Q1 reworded accordingly. |
 
+## Round 4 (2026-10-09): strengthening for submission
+| Weakness (REVIEW_2026-10-08 / round 3) | Done |
+|---|---|
+| External validity: only small and medium libraries | Large-repository falsification test on networkx, SQLAlchemy, TypeORM and NestJS, with criteria fixed first. Payload ratio unchanged (3.2×); recall falls (cbm 0.42 vs rg 0.78) |
+| Graph tools may help where they claim to (multi-hop) | T3 depth-2 callers: cbm current 0.22 [0.20, 0.24] of rg's tokens at matched completeness. This balances the paper |
+| Seed-specific fixture results | Fresh-seed split reproduces every primary contrast (cbm current 1.02 [0.94, 1.12]) |
+| Unweighted stratified estimates | Weighted S-ind (R6) strengthens Q2 |
+| Table I rows use different subsets | Per-row n added; common subset of 226 targets (R7) gives the same ordering |
+| Layer C may only reflect unindexed tests | Library-caller recall (R8): graph tools 0.63–0.76 vs rg 0.94, LSP 0.86 |
+| Writing errors (141×/134×, ambiguity arm, CodeNib misrepresented, missing citations) | Fixed. Added Total Recall, DyPyBench, SWARM-CG/JS, Agent Retrieval Bench, CORE-Bench, all verified |
+| Tokenizer | o200k changes rg/graph ratios by ≤ 0.06 |
+| Number check | 107 decimals traced to released files (except 0.672 = unrounded CI bound; 85.8 = original claim) |
+| Artifact and anonymity | `local/make_artifact.sh`, `SUBMISSION_CHECKLIST.md` |
+
+Still open (author decisions or actions): the anonymous artifact URL; the 85.8× wording; reading the cited full
+texts; human audit and agent-level slice (not done, by design: fully automatic and model-free).
+
 ## Residual risks (not fixable by editing)
 - Reviewers may prefer an agent-level outcome (resolve rate or answer quality). Mitigation, if wanted: a small agent slice, which needs an API budget.
 - The novelty margin over Xu 2026 and CodeNib depends on reviewers accepting "model-free, cross-tool, independent labels, sampling quantified" as sufficient.

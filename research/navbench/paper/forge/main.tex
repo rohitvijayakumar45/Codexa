@@ -10,7 +10,6 @@
 \usepackage{xspace}
 \newcommand{\rg}{\texttt{rg\,-w}\xspace}
 \newcommand{\cbm}{codebase-memory\xspace}
-\newcommand{\LARGEABSTRACT}{}\newcommand{\LARGECONTRIB}{}\newcommand{\LARGESECTION}{}\newcommand{\LARGETHREAT}{}
 
 \begin{document}
 
@@ -31,7 +30,7 @@ The same answers are only 3.0$\times$ smaller than \rg output, and up to 2.2$\ti
 Sampling targets from the prototype's own edges raises its answer rate from 44--54\% to 99--100\%; 32--42 points remain after adjusting for target composition.
 For direct callers, the most complete graph tool used as many tokens as ripgrep on targets both answered completely (ratio 1.03, 95\% CI 0.94--1.13), but with far fewer wrong candidates (precision 0.98 vs.\ 0.35).
 For depth-2 callers it needed 4.5$\times$ fewer tokens (0.22, 0.20--0.24).
-\LARGEABSTRACT
+In four large repositories, ripgrep's relative payload did not grow (3.2$\times$), while graph-tool recall on observed calls fell to 0.42 (ripgrep 0.78).
 We release the harness and data, and propose that efficiency claims report baseline, sampling frame, output form, completeness, and precision together.
 \end{abstract}
 
@@ -53,7 +52,7 @@ We ask:
 (1)~\textsc{NavBench}, an open harness with three independent label layers, automatic validity gates, and output-form control;
 (2)~evidence that one set of graph outputs measures 0.45$\times$ to 139$\times$ depending on baseline and form;
 (3)~a quantification of graph-conditioned sampling bias, adjusted for target composition;
-(4)~matched-completeness costs showing no saving for direct callers but a 4.5$\times$ saving for depth-2 callers, with recall on runtime-observed calls\LARGECONTRIB.
+(4)~matched-completeness costs showing no saving for direct callers but a 4.5$\times$ saving for depth-2 callers, with recall on runtime-observed calls; and (5)~a large-repository falsification test.
 
 \section{Benchmark Design}
 \textbf{Tasks.}
@@ -220,7 +219,13 @@ The gap is not explained by unindexed tests: on callers in library code the grap
 Pyright's misses concentrate in repositories that ship \texttt{.pyi} stubs, to which it binds public-API calls.
 The graph tools' recall is in the range reported for static Python call graphs~\cite{pycg}.
 
-\LARGESECTION
+\subsection{Falsification test: large repositories}
+Because the \rg/graph ratio grows with name frequency, graph tools should gain in large repositories.
+We ran the frozen protocol on four large repositories chosen by fixed criteria before any result (networkx, SQLAlchemy, TypeORM, NestJS; 7.5k--41k declarations; 158 S-ind targets).
+The prediction fails.
+\rg's payload relative to \cbm current is 3.2$\times$ (2.4--4.5; 2.8--3.6 per repository), as in the main corpus (2.9$\times$), because independently sampled declarations are no more ambiguous there (median 12.5--18 name occurrences, vs.\ 15).
+Coverage worsens instead: \cbm current answers 50--67\% of S-ind targets, and on runtime-observed calls its caller recall is 0.42, against 0.78 for \rg and 0.67 for the language server (29 targets; the frozen tracing budget covered only 9\% and 2\% of the two Python suites).
+G1 stops at a fixed symbol budget, indexes 23--62\% of declarations, and answers 10--44\% of targets.
 
 \section{Recommendations}
 \begin{itemize}
@@ -243,7 +248,7 @@ Post-freeze changes, each released with before/after results:
 a pyright readiness wait (layer-C recall 0.73$\rightarrow$0.79; Python targets were re-drawn with the same seed);
 a scoring fix for the 76 targets drawn into both samples (S-ind numbers changed, conclusions did not);
 \cbm v0.5.5;
-T3, the fresh split, \LARGETHREAT and the robustness analyses (weights, common subset, strict credit, post-stratification).
+T3, the fresh split, the large-repository extension, and the robustness analyses (weights, common subset, strict credit, post-stratification).
 \cbm v0.5.x answers for same-named declarations vary between runs (5\% of natural queries; current 0.4\%), and G1's answers vary when truncated at its output caps.
 
 \textbf{External.}
@@ -256,7 +261,7 @@ Retrieval benchmarks score which files or snippets an agent should read~\cite{ag
 We instead score structural answers as context: their tokens at matched completeness, the sampling frame, and the output form, without a model.
 
 \section{Data Availability}
-Harness, fixture generator, pinned corpus commits, raw per-query outputs, traces, analyses, frozen protocol, and a one-command reproduction script: \url{https://anonymous.4open.science/r/XXXX} (anonymized).
+Harness, fixture generator, pinned corpus commits, raw per-query outputs, traces, analyses (including the large-repository extension), frozen protocol, and a one-command reproduction script: \url{https://anonymous.4open.science/r/XXXX} (anonymized).
 
 \bibliographystyle{IEEEtran}
 \begin{thebibliography}{99}

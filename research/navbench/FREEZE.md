@@ -122,3 +122,8 @@ edges in the manifest (T3 gold); every generated source file is byte-identical t
 - Protocol: unchanged, with the frozen arms (`nb.run` defaults) and the same sampling, scoring and analysis, and the (declaration, sample)-keyed scorer.
 - Layer C: for Python, the test suites are traced with the same budgets.
 - Output: `results/large/`, reported separately from the 17-repository corpus.
+- Outcome (2026-10-09), in `results/large/LARGE_RESULTS.md`:
+  - all 4 repositories ran with no failures and no gate messages;
+  - the traced runs covered only 9% (networkx) and 2% (sqlalchemy) of the suites within the frozen budget;
+  - SQLAlchemy's plain run crashed in a compiled extension after 104 s;
+  - the prediction (graph tools gain in large repositories) failed: rg/cbm-current is 3.22 [2.42, 4.46], vs 2.92 on the main corpus.

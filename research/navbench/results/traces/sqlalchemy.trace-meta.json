@@ -1,0 +1,24 @@
+{
+ "repo": "sqlalchemy",
+ "plain": {
+  "seconds": 104.26214742660522,
+  "finished": true,
+  "tests_progressed": 288,
+  "last_pct": 1,
+  "tail": [
+   "",
+   "Extension modules: sqlalchemy.util._collections_cy, sqlalchemy.util._immutabledict_cy, sqlalchemy.sql._util_cy, sqlalchemy.sql._cache_key_cy, sqlalchemy.engine._processors_cy, sqlalchemy.engine._util_cy, sqlalchemy.engine._row_cy, sqlalchemy.engine._result_cy (total: 8)"
+  ]
+ },
+ "traced": {
+  "seconds": 905.4292743206024,
+  "finished": false,
+  "tests_progressed": 594,
+  "last_pct": 2,
+  "tail": [
+   "............................................FFF.....FF.F..F............. [  2%]",
+   "...............F.."
+  ]
+ },
+ "trace_written": true
+}

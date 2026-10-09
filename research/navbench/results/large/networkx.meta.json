@@ -1,0 +1,105 @@
+{
+ "repo": "networkx",
+ "lang": "py",
+ "layer": "natural",
+ "started": 1791546382.4067998,
+ "adapters": [
+  "rg0",
+  "rg3",
+  "lsp",
+  "codexa",
+  "cbm_cur",
+  "cbm_057"
+ ],
+ "tasks": [
+  "T1",
+  "T2"
+ ],
+ "t3_depth": 2,
+ "index_frame_s": 4.054593728999862,
+ "frame": {
+  "files": 693,
+  "decls": 8294,
+  "calls": 56344,
+  "parse_failures": [],
+  "n_parse_failures": 0
+ },
+ "provider_warmup": {
+  "warm_s": 27.2369863986969,
+  "probe_rounds": 3,
+  "stable": true,
+  "probe_ref_counts": [
+   2,
+   1,
+   763,
+   1152,
+   66
+  ]
+ },
+ "codexa_index_s": 8.515601099999913,
+ "codexa_ok": true,
+ "cbm_cur_index_s": 36.74939922999965,
+ "cbm_cur_ok": true,
+ "cbm_057_index_s": 3.6015738790001706,
+ "cbm_057_ok": true,
+ "unavailable": {},
+ "coverage": {
+  "frame_targets": 2627,
+  "codexa_has": 1150,
+  "codexa_nodes": 2956,
+  "codexa_nodes_not_in_frame": 4
+ },
+ "strata": {
+  "function|3-9": [
+   71,
+   5
+  ],
+  "function|10-inf": [
+   42,
+   6
+  ],
+  "method|0-0": [
+   45,
+   6
+  ],
+  "function|1-2": [
+   71,
+   6
+  ],
+  "method|1-2": [
+   21,
+   3
+  ],
+  "function|0-0": [
+   15,
+   2
+  ],
+  "method|3-9": [
+   9,
+   2
+  ],
+  "class|3-9": [
+   3,
+   2
+  ],
+  "class|1-2": [
+   8,
+   2
+  ],
+  "method|10-inf": [
+   10,
+   2
+  ],
+  "class|0-0": [
+   4,
+   2
+  ],
+  "class|10-inf": [
+   1,
+   2
+  ]
+ },
+ "n_cond_frame": 685,
+ "gate_messages": [],
+ "finished": 1791546525.178
+}
