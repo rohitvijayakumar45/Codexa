@@ -22,7 +22,7 @@ BLUE, ORANGE = "#2a78d6", "#eb6834"
 INK, INK2, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 ARMS = ["rg0", "rg3", "lsp", "codexa_refs", "codexa_orig", "cbm_cur", "cbm_057"]
 LABEL = {"rg0": "ripgrep -w", "rg3": "ripgrep -w -C3", "lsp": "language server", "codexa_refs": "Codexa find_references",
-         "codexa_orig": "Codexa lookup+deps", "cbm_cur": "codebase-memory (current)", "cbm_057": "codebase-memory (v0.5.5/7)"}
+         "codexa_orig": "Codexa lookup+deps", "cbm_cur": "codebase-memory (current)", "cbm_057": "codebase-memory (v0.5.x)"}
 GRAPH = ["codexa_refs", "codexa_orig", "cbm_cur", "cbm_057"]
 OFFS = {"py": {"rg0": (-5, 5, "right"), "rg3": (0, 7, "center"), "lsp": (0, -12, "center"), "cbm_cur": (0, 7, "center"),
                "cbm_057": (5, 2, "left"), "codexa_refs": (5, 2, "left"), "codexa_orig": (5, 2, "left")},
@@ -124,7 +124,7 @@ def fig_layerA_compact(rows, out):
     """Paper version: one panel, both languages pooled (repo-macro), short labels."""
     A = [r for r in rows if r["layer"] == "fixture" and r.get("split") != "calib" and r["task"] == "T1" and r.get("A_n_gold")]
     short = {"rg0": "rg -w", "rg3": "rg -w -C3", "lsp": "LSP", "codexa_refs": "G1 refs", "codexa_orig": "G1 pair",
-             "cbm_cur": "cbm (current)", "cbm_057": "cbm v0.5.5/7"}
+             "cbm_cur": "cbm (current)", "cbm_057": "cbm v0.5.x"}
     offs = {"rg0": (-5, 4, "right"), "rg3": (0, -10, "center"), "lsp": (0, 5, "center"), "cbm_cur": (0, -10, "center"),
             "cbm_057": (5, 1, "left"), "codexa_refs": (5, 1, "left"), "codexa_orig": (5, 1, "left")}
     markers = {"rg0": "o", "rg3": "o", "lsp": "s", "codexa_refs": "D", "codexa_orig": "D", "cbm_cur": "^", "cbm_057": "^"}
@@ -182,14 +182,14 @@ def fig_q2(rows, out):
 
 
 SIZES = {"fig1": (10.5, 2.8), "fig2": (7.2, 3.0), "fig3": (4.6, 2.8)}
-SHORT = {"cbm_cur": "codebase-memory (current)", "cbm_057": "codebase-memory v0.5.5/7"}
+SHORT = {"cbm_cur": "codebase-memory (current)", "cbm_057": "codebase-memory v0.5.x"}
 ANON = {"codexa_refs": "G1 find_references", "codexa_orig": "G1 lookup+deps"}
 
 if __name__ == "__main__":
     import os
     if os.environ.get("NB_ANON"):  # double-anonymous submission: the authors' own prototype is not named
         LABEL.update(ANON)
-        SHORT.update({"cbm_cur": "cbm (current)", "cbm_057": "cbm v0.5.5/7"})
+        SHORT.update({"cbm_cur": "cbm (current)", "cbm_057": "cbm v0.5.x"})
         SIZES.update({"fig1": (7.3, 2.3), "fig2": (3.5, 2.2), "fig3": (3.5, 2.2)})
         plt.rcParams.update({"font.size": 6.2})
     rows = load(sys.argv[1])
