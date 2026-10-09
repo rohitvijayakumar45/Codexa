@@ -314,7 +314,6 @@ def build_repo(args) -> list[dict]:
     targets = json.loads((Path(run_dir) / f"{repo}.targets.json").read_text())
     base = run_tests(work, repo)
     log = Path(out_dir) / f"{repo}.log"
-    results = []
     seen = set()
     cands = []
     for t in targets:
@@ -331,7 +330,8 @@ def build_repo(args) -> list[dict]:
         cands.append((d, sites, t))
     rng = random.Random(f"20261008:{repo}")
     rng.shuffle(cands)
-    for d, sites, t in cands[:max_cand]:
+
+    def validate(d, sites, t):
         rec = {"repo": repo, "target": d["id"], "name": d["name"], "qualname": d["qualname"], "file": d["file"],
                "line": d["line"], "kind": d["kind"], "sample": t["sample"], "gold_sites": [list(s) for s in sites],
                "name_occurrences": t.get("name_occurrences"), "valid": False, "reason": ""}
@@ -340,27 +340,23 @@ def build_repo(args) -> list[dict]:
             why = "def not found" if fn is None else def_eligible(fn)
             if why:
                 rec["reason"] = why
-                results.append(rec)
-                continue
+                return rec
             ref = apply(work, d, sites)
             if ref is None:
                 rec["reason"] = "a gold site is not an editable call expression"
-                results.append(rec)
-                continue
+                return rec
             with Patch(work, ref):
                 r = run_tests(work, repo)
             nf = new_failures(r, base)
             if nf is None or nf:
                 rec["reason"] = f"reference solution fails {sorted(nf)[:3] if nf else r['rc']}"
-                results.append(rec)
-                continue
+                return rec
             defonly = apply(work, d, [])
             with Patch(work, defonly):
                 nf = new_failures(run_tests(work, repo, stop_first=True), base)
             if not nf:
                 rec["reason"] = "def-only change is not detected by the tests"
-                results.append(rec)
-                continue
+                return rec
             undetected = []
             for i, s in enumerate(sites):
                 mut = apply(work, d, sites[:i] + sites[i + 1:])
@@ -371,8 +367,7 @@ def build_repo(args) -> list[dict]:
             if undetected:
                 rec["reason"] = f"{len(undetected)} gold site(s) not detected when omitted"
                 rec["undetected_sites"] = [list(s) for s in undetected]
-                results.append(rec)
-                continue
+                return rec
             # look-alikes: same-named call expressions that are not gold sites
             gold_set = {tuple(s) for s in sites}
             look = [(c["file"], c["line"], c["col"]) for c in ix.calls.values()
@@ -391,7 +386,24 @@ def build_repo(args) -> list[dict]:
                         "baseline_failed": sorted(base["failed"] or []), "baseline_n": base["n"]})
         except Exception as e:  # noqa: BLE001 - a candidate that cannot be processed is recorded, not fatal
             rec["reason"] = f"error: {type(e).__name__}: {e}"[:300]
+        return rec
+
+    # one JSON line per processed candidate, written immediately: a rerun skips them (resumable)
+    done_path = Path(out_dir) / f"{repo}.cands.jsonl"
+    done = {}
+    if done_path.exists():
+        for line in open(done_path):
+            r = json.loads(line)
+            done[r["target"]] = r
+    results = []
+    for d, sites, t in cands[:max_cand]:
+        if d["id"] in done:
+            results.append(done[d["id"]])
+            continue
+        rec = validate(d, sites, t)
         results.append(rec)
+        with open(done_path, "a") as fh:
+            fh.write(json.dumps(rec) + "\n")
         with open(log, "a") as fh:
             fh.write(json.dumps({k: rec[k] for k in ("target", "valid", "reason")}) + "\n")
     return results
@@ -400,11 +412,12 @@ def build_repo(args) -> list[dict]:
 def build(run_dir: str, out_dir: str, repos: list[str], max_cand: int, workers: int) -> None:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
+    (out / "validated.jsonl").unlink(missing_ok=True)
     with ProcessPoolExecutor(workers) as ex:
         allres = []
         for res in ex.map(build_repo, [(r, run_dir, out_dir, max_cand) for r in repos]):
             allres += res
-            with open(out / "validated.jsonl", "a") as fh:
+            with open(out / "validated.jsonl", "a") as fh:  # cleared at the start of build()
                 for r in res:
                     fh.write(json.dumps(r) + "\n")
     v = [r for r in allres if r["valid"]]
