@@ -40,6 +40,12 @@ class Task:
     value: str
     gold_sites: list = field(default_factory=list)   # [(file, line)] explicit call sites
     prompt: str = ""
+    # natural-repository tasks (ab/natural.py): graded by the repository's hidden test suite
+    natural: bool = False
+    baseline_failed: list = field(default_factory=list)
+    rg_ratio: float | None = None
+    rg_hostile: bool | None = None
+    lookalike_checks: list = field(default_factory=list)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -53,6 +59,17 @@ def _prompt(t: "Task") -> str:
             f"Then update EVERY call site of this {kind} in the repository so that it passes the string "
             f"{t.value!r} as the new last argument. Do not change any other function, and do not add a default value. "
             f"When you are done, call `finish`.")
+
+
+def from_file(path: Path) -> list[Task]:
+    """Tasks written by `ab.natural select` (natural repositories)."""
+    out = []
+    for d in json.loads(Path(path).read_text()):
+        t = Task(**{k: v for k, v in d.items() if k in Task.__dataclass_fields__})
+        t.gold_sites = [tuple(x) for x in t.gold_sites]
+        t.prompt = _prompt(t)
+        out.append(t)
+    return out
 
 
 def from_fixture(root: Path, keys: tuple[str, ...] = ("direct", "M", "reexp", "decorated")) -> list[Task]:

@@ -51,6 +51,7 @@ class RunLog:
     tool_calls: dict = field(default_factory=dict)
     tool_output_chars: dict = field(default_factory=dict)
     finished: bool = False
+    budget_exhausted: bool = False
     error: str = ""
     wall_s: float = 0.0
     transcript: list = field(default_factory=list)
@@ -100,7 +101,8 @@ class Workspace:
 
 
 def run_agent(task_prompt: str, ws: Workspace, llm: Callable, *, find_callers: Callable[[str], str] | None = None,
-              max_steps: int = 30) -> RunLog:
+              max_steps: int = 30, token_budget: int | None = None) -> RunLog:
+    """`token_budget` (prompt + completion tokens over the run) stops the agent like an exhausted step budget."""
     log = RunLog()
     tools = BASE_TOOLS + ([FIND_CALLERS] if find_callers else [])
     messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": task_prompt}]
@@ -111,6 +113,9 @@ def run_agent(task_prompt: str, ws: Workspace, llm: Callable, *, find_callers: C
             msg, usage = llm(messages, tools)
             log.prompt_tokens += usage.get("prompt_tokens", 0)
             log.completion_tokens += usage.get("completion_tokens", 0)
+            if token_budget and log.prompt_tokens + log.completion_tokens > token_budget:
+                log.budget_exhausted = True
+                break
             calls = msg.get("tool_calls") or []
             messages.append({"role": "assistant", "content": msg.get("content") or "", **({"tool_calls": calls} if calls else {})})
             if not calls:

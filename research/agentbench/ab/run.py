@@ -35,12 +35,15 @@ for p in (HERE, CODEXA, NAVBENCH):
         sys.path.insert(0, str(p))
 
 from ab.agent import Workspace, litellm_llm, run_agent  # noqa: E402
-from ab.tasks import TSC, Task, check, from_fixture, materialize  # noqa: E402
+from ab.tasks import TSC, Task, check, from_file, from_fixture, materialize  # noqa: E402
 
 CONDITIONS = ("rg", "lsp", "codexa", "codexa2", "routed", "cbm_cur")
 
 
 def run_cmd(task: Task) -> list[str]:
+    if task.natural:
+        from ab.natural import syntax_check_cmd
+        return syntax_check_cmd(task)
     return [sys.executable, "main.py"] if task.lang == "py" else ["node", str(TSC), "--noEmit", "-p", "."]
 
 
@@ -72,7 +75,11 @@ class Navigator:
         tsc = TsClient(self.root) if self.task.lang == "ts" else None
         ix = I.load(self.root, self.task.lang, tsc)
         if self.task.lang == "py":
-            prov = PyrightClient(self.root)
+            py = None
+            if self.task.natural:
+                from ab.natural import venv_python
+                py = venv_python(self.task.repo)
+            prov = PyrightClient(self.root, python=py) if py else PyrightClient(self.root)
             prov.warm(ix.files, [])
         else:
             prov = tsc
@@ -150,7 +157,9 @@ def _load_keys() -> None:
 def main() -> None:
     _load_keys()
     ap = argparse.ArgumentParser()
-    ap.add_argument("--fixtures", required=True)
+    ap.add_argument("--fixtures", help="NavBench fixtures directory (fixture tasks)")
+    ap.add_argument("--tasks-file", help="tasks from `ab.natural select` (natural repositories, hidden tests)")
+    ap.add_argument("--token-budget", type=int, default=None, help="stop a run after this many prompt+completion tokens")
     ap.add_argument("--split", default="fresh")
     ap.add_argument("--n-tasks", type=int, default=20)
     ap.add_argument("--conditions", default="rg,lsp,codexa2")
@@ -162,14 +171,20 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
 
-    fixtures = Path(a.fixtures)
-    tasks = []
-    for fx in sorted(fixtures.glob(f"fx-*-{a.split}-*")):
-        tasks += from_fixture(fx)
-    rng = random.Random(a.seed)
-    py = [t for t in tasks if t.lang == "py"]
-    ts = [t for t in tasks if t.lang == "ts"]
-    tasks = rng.sample(py, min(len(py), a.n_tasks // 2)) + rng.sample(ts, min(len(ts), a.n_tasks - a.n_tasks // 2))
+    if a.tasks_file:
+        fixtures = None
+        tasks = from_file(Path(a.tasks_file))[: a.n_tasks]
+    else:
+        if not a.fixtures:
+            ap.error("--fixtures or --tasks-file is required")
+        fixtures = Path(a.fixtures)
+        tasks = []
+        for fx in sorted(fixtures.glob(f"fx-*-{a.split}-*")):
+            tasks += from_fixture(fx)
+        rng = random.Random(a.seed)
+        py = [t for t in tasks if t.lang == "py"]
+        ts = [t for t in tasks if t.lang == "ts"]
+        tasks = rng.sample(py, min(len(py), a.n_tasks // 2)) + rng.sample(ts, min(len(ts), a.n_tasks - a.n_tasks // 2))
     out = Path(a.out)
     (out / "transcripts").mkdir(parents=True, exist_ok=True)
     (out / "tasks.json").write_text(json.dumps([t.as_dict() for t in tasks], indent=1))
@@ -187,8 +202,13 @@ def main() -> None:
             for cond in a.conditions.split(","):
                 if (t.id, cond, rep) in done:
                     continue
-                name = f"ab-{t.repo}-{t.target_key}-{cond}-r{rep}"
-                root = materialize(t, fixtures, work / name)
+                key = t.target_key.replace("/", "_").replace(":", "_")
+                name = f"ab-{t.repo}-{key}-{cond}-r{rep}"
+                if t.natural:
+                    from ab.natural import materialize_natural
+                    root = materialize_natural(t, work / name)
+                else:
+                    root = materialize(t, fixtures, work / name)
                 (root / ".codexa-repo.json").write_text(json.dumps({"url": f"agentbench://{name}"}))
                 nav = Navigator(cond, t, root, name)
                 t0 = time.perf_counter()
@@ -196,12 +216,17 @@ def main() -> None:
                     finder = nav.build()
                     setup_s = time.perf_counter() - t0
                     log = run_agent(t.prompt, Workspace(root, t.lang, run_cmd(t)), llm, find_callers=finder,
-                                    max_steps=a.max_steps)
+                                    max_steps=a.max_steps, token_budget=a.token_budget)
                 finally:
                     nav.close()
-                verdict = check(t, root)
+                if t.natural:
+                    from ab.natural import check_natural
+                    verdict = check_natural(t, root)
+                else:
+                    verdict = check(t, root)
                 row = {"task": t.id, "lang": t.lang, "target": t.target_key, "condition": cond, "rep": rep, "model": a.model,
-                       **verdict, "valid": not log.error, "steps": log.steps, "finished": log.finished, "error": log.error,
+                       **verdict, "valid": not log.error, "steps": log.steps, "finished": log.finished, "budget_exhausted": log.budget_exhausted,
+                       "error": log.error, "natural": t.natural, "rg_hostile": t.rg_hostile,
                        "prompt_tokens": log.prompt_tokens, "completion_tokens": log.completion_tokens,
                        "total_tokens": log.prompt_tokens + log.completion_tokens, "tool_calls": log.tool_calls,
                        "tool_output_chars": log.tool_output_chars, "wall_s": round(log.wall_s, 1), "setup_s": round(setup_s, 1)}
